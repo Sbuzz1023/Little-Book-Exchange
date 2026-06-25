@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Little Book Exchange – v3</title>
+<link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Nunito', sans-serif; background: #fffbf0; color: #2d2d2d; overflow-x: hidden; }
+
+  /* NAV */
+  nav {
+    background: #fff;
+    padding: 0 32px;
+    height: 68px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: relative;
+    z-index: 10;
+  }
+  nav::after {
+    content: '';
+    position: absolute;
+    bottom: -12px; left: 0; right: 0;
+    height: 12px;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 12'%3E%3Cpath d='M0,6 Q15,0 30,6 Q45,12 60,6 Q75,0 90,6 Q105,12 120,6 L120,12 L0,12Z' fill='%23f97316'/%3E%3C/svg%3E") repeat-x;
+    background-size: 120px 12px;
+    z-index: 10;
+  }
+  .nav-logo { font-family: 'Pacifico', cursive; font-size: 22px; color: #f97316; display: flex; align-items: center; gap: 10px; }
+  .nav-logo .icon { background: #f97316; border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+  .nav-links { display: flex; gap: 22px; align-items: center; }
+  .nav-links a { text-decoration: none; color: #2d2d2d; font-weight: 700; font-size: 15px; }
+  .nav-btn { background: #f97316; color: #fff !important; padding: 9px 22px; border-radius: 999px; font-weight: 800 !important; }
+
+  /* HERO */
+  .hero {
+    position: relative;
+    background: #fffbf0;
+    padding: 90px 40px 80px;
+    text-align: center;
+    overflow: hidden;
+    min-height: 560px;
+  }
+  .hero-bg-drawings {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+  }
+  .hero-content { position: relative; z-index: 2; }
+
+  .hero h1 {
+    font-family: 'Pacifico', cursive;
+    font-size: 50px;
+    line-height: 1.2;
+    color: #1a1a1a;
+    max-width: 660px;
+    margin: 0 auto 18px;
+  }
+  .hero h1 span { color: #f97316; }
+  .hero p {
+    font-size: 18px;
+    color: #555;
+    max-width: 500px;
+    margin: 0 auto 36px;
+    line-height: 1.65;
+    font-weight: 600;
+  }
+  .hero-btns { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+  .btn-orange {
+    background: #f97316; color: #fff;
+    padding: 14px 32px; border-radius: 999px;
+    font-weight: 800; font-size: 16px;
+    text-decoration: none; display: inline-block;
+    box-shadow: 0 5px 0 #c2410c;
+    font-family: 'Nunito', sans-serif;
+  }
+  .btn-teal {
+    background: #0d9488; color: #fff;
+    padding: 14px 32px; border-radius: 999px;
+    font-weight: 800; font-size: 16px;
+    text-decoration: none; display: inline-block;
+    box-shadow: 0 5px 0 #0f766e;
+    font-family: 'Nunito', sans-serif;
+  }
+
+  /* SCALLOP dividers */
+  .scallop-down {
+    height: 22px;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 22'%3E%3Cpath d='M0,22 Q15,0 30,22 Q45,0 60,22 Q75,0 90,22 Q105,0 120,22 L120,22 L0,22Z' fill='%23f97316'/%3E%3C/svg%3E") repeat-x;
+    background-size: 120px 22px;
+  }
+  .scallop-up {
+    height: 22px;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 22'%3E%3Cpath d='M0,0 Q15,22 30,0 Q45,22 60,0 Q75,22 90,0 Q105,22 120,0 L120,22 L0,22Z' fill='%23f97316'/%3E%3C/svg%3E") repeat-x;
+    background-size: 120px 22px;
+  }
+  .scallop-teal-down {
+    height: 22px;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 22'%3E%3Cpath d='M0,22 Q15,0 30,22 Q45,0 60,22 Q75,0 90,22 Q105,0 120,22 L120,22 L0,22Z' fill='%230d9488'/%3E%3C/svg%3E") repeat-x;
+    background-size: 120px 22px;
+  }
+  .scallop-teal-up {
+    height: 22px;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 22'%3E%3Cpath d='M0,0 Q15,22 30,0 Q45,22 60,0 Q75,22 90,0 Q105,22 120,0 L120,22 L0,22Z' fill='%230d9488'/%3E%3C/svg%3E") repeat-x;
+    background-size: 120px 22px;
+  }
+
+  /* SEARCH */
+  .search-band { background: #f97316; padding: 16px 32px 28px; }
+  .search-box {
+    background: #fff; border-radius: 20px;
+    padding: 18px 24px; max-width: 640px;
+    margin: 0 auto;
+    display: flex; gap: 12px; align-items: center;
+    box-shadow: 0 6px 0 rgba(0,0,0,0.12);
+  }
+  .search-box input, .search-box select {
+    border: 2px solid #fed7aa; border-radius: 12px;
+    padding: 10px 14px; font-family: 'Nunito', sans-serif;
+    font-size: 15px; font-weight: 700; background: #fffbf0;
+  }
+  .search-box input { flex: 1; }
+  .search-box button {
+    background: #f97316; color: #fff; border: none;
+    padding: 11px 24px; border-radius: 12px;
+    font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 15px;
+    cursor: pointer; box-shadow: 0 3px 0 #c2410c;
+  }
+
+  /* LISTINGS */
+  .listings-section { padding: 44px 32px 60px; max-width: 1120px; margin: 0 auto; }
+  .section-title { font-family: 'Pacifico', cursive; font-size: 28px; margin-bottom: 4px; }
+  .section-sub { color: #999; font-size: 14px; margin-bottom: 20px; font-weight: 700; }
+  .chips { display: flex; gap: 10px; margin-bottom: 28px; flex-wrap: wrap; }
+  .chip { padding: 7px 18px; border-radius: 999px; font-weight: 800; font-size: 13px; border: 2.5px solid #e5e7eb; background: #fff; cursor: pointer; }
+  .chip.on { background: #f97316; border-color: #f97316; color: #fff; }
+  .chip.teal { background: #0d9488; border-color: #0d9488; color: #fff; }
+
+  .books-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px; }
+  .book-card {
+    background: #fff; border-radius: 20px; overflow: hidden;
+    border: 3px solid #f3f4f6; box-shadow: 0 5px 0 #e5e7eb;
+    cursor: pointer; transition: transform 0.12s;
+    text-decoration: none; color: inherit; display: block;
+  }
+  .book-card:hover { transform: translateY(-4px); }
+  .book-cover { height: 145px; display: flex; align-items: center; justify-content: center; font-size: 50px; position: relative; }
+  .c1{background:linear-gradient(145deg,#fde68a,#fca5a5);}
+  .c2{background:linear-gradient(145deg,#99f6e4,#bfdbfe);}
+  .c3{background:linear-gradient(145deg,#fca5a5,#fda4af);}
+  .c4{background:linear-gradient(145deg,#c4b5fd,#93c5fd);}
+  .c5{background:linear-gradient(145deg,#6ee7b7,#fde68a);}
+  .c6{background:linear-gradient(145deg,#fdba74,#fb7185);}
+  .price-tag { position: absolute; top: 10px; right: 10px; padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 900; font-family: 'Nunito', sans-serif; z-index: 3; }
+  .free{background:#0d9488;color:#fff;} .sale{background:#f97316;color:#fff;}
+  .book-info { padding: 14px 16px; }
+  .book-title { font-size: 14px; font-weight: 900; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .book-author { font-size: 12px; color: #aaa; margin-bottom: 10px; font-weight: 600; }
+  .book-foot { display: flex; justify-content: space-between; align-items: center; }
+  .cond { font-size: 11px; font-weight: 800; padding: 3px 8px; border-radius: 7px; background: #fef9c3; color: #854d0e; border: 1.5px solid #fde047; }
+  .city { font-size: 11px; color: #ccc; font-weight: 700; }
+
+  /* HOW IT WORKS */
+  .hiw { background: #ecfdf5; padding: 20px 40px 60px; text-align: center; }
+  .hiw h2 { font-family: 'Pacifico', cursive; font-size: 30px; margin-bottom: 6px; }
+  .hiw-sub { color: #6b7280; font-size: 15px; margin-bottom: 40px; font-weight: 600; }
+  .steps { display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; max-width: 900px; margin: 0 auto; }
+  .step-card { background: #fff; border-radius: 20px; padding: 26px 18px; flex: 1; min-width: 165px; max-width: 205px; border: 3px solid #d1fae5; box-shadow: 0 5px 0 #a7f3d0; text-align: center; }
+  .step-num { width: 38px; height: 38px; background: #f97316; color: #fff; font-family: 'Pacifico', cursive; font-size: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; box-shadow: 0 3px 0 #c2410c; }
+  .step-icon { font-size: 34px; margin-bottom: 10px; }
+  .step-card h3 { font-size: 15px; font-weight: 900; margin-bottom: 6px; }
+  .step-card p { font-size: 13px; color: #777; line-height: 1.5; font-weight: 600; }
+
+  /* CTA BANNER */
+  .cta-band { background: #f97316; padding: 50px 32px; text-align: center; position: relative; overflow: hidden; }
+  .cta-bg { position: absolute; inset: 0; pointer-events: none; }
+  .cta-content { position: relative; z-index: 2; }
+  .cta-band h2 { font-family: 'Pacifico', cursive; font-size: 28px; color: #fff; margin-bottom: 12px; }
+  .cta-band p { color: #fff7ed; font-size: 16px; font-weight: 700; margin-bottom: 24px; }
+  .deco-row { display: flex; justify-content: center; gap: 16px; font-size: 30px; margin-bottom: 22px; }
+
+  footer { background: #1a1a1a; color: #999; text-align: center; padding: 26px 32px; font-size: 14px; font-weight: 700; }
+  footer span { color: #f97316; font-family: 'Pacifico', cursive; font-size: 16px; }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo" onclick="location.href='homepage.html'" style="cursor:pointer"><div class="icon">🏡</div> LittleBookExchange</div>
+  <div class="nav-links">
+    <a href="browse.html">Browse</a>
+    <a href="post-listing.html">Post a Book</a>
+    <a href="signup.html">Sign In</a>
+    <a href="signup.html" class="nav-btn">Join Free</a>
+  </div>
+</nav>
+
+<!-- HERO with WALLPAPER of kid drawings -->
+<div class="hero">
+
+  <!-- Full background kid-drawing wallpaper -->
+  <svg class="hero-bg-drawings" viewBox="0 0 1400 560" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+    <!-- ========== LEFT SIDE ========== -->
+
+    <!-- House (left) -->
+    <g opacity="0.22" transform="translate(30,180)">
+      <!-- roof -->
+      <polygon points="10,60 70,10 130,60" fill="#f97316" stroke="#f97316" stroke-width="3" stroke-linejoin="round"/>
+      <!-- chimney -->
+      <rect x="85" y="15" width="16" height="28" fill="#fca5a5" rx="3"/>
+      <!-- smoke puffs -->
+      <circle cx="93" cy="8" r="6" fill="#e5e7eb"/>
+      <circle cx="100" cy="2" r="5" fill="#e5e7eb"/>
+      <!-- walls -->
+      <rect x="20" y="58" width="100" height="70" fill="#fff7ed" stroke="#f97316" stroke-width="3" rx="4"/>
+      <!-- door -->
+      <rect x="55" y="90" width="30" height="38" fill="#0d9488" rx="4"/>
+      <circle cx="80" cy="110" r="3" fill="#fbbf24"/>
+      <!-- window left -->
+      <rect x="28" y="70" width="22" height="20" fill="#bfdbfe" rx="3" stroke="#3b82f6" stroke-width="2"/>
+      <line x1="39" y1="70" x2="39" y2="90" stroke="#3b82f6" stroke-width="1.5"/>
+      <line x1="28" y1="80" x2="50" y2="80" stroke="#3b82f6" stroke-width="1.5"/>
+      <!-- window right -->
+      <rect x="90" y="70" width="22" height="20" fill="#bfdbfe" rx="3" stroke="#3b82f6" stroke-width="2"/>
+      <line x1="101" y1="70" x2="101" y2="90" stroke="#3b82f6" stroke-width="1.5"/>
+      <line x1="90" y1="80" x2="112" y2="80" stroke="#3b82f6" stroke-width="1.5"/>
+      <!-- grass line -->
+      <path d="M0,128 Q35,118 70,128 Q105,118 140,128" stroke="#16a34a" stroke-width="4" fill="none" stroke-linecap="round"/>
+    </g>
+
+    <!-- Big wobbly sun (top left) -->
+    <g opacity="0.25" transform="translate(60,30)">
+      <circle cx="50" cy="50" r="35" fill="#fbbf24"/>
+      <!-- wobbly rays -->
+      <line x1="50" y1="5" x2="53" y2="18" stroke="#fbbf24" stroke-width="5" stroke-linecap="round"/>
+      <line x1="50" y1="82" x2="47" y2="95" stroke="#fbbf24" stroke-width="5" stroke-linecap="round"/>
+      <line x1="5" y1="50" x2="18" y2="53" stroke="#fbbf24" stroke-width="5" stroke-linecap="round"/>
+      <line x1="82" y1="50" x2="95" y2="47" stroke="#fbbf24" stroke-width="5" stroke-linecap="round"/>
+      <line x1="18" y1="18" x2="27" y2="27" stroke="#fbbf24" stroke-width="5" stroke-linecap="round"/>
+      <line x1="82" y1="82" x2="73" y2="73" stroke="#fbbf24" stroke-width="5" stroke-linecap="round"/>
+      <line x1="18" y1="82" x2="27" y2="73" stroke="#fbbf24" stroke-width="5" stroke-linecap="round"/>
+      <line x1="82" y1="18" x2="73" y2="27" stroke="#fbbf24" stroke-width="5" stroke-linecap="round"/>
+      <!-- smiley face -->
+      <circle cx="40" cy="43" r="5" fill="#f97316"/>
+      <circle cx="60" cy="43" r="5" fill="#f97316"/>
+      <path d="M38 60 Q50 72 62 60" stroke="#f97316" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+    </g>
+
+    <!-- Stick figure family (left middle) -->
+    <g opacity="0.2" transform="translate(170,200)">
+      <!-- Dad (tall) -->
+      <circle cx="30" cy="14" r="12" fill="none" stroke="#f97316" stroke-width="3"/>
+      <!-- smiley -->
+      <circle cx="26" cy="12" r="2" fill="#f97316"/>
+      <circle cx="34" cy="12" r="2" fill="#f97316"/>
+      <path d="M26 18 Q30 22 34 18" stroke="#f97316" stroke-width="2" fill="none" stroke-linecap="round"/>
+      <!-- body -->
+      <line x1="30" y1="26" x2="30" y2="65" stroke="#f97316" stroke-width="3.5" stroke-linecap="round"/>
+      <!-- arms -->
+      <line x1="30" y1="38" x2="5" y2="55" stroke="#f97316" stroke-width="3" stroke-linecap="round"/>
+      <line x1="30" y1="38" x2="65" y2="42" stroke="#f97316" stroke-width="3" stroke-linecap="round"/>
+      <!-- legs -->
+      <line x1="30" y1="65" x2="15" y2="95" stroke="#f97316" stroke-width="3.5" stroke-linecap="round"/>
+      <line x1="30" y1="65" x2="45" y2="95" stroke="#f97316" stroke-width="3.5" stroke-linecap="round"/>
+      <!-- hat -->
+      <rect x="18" y="2" width="24" height="8" fill="#f97316" rx="3"/>
+      <rect x="14" y="-2" width="32" height="5" fill="#f97316" rx="2"/>
+
+      <!-- Mom (right of dad) -->
+      <circle cx="80" cy="18" r="11" fill="none" stroke="#0d9488" stroke-width="3"/>
+      <circle cx="76" cy="16" r="2" fill="#0d9488"/>
+      <circle cx="84" cy="16" r="2" fill="#0d9488"/>
+      <path d="M76 22 Q80 26 84 22" stroke="#0d9488" stroke-width="2" fill="none" stroke-linecap="round"/>
+      <!-- hair -->
+      <path d="M69 10 Q80 0 91 10" stroke="#fbbf24" stroke-width="4" fill="none" stroke-linecap="round"/>
+      <line x1="69" y1="10" x2="65" y2="22" stroke="#fbbf24" stroke-width="3.5" stroke-linecap="round"/>
+      <line x1="91" y1="10" x2="95" y2="22" stroke="#fbbf24" stroke-width="3.5" stroke-linecap="round"/>
+      <!-- triangle dress -->
+      <path d="M80 29 L60 90 L100 90 Z" fill="none" stroke="#0d9488" stroke-width="3" stroke-linejoin="round"/>
+      <!-- arms -->
+      <line x1="80" y1="42" x2="55" y2="55" stroke="#0d9488" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="80" y1="42" x2="105" y2="50" stroke="#0d9488" stroke-width="2.5" stroke-linecap="round"/>
+
+      <!-- Kid (small, between them) -->
+      <circle cx="52" cy="42" r="9" fill="none" stroke="#fbbf24" stroke-width="2.5"/>
+      <circle cx="49" cy="40" r="1.5" fill="#fbbf24"/>
+      <circle cx="55" cy="40" r="1.5" fill="#fbbf24"/>
+      <path d="M49 46 Q52 49 55 46" stroke="#fbbf24" stroke-width="2" fill="none" stroke-linecap="round"/>
+      <line x1="52" y1="51" x2="52" y2="75" stroke="#fbbf24" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="52" y1="58" x2="40" y2="68" stroke="#fbbf24" stroke-width="2" stroke-linecap="round"/>
+      <line x1="52" y1="58" x2="64" y2="65" stroke="#fbbf24" stroke-width="2" stroke-linecap="round"/>
+      <line x1="52" y1="75" x2="44" y2="90" stroke="#fbbf24" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="52" y1="75" x2="60" y2="90" stroke="#fbbf24" stroke-width="2.5" stroke-linecap="round"/>
+    </g>
+
+    <!-- Rainbow (top center-left) -->
+    <g opacity="0.2" transform="translate(320, 20)">
+      <path d="M10 90 Q80 10 150 90" stroke="#f97316" stroke-width="9" fill="none" stroke-linecap="round"/>
+      <path d="M20 90 Q80 22 140 90" stroke="#fbbf24" stroke-width="8" fill="none" stroke-linecap="round"/>
+      <path d="M30 90 Q80 34 130 90" stroke="#4ade80" stroke-width="7" fill="none" stroke-linecap="round"/>
+      <path d="M40 90 Q80 46 120 90" stroke="#3b82f6" stroke-width="6" fill="none" stroke-linecap="round"/>
+      <path d="M50 90 Q80 58 110 90" stroke="#a78bfa" stroke-width="5" fill="none" stroke-linecap="round"/>
+      <!-- clouds at ends -->
+      <ellipse cx="10" cy="90" rx="16" ry="10" fill="#e5e7eb"/>
+      <ellipse cx="0" cy="88" rx="10" ry="8" fill="#e5e7eb"/>
+      <ellipse cx="150" cy="90" rx="16" ry="10" fill="#e5e7eb"/>
+      <ellipse cx="160" cy="88" rx="10" ry="8" fill="#e5e7eb"/>
+    </g>
+
+    <!-- Flower patch (bottom left) -->
+    <g opacity="0.22" transform="translate(30,400)">
+      <!-- flower 1 -->
+      <line x1="20" y1="80" x2="20" y2="40" stroke="#16a34a" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="20" cy="30" r="14" fill="#fca5a5"/>
+      <circle cx="20" cy="16" r="7" fill="#fca5a5"/>
+      <circle cx="20" cy="44" r="7" fill="#fca5a5"/>
+      <circle cx="6" cy="30" r="7" fill="#fca5a5"/>
+      <circle cx="34" cy="30" r="7" fill="#fca5a5"/>
+      <circle cx="20" cy="30" r="8" fill="#fbbf24"/>
+      <!-- leaf -->
+      <path d="M18 55 Q5 48 8 40" stroke="#16a34a" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <!-- flower 2 -->
+      <line x1="55" y1="80" x2="55" y2="50" stroke="#16a34a" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="55" cy="38" r="12" fill="#a5f3fc"/>
+      <circle cx="55" cy="26" r="6" fill="#a5f3fc"/>
+      <circle cx="55" cy="50" r="6" fill="#a5f3fc"/>
+      <circle cx="43" cy="38" r="6" fill="#a5f3fc"/>
+      <circle cx="67" cy="38" r="6" fill="#a5f3fc"/>
+      <circle cx="55" cy="38" r="7" fill="#f97316"/>
+      <!-- flower 3 -->
+      <line x1="88" y1="80" x2="88" y2="45" stroke="#16a34a" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="88" cy="32" r="13" fill="#fde68a"/>
+      <circle cx="88" cy="19" r="6" fill="#fde68a"/>
+      <circle cx="88" cy="45" r="6" fill="#fde68a"/>
+      <circle cx="75" cy="32" r="6" fill="#fde68a"/>
+      <circle cx="101" cy="32" r="6" fill="#fde68a"/>
+      <circle cx="88" cy="32" r="8" fill="#0d9488"/>
+      <!-- ground -->
+      <path d="M0,80 Q50,70 120,80" stroke="#16a34a" stroke-width="4" fill="none" stroke-linecap="round"/>
+    </g>
+
+    <!-- ========== RIGHT SIDE ========== -->
+
+    <!-- Clouds (top right) -->
+    <g opacity="0.2" transform="translate(1100, 25)">
+      <ellipse cx="60" cy="35" rx="50" ry="28" fill="#e0f2fe"/>
+      <ellipse cx="35" cy="42" rx="30" ry="22" fill="#e0f2fe"/>
+      <ellipse cx="85" cy="40" rx="35" ry="22" fill="#e0f2fe"/>
+      <ellipse cx="110" cy="45" rx="25" ry="18" fill="#e0f2fe"/>
+      <!-- rain drops -->
+      <line x1="40" y1="64" x2="36" y2="80" stroke="#3b82f6" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="60" y1="63" x2="56" y2="79" stroke="#3b82f6" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="80" y1="62" x2="76" y2="78" stroke="#3b82f6" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="100" y1="63" x2="96" y2="79" stroke="#3b82f6" stroke-width="2.5" stroke-linecap="round"/>
+    </g>
+
+    <!-- Butterfly (top right area) -->
+    <g opacity="0.22" transform="translate(1230, 80)">
+      <!-- wings -->
+      <ellipse cx="30" cy="20" rx="28" ry="18" fill="#fca5a5" transform="rotate(-30 30 20)"/>
+      <ellipse cx="30" cy="20" rx="20" ry="14" fill="#fb7185" opacity="0.5" transform="rotate(-30 30 20)"/>
+      <ellipse cx="30" cy="35" rx="22" ry="15" fill="#fca5a5" transform="rotate(20 30 35)"/>
+      <ellipse cx="30" cy="35" rx="14" ry="10" fill="#fb7185" opacity="0.5" transform="rotate(20 30 35)"/>
+      <!-- left wings -->
+      <ellipse cx="30" cy="20" rx="28" ry="18" fill="#a5f3fc" transform="rotate(210 30 20)"/>
+      <ellipse cx="30" cy="20" rx="20" ry="14" fill="#22d3ee" opacity="0.5" transform="rotate(210 30 20)"/>
+      <ellipse cx="30" cy="35" rx="22" ry="15" fill="#a5f3fc" transform="rotate(160 30 35)"/>
+      <ellipse cx="30" cy="35" rx="14" ry="10" fill="#22d3ee" opacity="0.5" transform="rotate(160 30 35)"/>
+      <!-- body -->
+      <ellipse cx="30" cy="27" rx="4" ry="14" fill="#1a1a1a"/>
+      <!-- antennae -->
+      <path d="M28 14 Q20 4 14 2" stroke="#1a1a1a" stroke-width="1.5" fill="none"/>
+      <path d="M32 14 Q40 4 46 2" stroke="#1a1a1a" stroke-width="1.5" fill="none"/>
+      <circle cx="14" cy="2" r="3" fill="#f97316"/>
+      <circle cx="46" cy="2" r="3" fill="#f97316"/>
+    </g>
+
+    <!-- Second house (right) -->
+    <g opacity="0.2" transform="translate(1200,190)">
+      <polygon points="10,55 75,5 140,55" fill="#0d9488" stroke="#0d9488" stroke-width="3" stroke-linejoin="round"/>
+      <rect x="85" y="8" width="14" height="30" fill="#fca5a5" rx="2"/>
+      <circle cx="92" cy="3" r="7" fill="#e5e7eb"/>
+      <circle cx="98" cy="-2" r="5" fill="#e5e7eb"/>
+      <rect x="20" y="53" width="110" height="75" fill="#fffbf0" stroke="#0d9488" stroke-width="3" rx="3"/>
+      <rect x="55" y="88" width="28" height="40" fill="#f97316" rx="4"/>
+      <circle cx="79" cy="109" r="3" fill="#fff"/>
+      <rect x="26" y="64" width="22" height="20" fill="#bfdbfe" rx="3" stroke="#3b82f6" stroke-width="2"/>
+      <line x1="37" y1="64" x2="37" y2="84" stroke="#3b82f6" stroke-width="1.5"/>
+      <line x1="26" y1="74" x2="48" y2="74" stroke="#3b82f6" stroke-width="1.5"/>
+      <rect x="95" y="64" width="22" height="20" fill="#bfdbfe" rx="3" stroke="#3b82f6" stroke-width="2"/>
+      <line x1="106" y1="64" x2="106" y2="84" stroke="#3b82f6" stroke-width="1.5"/>
+      <line x1="95" y1="74" x2="117" y2="74" stroke="#3b82f6" stroke-width="1.5"/>
+      <path d="M0,128 Q35,118 75,128 Q110,118 148,128" stroke="#16a34a" stroke-width="4" fill="none" stroke-linecap="round"/>
+    </g>
+
+    <!-- Cat (bottom right) -->
+    <g opacity="0.2" transform="translate(1290,380)">
+      <!-- body oval -->
+      <ellipse cx="45" cy="65" rx="38" ry="30" fill="#a78bfa"/>
+      <!-- head -->
+      <circle cx="45" cy="28" r="24" fill="#a78bfa"/>
+      <!-- ears -->
+      <polygon points="24,12 18,0 34,8" fill="#a78bfa"/>
+      <polygon points="27,10 22,3 31,8" fill="#fca5a5"/>
+      <polygon points="66,12 72,0 56,8" fill="#a78bfa"/>
+      <polygon points="63,10 68,3 59,8" fill="#fca5a5"/>
+      <!-- eyes -->
+      <ellipse cx="36" cy="25" rx="5" ry="6" fill="#1a1a1a"/>
+      <ellipse cx="54" cy="25" rx="5" ry="6" fill="#1a1a1a"/>
+      <circle cx="37" cy="23" r="2" fill="#fff"/>
+      <circle cx="55" cy="23" r="2" fill="#fff"/>
+      <!-- nose -->
+      <polygon points="45,33 42,37 48,37" fill="#fca5a5"/>
+      <!-- mouth -->
+      <path d="M42 37 Q45 42 48 37" stroke="#1a1a1a" stroke-width="1.5" fill="none"/>
+      <!-- whiskers -->
+      <line x1="20" y1="34" x2="38" y2="36" stroke="#1a1a1a" stroke-width="1.5"/>
+      <line x1="20" y1="38" x2="38" y2="38" stroke="#1a1a1a" stroke-width="1.5"/>
+      <line x1="52" y1="36" x2="70" y2="34" stroke="#1a1a1a" stroke-width="1.5"/>
+      <line x1="52" y1="38" x2="70" y2="38" stroke="#1a1a1a" stroke-width="1.5"/>
+      <!-- tail -->
+      <path d="M83 70 Q110 50 105 30 Q100 15 88 20" stroke="#a78bfa" stroke-width="6" fill="none" stroke-linecap="round"/>
+      <!-- paws -->
+      <ellipse cx="25" cy="88" rx="12" ry="8" fill="#a78bfa"/>
+      <ellipse cx="65" cy="88" rx="12" ry="8" fill="#a78bfa"/>
+    </g>
+
+    <!-- Flowers (bottom right) -->
+    <g opacity="0.2" transform="translate(1100,390)">
+      <line x1="20" y1="80" x2="20" y2="38" stroke="#16a34a" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="20" cy="26" r="13" fill="#fb7185"/>
+      <circle cx="20" cy="13" r="6" fill="#fb7185"/>
+      <circle cx="20" cy="39" r="6" fill="#fb7185"/>
+      <circle cx="7" cy="26" r="6" fill="#fb7185"/>
+      <circle cx="33" cy="26" r="6" fill="#fb7185"/>
+      <circle cx="20" cy="26" r="7" fill="#fbbf24"/>
+      <line x1="55" y1="80" x2="55" y2="42" stroke="#16a34a" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="55" cy="30" r="13" fill="#a5f3fc"/>
+      <circle cx="55" cy="17" r="6" fill="#a5f3fc"/>
+      <circle cx="55" cy="43" r="6" fill="#a5f3fc"/>
+      <circle cx="42" cy="30" r="6" fill="#a5f3fc"/>
+      <circle cx="68" cy="30" r="6" fill="#a5f3fc"/>
+      <circle cx="55" cy="30" r="7" fill="#f97316"/>
+      <path d="M0,80 Q55,68 110,80" stroke="#16a34a" stroke-width="4" fill="none" stroke-linecap="round"/>
+    </g>
+
+    <!-- Stars scattered -->
+    <g opacity="0.18">
+      <text x="500" y="50" font-size="26" fill="#fbbf24">★</text>
+      <text x="580" y="90" font-size="18" fill="#f97316">★</text>
+      <text x="900" y="60" font-size="22" fill="#fbbf24">★</text>
+      <text x="820" y="110" font-size="15" fill="#0d9488">★</text>
+      <text x="450" y="480" font-size="20" fill="#fbbf24">★</text>
+      <text x="980" y="470" font-size="24" fill="#f97316">★</text>
+      <text x="650" y="500" font-size="16" fill="#0d9488">★</text>
+    </g>
+
+    <!-- Bird (top center) -->
+    <g opacity="0.2" transform="translate(680, 40)">
+      <!-- body -->
+      <ellipse cx="30" cy="22" rx="22" ry="14" fill="#fbbf24"/>
+      <!-- head -->
+      <circle cx="50" cy="16" r="12" fill="#fbbf24"/>
+      <!-- beak -->
+      <polygon points="62,15 72,18 62,21" fill="#f97316"/>
+      <!-- eye -->
+      <circle cx="54" cy="13" r="3.5" fill="#1a1a1a"/>
+      <circle cx="55" cy="12" r="1.5" fill="#fff"/>
+      <!-- wing -->
+      <path d="M22 18 Q10 5 8 22 Q18 28 30 22Z" fill="#f97316"/>
+      <!-- tail -->
+      <path d="M8 22 Q0 15 2 8" stroke="#f97316" stroke-width="4" fill="none" stroke-linecap="round"/>
+      <path d="M8 22 Q0 22 0 28" stroke="#f97316" stroke-width="4" fill="none" stroke-linecap="round"/>
+      <!-- feet -->
+      <line x1="32" y1="36" x2="28" y2="48" stroke="#f97316" stroke-width="2" stroke-linecap="round"/>
+      <line x1="28" y1="48" x2="22" y2="52" stroke="#f97316" stroke-width="2" stroke-linecap="round"/>
+      <line x1="28" y1="48" x2="30" y2="54" stroke="#f97316" stroke-width="2" stroke-linecap="round"/>
+      <line x1="42" y1="36" x2="46" y2="48" stroke="#f97316" stroke-width="2" stroke-linecap="round"/>
+      <line x1="46" y1="48" x2="40" y2="52" stroke="#f97316" stroke-width="2" stroke-linecap="round"/>
+      <line x1="46" y1="48" x2="50" y2="54" stroke="#f97316" stroke-width="2" stroke-linecap="round"/>
+    </g>
+
+    <!-- Dotted border frame around whole hero -->
+    <rect x="10" y="10" width="1380" height="540" rx="12" ry="12"
+      fill="none" stroke="#f97316" stroke-width="3"
+      stroke-dasharray="14,10" opacity="0.12"/>
+  </svg>
+
+  <div class="hero-content">
+    <h1>Books finding<br>new homes with<br><span>your neighbors.</span></h1>
+    <p>A neighborhood book exchange — online. Buy, sell, or give away used books right in your community. No shipping needed.</p>
+    <div class="hero-btns">
+      <a href="browse.html" class="btn-orange">🏙️ Browse Books Near Me</a>
+      <a href="post-listing.html" class="btn-teal">📚 Post a Book</a>
+    </div>
+  </div>
+</div>
+
+<!-- SEARCH BAND -->
+<div class="scallop-down" style="background-color:#fffbf0;"></div>
+<div class="search-band">
+  <div class="search-box">
+    <span style="font-size:22px">📍</span>
+    <input type="text" placeholder="Your city..." value="Chicago, IL" />
+    <select><option>All Books</option><option>For Sale</option><option>Free Only</option></select>
+    <button onclick="location.href='browse.html'">Find Books</button>
+  </div>
+</div>
+<div class="scallop-up" style="background-color:#fffbf0;"></div>
+
+<!-- LISTINGS -->
+<div class="listings-section">
+  <div class="section-title">Books near Chicago, IL 📚</div>
+  <div class="section-sub">24 books listed by your neighbors</div>
+  <div class="chips">
+    <div class="chip on">All Books</div>
+    <div class="chip">📗 For Sale</div>
+    <div class="chip teal">🎁 Free</div>
+    <div class="chip">✨ Just Listed</div>
+  </div>
+  <div class="books-grid">
+    <a href="book-detail.html" class="book-card"><div class="book-cover c1">📘<div class="price-tag free">FREE</div></div><div class="book-info"><div class="book-title">The Great Gatsby</div><div class="book-author">F. Scott Fitzgerald</div><div class="book-foot"><span class="cond">Good</span><span class="city">Chicago, IL</span></div></div></a>
+    <a href="book-detail.html" class="book-card"><div class="book-cover c2">📗<div class="price-tag sale">$3.00</div></div><div class="book-info"><div class="book-title">Educated</div><div class="book-author">Tara Westover</div><div class="book-foot"><span class="cond">Fair</span><span class="city">Chicago, IL</span></div></div></a>
+    <a href="book-detail.html" class="book-card"><div class="book-cover c3">📕<div class="price-tag sale">$5.00</div></div><div class="book-info"><div class="book-title">Atomic Habits</div><div class="book-author">James Clear</div><div class="book-foot"><span class="cond">Good</span><span class="city">Chicago, IL</span></div></div></a>
+    <a href="book-detail.html" class="book-card"><div class="book-cover c4">📙<div class="price-tag free">FREE</div></div><div class="book-info"><div class="book-title">Harry Potter</div><div class="book-author">J.K. Rowling</div><div class="book-foot"><span class="cond">Well-Loved</span><span class="city">Chicago, IL</span></div></div></a>
+    <a href="book-detail.html" class="book-card"><div class="book-cover c5">📒<div class="price-tag sale">$2.00</div></div><div class="book-info"><div class="book-title">Where the Crawdads Sing</div><div class="book-author">Delia Owens</div><div class="book-foot"><span class="cond">Good</span><span class="city">Chicago, IL</span></div></div></a>
+    <a href="book-detail.html" class="book-card"><div class="book-cover c6">📓<div class="price-tag free">FREE</div></div><div class="book-info"><div class="book-title">The Alchemist</div><div class="book-author">Paulo Coelho</div><div class="book-foot"><span class="cond">Fair</span><span class="city">Chicago, IL</span></div></div></a>
+  </div>
+</div>
+
+<!-- HOW IT WORKS -->
+<div class="scallop-teal-down" style="background-color:#fffbf0;"></div>
+<div class="hiw">
+  <h2>How it works 🏡</h2>
+  <p class="hiw-sub">As simple as a little free library — just online.</p>
+  <div class="steps">
+    <div class="step-card"><div class="step-num">1</div><div class="step-icon">🏙️</div><h3>Set your city</h3><p>Create a free account and set your city to see books near you.</p></div>
+    <div class="step-card"><div class="step-num">2</div><div class="step-icon">📚</div><h3>Browse or post</h3><p>Browse listings for free. Post books to sell or give away.</p></div>
+    <div class="step-card"><div class="step-num">3</div><div class="step-icon">💬</div><h3>Message a neighbor</h3><p>Message the seller to arrange a local meetup.</p></div>
+    <div class="step-card"><div class="step-num">4</div><div class="step-icon">🤝</div><h3>Meet &amp; exchange</h3><p>Meet locally and swap the book however works for you both.</p></div>
+  </div>
+</div>
+<div class="scallop-teal-up" style="background-color:#fffbf0;"></div>
+
+<!-- CTA -->
+<div class="cta-band">
+  <svg class="cta-bg" viewBox="0 0 1400 220" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+    <!-- scattered kid drawings on orange -->
+    <g opacity="0.15">
+      <!-- stars -->
+      <text x="80" y="60" font-size="30" fill="#fff">★</text>
+      <text x="200" y="160" font-size="20" fill="#fff">★</text>
+      <text x="1250" y="50" font-size="28" fill="#fff">★</text>
+      <text x="1100" y="170" font-size="18" fill="#fff">★</text>
+      <!-- flower left -->
+      <circle cx="350" cy="110" r="18" fill="#fff"/>
+      <circle cx="350" cy="88" r="9" fill="#fff"/>
+      <circle cx="350" cy="132" r="9" fill="#fff"/>
+      <circle cx="328" cy="110" r="9" fill="#fff"/>
+      <circle cx="372" cy="110" r="9" fill="#fff"/>
+      <circle cx="350" cy="110" r="11" fill="#f97316"/>
+      <!-- flower right -->
+      <circle cx="1050" cy="110" r="16" fill="#fff"/>
+      <circle cx="1050" cy="90" r="8" fill="#fff"/>
+      <circle cx="1050" cy="130" r="8" fill="#fff"/>
+      <circle cx="1030" cy="110" r="8" fill="#fff"/>
+      <circle cx="1070" cy="110" r="8" fill="#fff"/>
+      <circle cx="1050" cy="110" r="10" fill="#f97316"/>
+      <!-- sun -->
+      <circle cx="700" cy="40" r="24" fill="#fbbf24" opacity="0.6"/>
+      <line x1="700" y1="8" x2="700" y2="16" stroke="#fbbf24" stroke-width="4" opacity="0.6"/>
+      <line x1="700" y1="64" x2="700" y2="72" stroke="#fbbf24" stroke-width="4" opacity="0.6"/>
+      <line x1="668" y1="40" x2="676" y2="40" stroke="#fbbf24" stroke-width="4" opacity="0.6"/>
+      <line x1="724" y1="40" x2="732" y2="40" stroke="#fbbf24" stroke-width="4" opacity="0.6"/>
+    </g>
+  </svg>
+  <div class="cta-content">
+    <div class="deco-row">🌸 🌻 🌈 ☀️ 🌼 🌿 🌷</div>
+    <h2>Your neighborhood deserves a little free library.</h2>
+    <p>Join your neighbors and start sharing books today — free to browse, free to join.</p>
+    <a href="signup.html" class="btn-teal">Join Your Community →</a>
+  </div>
+</div>
+
+<footer>
+  <span>LittleBookExchange</span> &nbsp;·&nbsp; Books finding new homes in your neighborhood &nbsp;·&nbsp; © 2026
+</footer>
+
+</body>
+</html>

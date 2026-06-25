@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Join — LittleBookExchange</title>
+<link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Nunito', sans-serif; background: #fffbf0; color: #2d2d2d; min-height: 100vh; }
+nav { background: #fff; padding: 0 32px; height: 68px; display: flex; align-items: center; justify-content: space-between; border-bottom: 4px solid #f97316; }
+.nav-logo { font-family: 'Pacifico', cursive; font-size: 22px; color: #f97316; display: flex; align-items: center; gap: 10px; }
+.nav-logo .icon { background: #f97316; border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+.nav-links { display: flex; gap: 22px; align-items: center; }
+.nav-links a { text-decoration: none; color: #2d2d2d; font-weight: 700; font-size: 15px; }
+
+.page { display: flex; align-items: center; justify-content: center; min-height: calc(100vh - 68px); padding: 40px 32px; }
+.card { background: #fff; border-radius: 28px; padding: 40px; width: 100%; max-width: 440px; border: 2px solid #f3f4f6; box-shadow: 0 8px 0 #e5e7eb; }
+h1 { font-family: 'Pacifico', cursive; font-size: 28px; color: #f97316; text-align: center; margin-bottom: 6px; }
+.sub { text-align: center; color: #aaa; font-weight: 700; font-size: 14px; margin-bottom: 28px; }
+.field { margin-bottom: 16px; }
+label { display: block; font-size: 12px; font-weight: 900; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+input { width: 100%; border: 2px solid #fed7aa; border-radius: 14px; padding: 13px 16px; font-family: 'Nunito', sans-serif; font-size: 15px; font-weight: 700; background: #fffbf0; color: #2d2d2d; outline: none; }
+input:focus { border-color: #f97316; }
+.submit-btn { width: 100%; background: #f97316; color: #fff; border: none; padding: 15px; border-radius: 14px; font-family: 'Nunito', sans-serif; font-weight: 900; font-size: 16px; cursor: pointer; box-shadow: 0 5px 0 #c2410c; margin-top: 8px; }
+.signin-link { text-align: center; color: #aaa; font-weight: 700; font-size: 14px; margin-top: 20px; }
+.signin-link a { color: #f97316; font-weight: 800; text-decoration: none; }
+</style>
+</head>
+<body>
+<nav>
+  <div class="nav-logo" onclick="location.href='homepage.html'" style="cursor:pointer"><div class="icon">🏡</div> LittleBookExchange</div>
+  <div class="nav-links">
+    <a href="browse.html">Browse</a>
+    <a href="signup.html">Sign In</a>
+  </div>
+</nav>
+
+<div class="page">
+  <div class="card">
+    <h1>Join the Exchange</h1>
+    <p class="sub">Free to join. Free to browse. 📚</p>
+    <div class="field"><label>Your Name</label><input type="text" placeholder="e.g. Sarah M."/></div>
+    <div class="field"><label>Your City</label><input type="text" placeholder="e.g. Chicago, IL"/></div>
+    <div class="field"><label>Email Address</label><input type="email" placeholder="you@email.com"/></div>
+    <div class="field"><label>Password</label><input type="password" placeholder="At least 6 characters"/></div>
+    <button class="submit-btn" onclick="location.href='browse.html'">Create My Account →</button>
+    <p class="signin-link">Already have an account? <a href="signup.html">Sign in</a></p>
+  </div>
+</div>
+</body>
+</html>

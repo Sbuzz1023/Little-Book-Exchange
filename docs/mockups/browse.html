@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Browse Books — LittleBookExchange</title>
+<link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Nunito', sans-serif; background: #fffbf0; color: #2d2d2d; }
+nav { background: #fff; padding: 0 32px; height: 68px; display: flex; align-items: center; justify-content: space-between; border-bottom: 4px solid #f97316; }
+.nav-logo { font-family: 'Pacifico', cursive; font-size: 22px; color: #f97316; display: flex; align-items: center; gap: 10px; cursor: pointer; }
+.nav-logo .icon { background: #f97316; border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+.nav-links { display: flex; gap: 22px; align-items: center; }
+.nav-links a { text-decoration: none; color: #2d2d2d; font-weight: 700; font-size: 15px; }
+.nav-btn { background: #f97316; color: #fff !important; padding: 9px 22px; border-radius: 999px; font-weight: 800 !important; }
+
+.layout { display: flex; gap: 28px; max-width: 1160px; margin: 0 auto; padding: 36px 32px; align-items: flex-start; }
+
+.sidebar { width: 240px; flex-shrink: 0; background: #fff; border-radius: 24px; border: 2px solid #f3f4f6; box-shadow: 0 5px 0 #e5e7eb; padding: 24px; position: sticky; top: 24px; }
+.sidebar h2 { font-family: 'Pacifico', cursive; font-size: 18px; color: #f97316; margin-bottom: 20px; }
+.filter-section { margin-bottom: 22px; }
+.filter-label { font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.8px; color: #aaa; margin-bottom: 10px; display: block; }
+.filter-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.fc { padding: 5px 12px; border-radius: 999px; font-weight: 800; font-size: 12px; border: 2px solid #e5e7eb; background: #fff; color: #555; cursor: pointer; transition: all 0.12s; user-select: none; }
+.fc:hover { border-color: #f97316; color: #f97316; }
+.fc.on { background: #f97316; border-color: #f97316; color: #fff; }
+.fc.teal { background: #0d9488; border-color: #0d9488; color: #fff; }
+
+.price-range { display: flex; flex-direction: column; gap: 8px; }
+.range-row { display: flex; gap: 8px; }
+.range-input { flex: 1; border: 2px solid #fed7aa; border-radius: 10px; padding: 8px 10px; font-family: 'Nunito', sans-serif; font-size: 13px; font-weight: 700; background: #fffbf0; color: #2d2d2d; outline: none; width: 100%; }
+.range-input:focus { border-color: #f97316; }
+.price-presets { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 4px; }
+.preset { padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 800; border: 2px solid #e5e7eb; background: #fff; color: #555; cursor: pointer; transition: all 0.12s; }
+.preset:hover, .preset.on { border-color: #f97316; color: #f97316; background: #fff7ed; }
+.filter-select { width: 100%; border: 2px solid #fed7aa; border-radius: 12px; padding: 9px 12px; font-family: 'Nunito', sans-serif; font-size: 13px; font-weight: 700; background: #fffbf0; color: #2d2d2d; outline: none; cursor: pointer; }
+.filter-select:focus { border-color: #f97316; }
+.filter-input { width: 100%; border: 2px solid #fed7aa; border-radius: 12px; padding: 9px 12px; font-family: 'Nunito', sans-serif; font-size: 13px; font-weight: 700; background: #fffbf0; color: #2d2d2d; outline: none; }
+.filter-input:focus { border-color: #f97316; }
+.apply-btn { width: 100%; background: #f97316; color: #fff; border: none; padding: 12px; border-radius: 14px; font-family: 'Nunito', sans-serif; font-weight: 900; font-size: 15px; cursor: pointer; box-shadow: 0 3px 0 #c2410c; margin-top: 4px; }
+.clear-btn { width: 100%; background: none; color: #aaa; border: 2px solid #e5e7eb; padding: 10px; border-radius: 14px; font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 13px; cursor: pointer; margin-top: 8px; }
+
+.main { flex: 1; min-width: 0; }
+.main-top { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+.search-input { flex: 1; min-width: 200px; border: 2px solid #fed7aa; border-radius: 14px; padding: 11px 16px; font-family: 'Nunito', sans-serif; font-size: 14px; font-weight: 700; background: #fff; color: #2d2d2d; outline: none; }
+.search-input:focus { border-color: #f97316; }
+.city-input { width: 170px; border: 2px solid #fed7aa; border-radius: 14px; padding: 11px 14px; font-family: 'Nunito', sans-serif; font-size: 14px; font-weight: 700; background: #fff; color: #2d2d2d; outline: none; }
+.sort-select { border: 2px solid #fed7aa; border-radius: 14px; padding: 11px 14px; font-family: 'Nunito', sans-serif; font-size: 13px; font-weight: 700; background: #fff; color: #2d2d2d; outline: none; }
+.search-btn { background: #f97316; color: #fff; border: none; padding: 11px 24px; border-radius: 14px; font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 14px; cursor: pointer; box-shadow: 0 3px 0 #c2410c; }
+
+.results-info { color: #aaa; font-weight: 700; font-size: 13px; margin-bottom: 16px; }
+.active-filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; min-height: 0; }
+.af-tag { display: flex; align-items: center; gap: 5px; background: #fff7ed; border: 2px solid #fed7aa; color: #c2410c; font-size: 12px; font-weight: 800; padding: 4px 10px 4px 12px; border-radius: 999px; }
+.af-tag button { background: none; border: none; color: #f97316; font-size: 14px; cursor: pointer; line-height: 1; font-weight: 900; padding: 0; }
+
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(185px, 1fr)); gap: 18px; }
+.card { background: #fff; border-radius: 20px; overflow: hidden; border: 2px solid #f3f4f6; box-shadow: 0 5px 0 #e5e7eb; cursor: pointer; transition: transform 0.12s; text-decoration: none; color: inherit; display: block; }
+.card:hover { transform: translateY(-4px); }
+.cover { height: 135px; display: flex; align-items: center; justify-content: center; font-size: 46px; position: relative; }
+.c1{background:linear-gradient(145deg,#fde68a,#fca5a5);}
+.c2{background:linear-gradient(145deg,#99f6e4,#bfdbfe);}
+.c3{background:linear-gradient(145deg,#fca5a5,#fda4af);}
+.c4{background:linear-gradient(145deg,#c4b5fd,#93c5fd);}
+.c5{background:linear-gradient(145deg,#6ee7b7,#fde68a);}
+.c6{background:linear-gradient(145deg,#fdba74,#fb7185);}
+.c7{background:linear-gradient(145deg,#a5f3fc,#6ee7b7);}
+.c8{background:linear-gradient(145deg,#ddd6fe,#fca5a5);}
+.tag { position: absolute; top: 8px; right: 8px; padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 900; }
+.free { background: #0d9488; color: #fff; }
+.sale { background: #f97316; color: #fff; }
+.genre-tag { position: absolute; bottom: 8px; left: 8px; padding: 2px 8px; border-radius: 999px; font-size: 10px; font-weight: 800; background: rgba(255,255,255,0.85); color: #555; }
+.heart-btn { position: absolute; top: 8px; left: 8px; width: 28px; height: 28px; border-radius: 50%; border: none; background: rgba(255,255,255,0.92); box-shadow: 0 1px 4px rgba(0,0,0,0.15); display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 15px; line-height: 1; transition: transform 0.15s, background 0.15s; z-index: 2; }
+.heart-btn:hover { transform: scale(1.2); }
+.heart-btn.saved { background: #fff0f3; }
+.heart-btn svg { pointer-events: none; }
+.info { padding: 12px 14px; }
+.title { font-size: 13px; font-weight: 900; margin-bottom: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.author { font-size: 11px; color: #aaa; font-weight: 600; margin-bottom: 8px; }
+.foot { display: flex; justify-content: space-between; align-items: center; }
+.cond { font-size: 10px; font-weight: 800; padding: 2px 7px; border-radius: 6px; background: #fef9c3; color: #854d0e; border: 1.5px solid #fde047; }
+.city { font-size: 10px; color: #ccc; font-weight: 700; }
+.empty-state { grid-column: 1/-1; text-align: center; padding: 60px 20px; color: #aaa; }
+.empty-state p { font-size: 16px; font-weight: 700; margin-bottom: 12px; }
+.empty-state a { color: #f97316; font-weight: 800; cursor: pointer; }
+
+.tbr-alert { background: #fff7ed; border: 2px solid #fed7aa; border-radius: 14px; padding: 12px 16px; font-size: 13px; font-weight: 700; color: #92400e; margin-bottom: 14px; display: none; }
+.tbr-alert a { color: #f97316; font-weight: 800; text-decoration: none; margin-left: 6px; }
+
+.toast { position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%) translateY(80px); background: #1a1a1a; color: #fff; padding: 12px 24px; border-radius: 999px; font-weight: 800; font-size: 14px; transition: transform 0.25s; display: flex; align-items: center; gap: 8px; z-index: 999; }
+.toast.show { transform: translateX(-50%) translateY(0); }
+
+footer { background: #1a1a1a; color: #999; text-align: center; padding: 26px 32px; font-size: 14px; font-weight: 700; margin-top: 40px; }
+footer span { color: #f97316; font-family: 'Pacifico', cursive; font-size: 16px; }
+</style>
+</head>
+<body>
+<nav>
+  <div class="nav-logo" onclick="location.href='homepage.html'"><div class="icon">🏡</div> LittleBookExchange</div>
+  <div class="nav-links">
+    <a href="browse.html" style="color:#f97316">Browse</a>
+    <a href="post-listing.html">Post a Book</a>
+    <a href="messages.html">Messages</a>
+    <a href="profile.html">Profile</a>
+    <a href="homepage.html" class="nav-btn">Sign Out</a>
+  </div>
+</nav>
+
+<div class="layout">
+  <div class="sidebar">
+    <h2>🔍 Filters</h2>
+    <div class="filter-section">
+      <span class="filter-label">City</span>
+      <input class="filter-input" id="city-input" type="text" placeholder="e.g. Chicago..."/>
+    </div>
+    <div class="filter-section">
+      <span class="filter-label">State</span>
+      <input class="filter-input" id="state-input" type="text" placeholder="e.g. IL..."/>
+    </div>
+    <div class="filter-section">
+      <span class="filter-label">Search Title</span>
+      <input class="filter-input" id="search-title" type="text" placeholder="e.g. Great Gatsby..."/>
+    </div>
+    <div class="filter-section">
+      <span class="filter-label">Search Author</span>
+      <input class="filter-input" id="search-author" type="text" placeholder="e.g. Tara Westover..."/>
+    </div>
+    <div class="filter-section">
+      <span class="filter-label">Listing Type</span>
+      <div class="filter-chips type-chips">
+        <div class="fc on">All</div>
+        <div class="fc">📗 For Sale</div>
+        <div class="fc">🎁 Free</div>
+      </div>
+    </div>
+    <div class="filter-section">
+      <span class="filter-label">Genre</span>
+      <select class="filter-select" id="genre-select">
+        <option value="all">All Genres</option>
+        <option value="Fiction">Fiction</option>
+        <option value="Non-Fiction">Non-Fiction</option>
+        <option value="Mystery">Mystery / Thriller</option>
+        <option value="Sci-Fi">Sci-Fi / Fantasy</option>
+        <option value="Romance">Romance</option>
+        <option value="Biography">Biography</option>
+        <option value="Children's">Children's</option>
+        <option value="Self-Help">Self-Help</option>
+        <option value="History">History</option>
+        <option value="Cooking">Cooking</option>
+        <option value="Art">Art / Design</option>
+        <option value="Other">Other</option>
+      </select>
+    </div>
+    <div class="filter-section">
+      <span class="filter-label">Format</span>
+      <select class="filter-select" id="format-select">
+        <option value="all">All Formats</option>
+        <option value="Paperback">Paperback</option>
+        <option value="Hardcover">Hardcover</option>
+      </select>
+    </div>
+    <div class="filter-section">
+      <span class="filter-label">Language</span>
+      <select class="filter-select" id="language-select">
+        <option value="all">All Languages</option>
+        <option value="English">English</option>
+        <option value="Spanish">Spanish</option>
+        <option value="French">French</option>
+        <option value="German">German</option>
+        <option value="Portuguese">Portuguese</option>
+        <option value="Mandarin">Mandarin</option>
+        <option value="Japanese">Japanese</option>
+        <option value="Other">Other</option>
+      </select>
+    </div>
+    <div class="filter-section">
+      <span class="filter-label">Condition</span>
+      <div class="filter-chips cond-chips">
+        <div class="fc on">Any</div>
+        <div class="fc">Good</div>
+        <div class="fc">Fair</div>
+        <div class="fc">Well-Loved</div>
+      </div>
+    </div>
+    <div class="filter-section">
+      <span class="filter-label">Price Range</span>
+      <div class="price-range">
+        <div class="range-row">
+          <input class="range-input" id="price-min" type="number" placeholder="$ Min"/>
+          <input class="range-input" id="price-max" type="number" placeholder="$ Max"/>
+        </div>
+        <div class="price-presets">
+          <div class="preset" data-min="0" data-max="0">Free</div>
+          <div class="preset" data-min="0.01" data-max="4.99">Under $5</div>
+          <div class="preset" data-min="5" data-max="10">$5–$10</div>
+          <div class="preset" data-min="10" data-max="">$10+</div>
+        </div>
+      </div>
+    </div>
+    <button class="apply-btn" id="apply-btn">Apply Filters</button>
+    <button class="clear-btn" id="clear-btn">Clear All</button>
+  </div>
+
+  <div class="main">
+    <div class="main-top">
+      <select class="sort-select" id="sort-select">
+        <option value="newest">Newest First</option>
+        <option value="price-asc">Price: Low to High</option>
+        <option value="price-desc">Price: High to Low</option>
+        <option value="free-first">Free First</option>
+      </select>
+    </div>
+    <div class="tbr-alert" id="tbr-alert"></div>
+    <div class="active-filters" id="active-tags"></div>
+    <p class="results-info" id="results-count"></p>
+    <div class="grid" id="book-grid"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<footer><span>LittleBookExchange</span> · Books finding new homes in your neighborhood · © 2026</footer>
+
+<script>
+const SEED = [
+  {id:1,  title:"The Great Gatsby",       author:"F. Scott Fitzgerald", genre:"Fiction",     condition:"Good",       price:0, city:"Chicago, IL", emoji:"📘", gradient:"c1", mine:false, status:"active"},
+  {id:2,  title:"Educated",               author:"Tara Westover",       genre:"Non-Fiction", condition:"Fair",       price:3, city:"Chicago, IL", emoji:"📗", gradient:"c2", mine:false, status:"active"},
+  {id:3,  title:"Atomic Habits",          author:"James Clear",          genre:"Self-Help",   condition:"Good",       price:5, city:"Chicago, IL", emoji:"📕", gradient:"c3", mine:false, status:"active"},
+  {id:4,  title:"Harry Potter",           author:"J.K. Rowling",         genre:"Fiction",     condition:"Well-Loved", price:0, city:"Chicago, IL", emoji:"📙", gradient:"c4", mine:false, status:"active"},
+  {id:5,  title:"Where the Crawdads Sing",author:"Delia Owens",          genre:"Fiction",     condition:"Good",       price:2, city:"Chicago, IL", emoji:"📒", gradient:"c5", mine:false, status:"active"},
+  {id:6,  title:"The Alchemist",          author:"Paulo Coelho",         genre:"Fiction",     condition:"Fair",       price:0, city:"Chicago, IL", emoji:"📓", gradient:"c6", mine:false, status:"active"},
+  {id:7,  title:"Becoming",               author:"Michelle Obama",       genre:"Biography",   condition:"Good",       price:4, city:"Chicago, IL", emoji:"📔", gradient:"c7", mine:false, status:"active"},
+  {id:8,  title:"The Hunger Games",       author:"Suzanne Collins",      genre:"Fiction",     condition:"Well-Loved", price:0, city:"Chicago, IL", emoji:"📖", gradient:"c8", mine:false, status:"active"},
+  {id:9,  title:"To Kill a Mockingbird",  author:"Harper Lee",           genre:"Fiction",     condition:"Good",       price:1, city:"Chicago, IL", emoji:"📘", gradient:"c1", mine:false, status:"active"},
+  {id:10, title:"1984",                   author:"George Orwell",        genre:"Fiction",     condition:"Fair",       price:0, city:"Chicago, IL", emoji:"📗", gradient:"c2", mine:false, status:"active"},
+];
+
+const GRADIENTS = ["c1","c2","c3","c4","c5","c6","c7","c8"];
+const EMOJIS    = ["📘","📗","📕","📙","📒","📓","📔","📖"];
+
+function getListings() {
+  if (!localStorage.getItem('lbe_listings')) {
+    localStorage.setItem('lbe_listings', JSON.stringify(SEED));
+  }
+  const listings = JSON.parse(localStorage.getItem('lbe_listings'));
+  let changed = false;
+  listings.forEach(b => { if (!b.status) { b.status = 'active'; changed = true; } });
+  if (changed) localStorage.setItem('lbe_listings', JSON.stringify(listings));
+  return listings;
+}
+function getSaved() { return JSON.parse(localStorage.getItem('lbe_saved') || '[]'); }
+function setSaved(s) { localStorage.setItem('lbe_saved', JSON.stringify(s)); }
+
+const STATE_ABBR = {
+  'alabama':'AL','alaska':'AK','arizona':'AZ','arkansas':'AR','california':'CA',
+  'colorado':'CO','connecticut':'CT','delaware':'DE','florida':'FL','georgia':'GA',
+  'hawaii':'HI','idaho':'ID','illinois':'IL','indiana':'IN','iowa':'IA',
+  'kansas':'KS','kentucky':'KY','louisiana':'LA','maine':'ME','maryland':'MD',
+  'massachusetts':'MA','michigan':'MI','minnesota':'MN','mississippi':'MS','missouri':'MO',
+  'montana':'MT','nebraska':'NE','nevada':'NV','new hampshire':'NH','new jersey':'NJ',
+  'new mexico':'NM','new york':'NY','north carolina':'NC','north dakota':'ND','ohio':'OH',
+  'oklahoma':'OK','oregon':'OR','pennsylvania':'PA','rhode island':'RI','south carolina':'SC',
+  'south dakota':'SD','tennessee':'TN','texas':'TX','utah':'UT','vermont':'VT',
+  'virginia':'VA','washington':'WA','west virginia':'WV','wisconsin':'WI','wyoming':'WY',
+  'district of columbia':'DC'
+};
+function toStateAbbr(val) {
+  const mapped = STATE_ABBR[val.toLowerCase().trim()];
+  if (mapped) return mapped;
+  return val.trim().length <= 2 ? val.toUpperCase() : val;
+}
+
+let state = { searchTitle:'', searchAuthor:'', city:'', stateFilter:'', type:'all', genre:'all', format:'all', language:'all', condition:'any', priceMin:null, priceMax:null, sort:'newest', tbrFilter:false };
+
+function applyFilters(listings) {
+  let r = listings.filter(b => !b.status || b.status === 'active');
+  if (state.searchTitle) {
+    const q = state.searchTitle.toLowerCase();
+    r = r.filter(b => b.title.toLowerCase().includes(q));
+  }
+  if (state.searchAuthor) {
+    const q = state.searchAuthor.toLowerCase();
+    r = r.filter(b => b.author.toLowerCase().includes(q));
+  }
+  if (state.tbrFilter) {
+    const tbr = JSON.parse(localStorage.getItem('lbe_tbr') || '[]');
+    r = r.filter(b => tbr.some(entry =>
+      b.title.toLowerCase().includes(entry.title.toLowerCase()) &&
+      (!entry.author || b.author.toLowerCase().includes(entry.author.toLowerCase()))
+    ));
+  }
+  if (state.city) r = r.filter(b => b.city.toLowerCase().includes(state.city.toLowerCase()));
+  if (state.stateFilter) r = r.filter(b => b.city.toLowerCase().includes(state.stateFilter.toLowerCase()));
+  if (state.type === 'free') r = r.filter(b => b.price === 0);
+  if (state.type === 'sale') r = r.filter(b => b.price > 0);
+  if (state.genre !== 'all')    r = r.filter(b => b.genre === state.genre);
+  if (state.format !== 'all')   r = r.filter(b => (b.format || 'Paperback') === state.format);
+  if (state.language !== 'all') r = r.filter(b => (b.language || 'English') === state.language);
+  if (state.condition !== 'any') r = r.filter(b => b.condition === state.condition);
+  if (state.priceMin !== null) r = r.filter(b => b.price >= state.priceMin);
+  if (state.priceMax !== null) r = r.filter(b => b.price <= state.priceMax);
+  if (state.sort === 'price-asc')  r.sort((a,b) => a.price - b.price);
+  else if (state.sort === 'price-desc') r.sort((a,b) => b.price - a.price);
+  else if (state.sort === 'free-first') r.sort((a,b) => a.price - b.price);
+  else r.sort((a,b) => b.id - a.id);
+  return r;
+}
+
+function hSVG(filled) {
+  return `<svg width="14" height="14" viewBox="0 0 24 24" fill="${filled?'#f87171':'none'}" stroke="#f87171" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>`;
+}
+
+function renderCards() {
+  const listings = getListings();
+  const filtered = applyFilters(listings);
+  const saved    = getSaved();
+  const grid     = document.getElementById('book-grid');
+  document.getElementById('results-count').textContent = `Showing ${filtered.length} of ${listings.filter(b=>!b.status||b.status==='active').length} books`;
+  if (!filtered.length) {
+    grid.innerHTML = `<div class="empty-state"><p>No books match your filters.</p><a onclick="doClear()">Clear filters</a></div>`;
+    return;
+  }
+  grid.innerHTML = filtered.map(b => {
+    const sv = saved.some(s => s.id === b.id);
+    const priceTag = b.price === 0 ? `<div class="tag free">FREE</div>` : `<div class="tag sale">$${Number(b.price).toFixed(2)}</div>`;
+    return `<a href="book-detail.html" class="card" onclick="selectBook(${b.id})">
+      <div class="cover ${b.gradient}">${b.emoji}
+        <button class="heart-btn${sv?' saved':''}" onclick="toggleHeart(event,this,${b.id})" title="Save for later">${hSVG(sv)}</button>
+        ${priceTag}
+        <div class="genre-tag">${b.genre||''}</div>
+      </div>
+      <div class="info">
+        <div class="title">${b.title}</div>
+        <div class="author">${b.author}</div>
+        <div class="foot"><span class="cond">${b.condition}</span><span class="city">${b.city}</span></div>
+      </div>
+    </a>`;
+  }).join('');
+}
+
+function selectBook(id) { localStorage.setItem('lbe_current_book', id); }
+
+function toggleHeart(e, btn, id) {
+  e.stopPropagation(); e.preventDefault();
+  const listing = getListings().find(b => b.id === id);
+  if (!listing) return;
+  let saved = getSaved();
+  const idx = saved.findIndex(s => s.id === id);
+  if (idx >= 0) {
+    saved.splice(idx, 1);
+    btn.classList.remove('saved');
+    btn.innerHTML = hSVG(false);
+    showToast('💔 Removed from saved');
+  } else {
+    saved.push(listing);
+    btn.classList.add('saved');
+    btn.innerHTML = hSVG(true);
+    showToast('❤️ Saved to your profile!');
+  }
+  setSaved(saved);
+}
+
+function updateActiveTags() {
+  const tags = [];
+  if (state.tbrFilter)    tags.push({label:'📚 My TBR Wishlist', key:'tbrFilter'});
+  if (state.searchTitle)  tags.push({label:`Title: "${state.searchTitle}"`,   key:'searchTitle'});
+  if (state.searchAuthor) tags.push({label:`Author: "${state.searchAuthor}"`, key:'searchAuthor'});
+  if (state.city)         tags.push({label:`📍 ${state.city}`,               key:'city'});
+  if (state.stateFilter)  tags.push({label:`🗺 ${state.stateFilter}`,         key:'stateFilter'});
+  if (state.genre !== 'all')    tags.push({label:state.genre,              key:'genre'});
+  if (state.format !== 'all')   tags.push({label:state.format,             key:'format'});
+  if (state.language !== 'all') tags.push({label:state.language,           key:'language'});
+  if (state.condition !== 'any') tags.push({label:state.condition+' condition', key:'condition'});
+  if (state.type === 'free') tags.push({label:'🎁 Free only', key:'type'});
+  if (state.type === 'sale') tags.push({label:'💲 For sale', key:'type'});
+  if (state.priceMin !== null || state.priceMax !== null) {
+    const lo = state.priceMin, hi = state.priceMax;
+    const lbl = (lo !== null && hi !== null) ? `$${lo}–$${hi}` : lo !== null ? `$${lo}+` : `Up to $${hi}`;
+    tags.push({label:lbl, key:'price'});
+  }
+  document.getElementById('active-tags').innerHTML = tags.map(t =>
+    `<div class="af-tag">${t.label} <button onclick="removeTag('${t.key}')">×</button></div>`
+  ).join('');
+}
+
+function removeTag(key) {
+  if (key==='tbrFilter')    { state.tbrFilter=false; }
+  if (key==='searchTitle')  { state.searchTitle='';  document.getElementById('search-title').value=''; }
+  if (key==='searchAuthor') { state.searchAuthor=''; document.getElementById('search-author').value=''; }
+  if (key==='city')         { state.city='';         document.getElementById('city-input').value=''; }
+  if (key==='stateFilter')  { state.stateFilter='';  document.getElementById('state-input').value=''; }
+  if (key==='genre')     { state.genre='all';    document.getElementById('genre-select').value='all'; }
+  if (key==='format')    { state.format='all';   document.getElementById('format-select').value='all'; }
+  if (key==='language')  { state.language='all'; document.getElementById('language-select').value='all'; }
+  if (key==='condition') { state.condition='any'; activateChip('.cond-chips','Any'); }
+  if (key==='type')      { state.type='all'; activateChip('.type-chips','All'); }
+  if (key==='price')     { state.priceMin=null; state.priceMax=null; document.getElementById('price-min').value=''; document.getElementById('price-max').value=''; document.querySelectorAll('.preset').forEach(p=>p.classList.remove('on')); }
+  renderAll();
+}
+
+function activateChip(sel, label) {
+  document.querySelectorAll(sel+' .fc').forEach(c => {
+    c.classList.remove('on','teal');
+    if (c.textContent.trim()===label) c.classList.add('on');
+  });
+}
+
+function doClear() {
+  state = { searchTitle:'', searchAuthor:'', city:'', stateFilter:'', type:'all', genre:'all', format:'all', language:'all', condition:'any', priceMin:null, priceMax:null, sort:'newest', tbrFilter:false };
+  document.getElementById('search-title').value = '';
+  document.getElementById('search-author').value = '';
+  document.getElementById('city-input').value = '';
+  document.getElementById('state-input').value = '';
+  document.getElementById('price-min').value = '';
+  document.getElementById('price-max').value = '';
+  document.getElementById('sort-select').value     = 'newest';
+  document.getElementById('genre-select').value    = 'all';
+  document.getElementById('format-select').value   = 'all';
+  document.getElementById('language-select').value = 'all';
+  document.querySelectorAll('.preset').forEach(p=>p.classList.remove('on'));
+  activateChip('.type-chips','All');
+  activateChip('.cond-chips','Any');
+  renderAll();
+}
+
+function checkTBRMatches() {
+  const tbr      = JSON.parse(localStorage.getItem('lbe_tbr') || '[]');
+  const listings = getListings();
+  const matches  = tbr.filter(entry =>
+    listings.some(b =>
+      (!b.status || b.status === 'active') && !b.mine &&
+      b.title.toLowerCase().includes(entry.title.toLowerCase()) &&
+      (!entry.author || b.author.toLowerCase().includes(entry.author.toLowerCase()))
+    )
+  );
+  const el = document.getElementById('tbr-alert');
+  if (!matches.length) { el.style.display = 'none'; return; }
+  el.style.display = 'block';
+  const titles = matches.map(m => `<strong>${m.title}</strong>`).join(', ');
+  el.innerHTML = `📚 A book on your TBR list is available nearby: ${titles}! <a href="profile.html">View TBR →</a>`;
+}
+
+function renderAll() { renderCards(); updateActiveTags(); checkTBRMatches(); }
+
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.classList.remove('show'), 2200);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  // Type chips
+  document.querySelectorAll('.type-chips .fc').forEach(fc => {
+    fc.addEventListener('click', () => {
+      document.querySelectorAll('.type-chips .fc').forEach(c=>c.classList.remove('on','teal'));
+      const t = fc.textContent.trim();
+      if (t==='All') { fc.classList.add('on'); state.type='all'; }
+      else if (t.includes('Sale')) { fc.classList.add('on'); state.type='sale'; }
+      else { fc.classList.add('teal'); state.type='free'; }
+      renderAll();
+    });
+  });
+
+  // Genre dropdown
+  document.getElementById('genre-select').addEventListener('change', e => {
+    state.genre = e.target.value; renderAll();
+  });
+
+  // Format dropdown
+  document.getElementById('format-select').addEventListener('change', e => {
+    state.format = e.target.value; renderAll();
+  });
+
+  // Language dropdown
+  document.getElementById('language-select').addEventListener('change', e => {
+    state.language = e.target.value; renderAll();
+  });
+
+  // Condition chips
+  document.querySelectorAll('.cond-chips .fc').forEach(fc => {
+    fc.addEventListener('click', () => {
+      document.querySelectorAll('.cond-chips .fc').forEach(c=>c.classList.remove('on'));
+      fc.classList.add('on');
+      state.condition = fc.textContent.trim() === 'Any' ? 'any' : fc.textContent.trim();
+      renderAll();
+    });
+  });
+
+  // Price presets
+  document.querySelectorAll('.preset').forEach(p => {
+    p.addEventListener('click', () => {
+      document.querySelectorAll('.preset').forEach(x=>x.classList.remove('on'));
+      p.classList.add('on');
+      const lo = p.dataset.min !== '' ? parseFloat(p.dataset.min) : null;
+      const hi = p.dataset.max !== '' ? parseFloat(p.dataset.max) : null;
+      state.priceMin = lo; state.priceMax = hi;
+      document.getElementById('price-min').value = lo ?? '';
+      document.getElementById('price-max').value = hi ?? '';
+      renderAll();
+    });
+  });
+
+  if (localStorage.getItem('lbe_tbr_filter')) {
+    state.tbrFilter = true;
+    localStorage.removeItem('lbe_tbr_filter');
+  }
+  const tbrSearch = localStorage.getItem('lbe_tbr_search');
+  if (tbrSearch) {
+    const entry = JSON.parse(tbrSearch);
+    state.searchTitle  = entry.title;
+    state.searchAuthor = entry.author || '';
+    document.getElementById('search-title').value  = entry.title;
+    document.getElementById('search-author').value = entry.author || '';
+    localStorage.removeItem('lbe_tbr_search');
+  }
+
+  document.getElementById('search-title').addEventListener('input', e => {
+    state.searchTitle = e.target.value.trim(); renderAll();
+  });
+  document.getElementById('search-author').addEventListener('input', e => {
+    state.searchAuthor = e.target.value.trim(); renderAll();
+  });
+  document.getElementById('city-input').addEventListener('input', e => {
+    state.city = e.target.value.trim(); renderAll();
+  });
+  document.getElementById('state-input').addEventListener('input', e => {
+    const abbr = toStateAbbr(e.target.value);
+    if (abbr !== e.target.value) e.target.value = abbr;
+    state.stateFilter = abbr.trim(); renderAll();
+  });
+
+  document.getElementById('apply-btn').addEventListener('click', () => {
+    const lo = document.getElementById('price-min').value;
+    const hi = document.getElementById('price-max').value;
+    state.priceMin = lo ? parseFloat(lo) : null;
+    state.priceMax = hi ? parseFloat(hi) : null;
+    renderAll();
+  });
+
+  document.getElementById('clear-btn').addEventListener('click', doClear);
+
+  document.getElementById('sort-select').addEventListener('change', e => {
+    state.sort = e.target.value; renderAll();
+  });
+
+  renderAll();
+});
+</script>
+</body>
+</html>

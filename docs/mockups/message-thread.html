@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Message Thread — LittleBookExchange</title>
+<link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Nunito', sans-serif; background: #fffbf0; color: #2d2d2d; }
+nav { background: #fff; padding: 0 32px; height: 68px; display: flex; align-items: center; justify-content: space-between; border-bottom: 4px solid #f97316; }
+.nav-logo { font-family: 'Pacifico', cursive; font-size: 22px; color: #f97316; display: flex; align-items: center; gap: 10px; cursor: pointer; }
+.nav-logo .icon { background: #f97316; border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+.nav-links { display: flex; gap: 22px; align-items: center; }
+.nav-links a { text-decoration: none; color: #2d2d2d; font-weight: 700; font-size: 15px; }
+.nav-btn { background: #f97316; color: #fff !important; padding: 9px 22px; border-radius: 999px; font-weight: 800 !important; }
+
+.page { max-width: 640px; margin: 0 auto; padding: 40px 32px; }
+.back { color: #f97316; font-weight: 700; font-size: 14px; display: inline-block; margin-bottom: 20px; text-decoration: none; }
+
+.listing-card { background: #fff; border-radius: 16px; padding: 16px; border: 2px solid #f3f4f6; box-shadow: 0 4px 0 #e5e7eb; margin-bottom: 20px; display: flex; align-items: center; gap: 16px; }
+.listing-thumb { width: 52px; height: 52px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 26px; flex-shrink: 0; }
+.c1{background:linear-gradient(145deg,#fde68a,#fca5a5);}
+.c2{background:linear-gradient(145deg,#99f6e4,#bfdbfe);}
+.c3{background:linear-gradient(145deg,#fca5a5,#fda4af);}
+.c4{background:linear-gradient(145deg,#c4b5fd,#93c5fd);}
+.c5{background:linear-gradient(145deg,#6ee7b7,#fde68a);}
+.c6{background:linear-gradient(145deg,#fdba74,#fb7185);}
+.c7{background:linear-gradient(145deg,#a5f3fc,#6ee7b7);}
+.c8{background:linear-gradient(145deg,#ddd6fe,#fca5a5);}
+.listing-info { flex: 1; }
+.listing-title  { font-weight: 900; font-size: 15px; }
+.listing-author { font-size: 12px; color: #aaa; font-weight: 600; }
+.listing-price  { color: #f97316; font-weight: 900; font-size: 15px; }
+.view-link { font-size: 12px; color: #aaa; font-weight: 700; text-decoration: none; }
+.view-link:hover { color: #f97316; }
+
+.thread-card { background: #fff; border-radius: 24px; padding: 24px; border: 2px solid #f3f4f6; box-shadow: 0 6px 0 #e5e7eb; }
+.thread-header { font-weight: 900; color: #555; margin-bottom: 20px; font-size: 14px; padding-bottom: 14px; border-bottom: 2px dashed #f3f4f6; }
+
+.messages { display: flex; flex-direction: column; gap: 12px; min-height: 260px; max-height: 380px; overflow-y: auto; margin-bottom: 20px; padding-right: 4px; scroll-behavior: smooth; }
+.messages::-webkit-scrollbar { width: 4px; }
+.messages::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 4px; }
+.msg { display: flex; }
+.msg.me { justify-content: flex-end; }
+.bubble { max-width: 72%; padding: 12px 18px; border-radius: 20px; font-size: 14px; font-weight: 600; line-height: 1.5; }
+.bubble.them { background: #f3f4f6; color: #2d2d2d; border-bottom-left-radius: 4px; }
+.bubble.me   { background: #f97316; color: #fff;    border-bottom-right-radius: 4px; }
+.time { font-size: 11px; color: #ccc; font-weight: 700; margin-top: 4px; }
+.msg.me .time { text-align: right; }
+
+.input-row { display: flex; gap: 10px; padding-top: 16px; border-top: 2px solid #f3f4f6; }
+.input-row input { flex: 1; border: 2px solid #fed7aa; border-radius: 14px; padding: 12px 16px; font-family: 'Nunito', sans-serif; font-size: 14px; font-weight: 700; background: #fffbf0; outline: none; }
+.input-row input:focus { border-color: #f97316; }
+.send-btn { background: #f97316; color: #fff; border: none; padding: 12px 24px; border-radius: 14px; font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 14px; cursor: pointer; box-shadow: 0 3px 0 #c2410c; }
+.send-btn:active { box-shadow: none; transform: translateY(3px); }
+
+footer { background: #1a1a1a; color: #999; text-align: center; padding: 26px 32px; font-size: 14px; font-weight: 700; margin-top: 60px; }
+footer span { color: #f97316; font-family: 'Pacifico', cursive; font-size: 16px; }
+</style>
+</head>
+<body>
+<nav>
+  <div class="nav-logo" onclick="location.href='homepage.html'"><div class="icon">🏡</div> LittleBookExchange</div>
+  <div class="nav-links">
+    <a href="browse.html">Browse</a>
+    <a href="post-listing.html">Post a Book</a>
+    <a href="messages.html" style="color:#f97316">Messages</a>
+    <a href="profile.html">Profile</a>
+    <a href="homepage.html" class="nav-btn">Sign Out</a>
+  </div>
+</nav>
+
+<div class="page">
+  <a href="messages.html" class="back">← Back to Messages</a>
+
+  <div class="listing-card" id="thread-listing">
+    <div class="listing-thumb c1" id="tl-thumb">📘</div>
+    <div class="listing-info">
+      <div class="listing-title"  id="tl-title">The Great Gatsby</div>
+      <div class="listing-author" id="tl-author">F. Scott Fitzgerald</div>
+    </div>
+    <div class="listing-price" id="tl-price">FREE</div>
+    <a href="book-detail.html" class="view-link" id="tl-view">View →</a>
+  </div>
+
+  <div class="thread-card">
+    <div class="thread-header" id="thread-header">Conversation with Sarah M.</div>
+    <div class="messages" id="messages"></div>
+    <div class="input-row">
+      <input type="text" id="msg-input" placeholder="Type a message..." />
+      <button class="send-btn" id="send-btn">Send</button>
+    </div>
+  </div>
+</div>
+
+<footer><span>LittleBookExchange</span> · Books finding new homes in your neighborhood · © 2026</footer>
+
+<script>
+const SEED_MSGS = [
+  {from:'them', text:"Hi! Is this book still available? I'm in Lincoln Square and could pick up anytime this week 😊", time:"Yesterday 3:12 PM"},
+  {from:'me',   text:"Yes it's still available! I work near Rockwell station, would that work for a handoff?",        time:"Yesterday 3:45 PM"},
+  {from:'them', text:"That's perfect! Thursday after 5pm?",                                                           time:"Yesterday 4:02 PM"},
+  {from:'me',   text:"Thursday works great! I'll be there around 5:15 👍",                                            time:"Yesterday 4:10 PM"},
+  {from:'them', text:"Amazing, thank you so much! See you Thursday 🎉",                                               time:"2m ago"},
+];
+
+function getListings() { return JSON.parse(localStorage.getItem('lbe_listings') || '[]'); }
+function getMsgs()     { return JSON.parse(localStorage.getItem('lbe_messages') || 'null'); }
+function setMsgs(m)    { localStorage.setItem('lbe_messages', JSON.stringify(m)); }
+
+function nowTime() {
+  const d = new Date();
+  return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+}
+
+function renderMessages(msgs) {
+  const el = document.getElementById('messages');
+  el.innerHTML = msgs.map(m => `
+    <div class="msg ${m.from}">
+      <div>
+        <div class="bubble ${m.from}">${m.text}</div>
+        <div class="time">${m.time}</div>
+      </div>
+    </div>`).join('');
+  el.scrollTop = el.scrollHeight;
+}
+
+function loadListing() {
+  const id = parseInt(localStorage.getItem('lbe_current_book') || '1');
+  const all = getListings();
+  const book = all.find(b => b.id === id);
+  if (book) {
+    document.getElementById('tl-thumb').className  = `listing-thumb ${book.gradient}`;
+    document.getElementById('tl-thumb').textContent = book.emoji;
+    document.getElementById('tl-title').textContent  = book.title;
+    document.getElementById('tl-author').textContent = book.author;
+    document.getElementById('tl-price').textContent  = book.price===0 ? 'FREE' : `$${Number(book.price).toFixed(2)}`;
+    document.getElementById('tl-price').style.color  = book.price===0 ? '#0d9488' : '#f97316';
+  }
+}
+
+function sendMessage() {
+  const input = document.getElementById('msg-input');
+  const text  = input.value.trim();
+  if (!text) return;
+  let msgs = getMsgs() || [...SEED_MSGS];
+  msgs.push({from:'me', text, time: `Today ${nowTime()}`});
+  setMsgs(msgs);
+  renderMessages(msgs);
+  input.value = '';
+  input.focus();
+
+  // Simulate a reply after a short delay
+  const replies = [
+    "Sounds great! 🙌",
+    "Perfect, see you then!",
+    "Works for me 👍",
+    "Thanks so much!",
+    "Great, I'll be there!",
+    "Can't wait — I've been wanting to read that 😊",
+  ];
+  setTimeout(() => {
+    msgs = getMsgs() || [];
+    msgs.push({from:'them', text: replies[Math.floor(Math.random()*replies.length)], time:`Today ${nowTime()}`});
+    setMsgs(msgs);
+    renderMessages(msgs);
+  }, 1400);
+}
+
+document.getElementById('send-btn').addEventListener('click', sendMessage);
+document.getElementById('msg-input').addEventListener('keyup', e => {
+  if (e.key === 'Enter') sendMessage();
+});
+
+loadListing();
+const msgs = getMsgs() || SEED_MSGS;
+renderMessages(msgs);
+</script>
+</body>
+</html>

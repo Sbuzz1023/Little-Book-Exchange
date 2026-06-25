@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Messages — LittleBookExchange</title>
+<link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Nunito', sans-serif; background: #fffbf0; color: #2d2d2d; }
+nav { background: #fff; padding: 0 32px; height: 68px; display: flex; align-items: center; justify-content: space-between; border-bottom: 4px solid #f97316; }
+.nav-logo { font-family: 'Pacifico', cursive; font-size: 22px; color: #f97316; display: flex; align-items: center; gap: 10px; }
+.nav-logo .icon { background: #f97316; border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+.nav-links { display: flex; gap: 22px; align-items: center; }
+.nav-links a { text-decoration: none; color: #2d2d2d; font-weight: 700; font-size: 15px; }
+.nav-btn { background: #f97316; color: #fff !important; padding: 9px 22px; border-radius: 999px; font-weight: 800 !important; }
+
+.page { max-width: 640px; margin: 0 auto; padding: 40px 32px; }
+h1 { font-family: 'Pacifico', cursive; font-size: 30px; color: #f97316; margin-bottom: 24px; }
+
+.convo {
+  background: #fff; border-radius: 20px; padding: 20px;
+  border: 2px solid #f3f4f6; box-shadow: 0 4px 0 #e5e7eb;
+  margin-bottom: 12px; cursor: pointer; display: flex;
+  align-items: center; gap: 16px; transition: transform 0.1s;
+}
+.convo:hover { transform: translateY(-2px); }
+.convo-icon { width: 52px; height: 52px; border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 26px; flex-shrink: 0; }
+.ci1 { background: linear-gradient(145deg, #fde68a, #fca5a5); }
+.ci2 { background: linear-gradient(145deg, #99f6e4, #bfdbfe); }
+.ci3 { background: linear-gradient(145deg, #c4b5fd, #93c5fd); }
+.convo-body { flex: 1; min-width: 0; }
+.convo-title { font-size: 15px; font-weight: 900; color: #1a1a1a; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.convo-who { font-size: 12px; color: #aaa; font-weight: 700; margin-bottom: 4px; }
+.convo-preview { font-size: 13px; color: #888; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.convo-time { font-size: 11px; color: #ccc; font-weight: 700; white-space: nowrap; flex-shrink: 0; }
+.unread { background: #f97316; color: #fff; font-size: 11px; font-weight: 900; padding: 2px 8px; border-radius: 999px; }
+
+footer { background: #1a1a1a; color: #999; text-align: center; padding: 26px 32px; font-size: 14px; font-weight: 700; margin-top: 60px; }
+footer span { color: #f97316; font-family: 'Pacifico', cursive; font-size: 16px; }
+</style>
+</head>
+<body>
+<nav>
+  <div class="nav-logo" onclick="location.href='homepage.html'" style="cursor:pointer"><div class="icon">🏡</div> LittleBookExchange</div>
+  <div class="nav-links">
+    <a href="browse.html">Browse</a>
+    <a href="post-listing.html">Post a Book</a>
+    <a href="messages.html" style="color:#f97316">Messages</a>
+    <a href="profile.html">Profile</a>
+    <a href="homepage.html" class="nav-btn">Sign Out</a>
+  </div>
+</nav>
+
+<div class="page">
+  <h1>Messages 💬</h1>
+
+  <div class="convo" onclick="location.href='message-thread.html'" style="cursor:pointer">
+    <div class="convo-icon ci1">📘</div>
+    <div class="convo-body">
+      <div class="convo-title">The Great Gatsby</div>
+      <div class="convo-who">with Sarah M.</div>
+      <div class="convo-preview">Hi! Is this still available? I'm nearby!</div>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+      <div class="convo-time">2m ago</div>
+      <div class="unread">2</div>
+    </div>
+  </div>
+
+  <div class="convo" onclick="location.href='message-thread.html'" style="cursor:pointer">
+    <div class="convo-icon ci2">📗</div>
+    <div class="convo-body">
+      <div class="convo-title">Educated</div>
+      <div class="convo-who">with Mike T.</div>
+      <div class="convo-preview">Sounds great, I can meet Thursday at 5pm</div>
+    </div>
+    <div class="convo-time">1h ago</div>
+  </div>
+
+  <div class="convo" onclick="location.href='message-thread.html'" style="cursor:pointer">
+    <div class="convo-icon ci3">📙</div>
+    <div class="convo-body">
+      <div class="convo-title">Atomic Habits</div>
+      <div class="convo-who">with Jenny K.</div>
+      <div class="convo-preview">Perfect, thank you so much! 🙏</div>
+    </div>
+    <div class="convo-time">3d ago</div>
+  </div>
+</div>
+
+<footer><span>LittleBookExchange</span> · Books finding new homes in your neighborhood · © 2026</footer>
+</body>
+</html>

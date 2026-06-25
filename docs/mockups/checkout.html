@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Checkout — LittleBookExchange</title>
+<link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Nunito', sans-serif; background: #fffbf0; color: #2d2d2d; }
+nav { background: #fff; padding: 0 32px; height: 68px; display: flex; align-items: center; justify-content: space-between; border-bottom: 4px solid #f97316; }
+.nav-logo { font-family: 'Pacifico', cursive; font-size: 22px; color: #f97316; display: flex; align-items: center; gap: 10px; cursor: pointer; }
+.nav-logo .icon { background: #f97316; border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+.nav-links { display: flex; gap: 22px; align-items: center; }
+.nav-links a { text-decoration: none; color: #2d2d2d; font-weight: 700; font-size: 15px; }
+.nav-btn { background: #f97316; color: #fff !important; padding: 9px 22px; border-radius: 999px; font-weight: 800 !important; }
+
+.page { max-width: 560px; margin: 0 auto; padding: 40px 32px 80px; display: flex; flex-direction: column; gap: 24px; }
+.back { color: #f97316; font-weight: 700; font-size: 14px; text-decoration: none; display: inline-block; margin-bottom: 4px; }
+
+.checkout-card { background: #fff; border-radius: 24px; padding: 28px; border: 2px solid #f3f4f6; box-shadow: 0 6px 0 #e5e7eb; }
+.checkout-card h2 { font-family: 'Pacifico', cursive; font-size: 20px; color: #f97316; margin-bottom: 20px; }
+
+/* Order summary */
+.book-row { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; padding-bottom: 20px; border-bottom: 2px dashed #f3f4f6; }
+.book-thumb { width: 56px; height: 56px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 28px; flex-shrink: 0; }
+.c1{background:linear-gradient(145deg,#fde68a,#fca5a5);}
+.c2{background:linear-gradient(145deg,#99f6e4,#bfdbfe);}
+.c3{background:linear-gradient(145deg,#fca5a5,#fda4af);}
+.c4{background:linear-gradient(145deg,#c4b5fd,#93c5fd);}
+.c5{background:linear-gradient(145deg,#6ee7b7,#fde68a);}
+.c6{background:linear-gradient(145deg,#fdba74,#fb7185);}
+.c7{background:linear-gradient(145deg,#a5f3fc,#6ee7b7);}
+.c8{background:linear-gradient(145deg,#ddd6fe,#fca5a5);}
+.book-info { flex: 1; }
+.book-title  { font-weight: 900; font-size: 16px; margin-bottom: 2px; }
+.book-author { font-size: 13px; color: #aaa; font-weight: 600; margin-bottom: 4px; }
+.book-cond   { font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 6px; background: #fef9c3; color: #854d0e; border: 1.5px solid #fde047; display: inline-block; }
+.book-price  { font-size: 20px; font-weight: 900; color: #f97316; flex-shrink: 0; }
+
+.price-table { display: flex; flex-direction: column; gap: 10px; }
+.price-row { display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: 700; color: #555; }
+.price-row.fee { color: #2d2d2d; }
+.price-row.tax { color: #2d2d2d; }
+.price-divider { border: none; border-top: 2px solid #f3f4f6; margin: 6px 0; }
+.price-row.total { font-size: 18px; font-weight: 900; color: #1a1a1a; }
+.price-row.total span:last-child { color: #f97316; }
+
+/* Payment methods */
+.method-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 24px; }
+.method-tab { border: 2px solid #e5e7eb; border-radius: 14px; padding: 10px 8px; text-align: center; font-size: 12px; font-weight: 800; color: #555; cursor: pointer; transition: all 0.12s; user-select: none; }
+.method-tab:hover { border-color: #f97316; color: #f97316; }
+.method-tab.active { border-color: #f97316; background: #fff7ed; color: #f97316; }
+
+.pay-form { display: flex; flex-direction: column; gap: 14px; margin-bottom: 24px; }
+.form-row { display: flex; gap: 12px; }
+.form-field { display: flex; flex-direction: column; gap: 6px; flex: 1; }
+.form-field label { font-size: 11px; font-weight: 900; color: #888; text-transform: uppercase; letter-spacing: 0.6px; }
+.form-field input { border: 2px solid #fed7aa; border-radius: 12px; padding: 11px 14px; font-family: 'Nunito', sans-serif; font-size: 14px; font-weight: 700; background: #fffbf0; color: #2d2d2d; outline: none; }
+.form-field input:focus { border-color: #f97316; }
+
+.alt-pay-form { display: none; flex-direction: column; align-items: center; gap: 16px; margin-bottom: 24px; padding: 24px; background: #f9fafb; border-radius: 16px; border: 2px dashed #e5e7eb; }
+.alt-pay-info { font-size: 13px; font-weight: 700; color: #888; text-align: center; line-height: 1.6; }
+.alt-pay-btn { width: 100%; padding: 14px; border-radius: 14px; border: none; font-family: 'Nunito', sans-serif; font-weight: 900; font-size: 15px; cursor: pointer; }
+.btn-paypal { background: #003087; color: #fff; box-shadow: 0 4px 0 #001f5a; }
+.btn-venmo  { background: #008cff; color: #fff; box-shadow: 0 4px 0 #0060b0; }
+.btn-apple  { background: #000; color: #fff; box-shadow: 0 4px 0 #333; }
+.btn-google { background: #fff; color: #2d2d2d; border: 2px solid #e5e7eb; box-shadow: 0 4px 0 #e5e7eb; }
+.btn-cashapp{ background: #00d632; color: #fff; box-shadow: 0 4px 0 #009a24; }
+.btn-zelle  { background: #6d1ed4; color: #fff; box-shadow: 0 4px 0 #4a14a0; }
+
+.complete-btn { width: 100%; background: #f97316; color: #fff; border: none; padding: 15px; border-radius: 14px; font-family: 'Nunito', sans-serif; font-weight: 900; font-size: 16px; cursor: pointer; box-shadow: 0 5px 0 #c2410c; }
+.complete-btn:active { box-shadow: none; transform: translateY(5px); }
+.secure-note { text-align: center; font-size: 12px; font-weight: 700; color: #aaa; margin-top: 12px; }
+
+/* Success overlay */
+.success-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.55); display: none; align-items: center; justify-content: center; z-index: 999; padding: 24px; }
+.success-overlay.show { display: flex; }
+.success-card { background: #fff; border-radius: 28px; padding: 40px 32px; max-width: 440px; width: 100%; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.25); }
+.success-icon { width: 72px; height: 72px; background: #dcfce7; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 36px; margin: 0 auto 20px; }
+.success-card h2 { font-family: 'Pacifico', cursive; font-size: 26px; color: #f97316; margin-bottom: 10px; }
+.success-card .subtitle { font-size: 15px; font-weight: 700; color: #555; margin-bottom: 6px; }
+.success-total-line { font-size: 18px; font-weight: 900; color: #1a1a1a; margin-bottom: 24px; }
+.success-total-line span { color: #f97316; }
+.exchange-box { background: #fff7ed; border: 2px solid #fed7aa; border-radius: 16px; padding: 16px; margin-bottom: 24px; }
+.exchange-box p { font-size: 14px; font-weight: 700; color: #92400e; line-height: 1.6; }
+.exchange-box p:first-child { font-size: 16px; font-weight: 900; margin-bottom: 4px; }
+.success-msg-btn { width: 100%; background: #f97316; color: #fff; border: none; padding: 14px; border-radius: 14px; font-family: 'Nunito', sans-serif; font-weight: 900; font-size: 15px; cursor: pointer; box-shadow: 0 4px 0 #c2410c; margin-bottom: 12px; }
+.success-browse { display: block; color: #aaa; font-weight: 700; font-size: 13px; text-decoration: none; }
+.success-browse:hover { color: #f97316; }
+
+footer { background: #1a1a1a; color: #999; text-align: center; padding: 26px 32px; font-size: 14px; font-weight: 700; margin-top: 40px; }
+footer span { color: #f97316; font-family: 'Pacifico', cursive; font-size: 16px; }
+</style>
+</head>
+<body>
+<nav>
+  <div class="nav-logo" onclick="location.href='homepage.html'"><div class="icon">🏡</div> LittleBookExchange</div>
+  <div class="nav-links">
+    <a href="browse.html">Browse</a>
+    <a href="post-listing.html">Post a Book</a>
+    <a href="messages.html">Messages</a>
+    <a href="profile.html">Profile</a>
+    <a href="homepage.html" class="nav-btn">Sign Out</a>
+  </div>
+</nav>
+
+<div class="page">
+  <a href="book-detail.html" class="back">← Back to listing</a>
+
+  <!-- Order Summary -->
+  <div class="checkout-card">
+    <h2>Order Summary</h2>
+    <div class="book-row">
+      <div class="book-thumb c1" id="co-thumb">📘</div>
+      <div class="book-info">
+        <div class="book-title"  id="co-title">Loading...</div>
+        <div class="book-author" id="co-author"></div>
+        <span class="book-cond"  id="co-cond"></span>
+      </div>
+      <div class="book-price" id="co-price"></div>
+    </div>
+    <div class="price-table">
+      <div class="price-row"><span>Book price</span><span id="line-book"></span></div>
+      <div class="price-row fee"><span>Service fee (10%)</span><span id="line-fee"></span></div>
+      <div class="price-row tax"><span>Estimated tax (8.25%)</span><span id="line-tax"></span></div>
+      <hr class="price-divider"/>
+      <div class="price-row total"><span>Total</span><span id="line-total"></span></div>
+    </div>
+  </div>
+
+  <!-- Payment -->
+  <div class="checkout-card">
+    <h2>Payment Method</h2>
+    <div class="method-grid">
+      <div class="method-tab active" data-method="card">💳 Card</div>
+      <div class="method-tab" data-method="paypal">PayPal</div>
+      <div class="method-tab" data-method="venmo">Venmo</div>
+      <div class="method-tab" data-method="apple">🍎 Apple Pay</div>
+      <div class="method-tab" data-method="google">G Pay</div>
+      <div class="method-tab" data-method="cashapp">Cash App</div>
+      <div class="method-tab" data-method="zelle">Zelle</div>
+    </div>
+
+    <!-- Card form -->
+    <div id="form-card" class="pay-form">
+      <div class="form-field">
+        <label>Card Number</label>
+        <input type="text" id="card-number" placeholder="1234 5678 9012 3456" maxlength="19" inputmode="numeric"/>
+      </div>
+      <div class="form-field">
+        <label>Name on Card</label>
+        <input type="text" id="card-name" placeholder="Full name"/>
+      </div>
+      <div class="form-row">
+        <div class="form-field">
+          <label>Expiry</label>
+          <input type="text" id="card-expiry" placeholder="MM / YY" maxlength="7" inputmode="numeric"/>
+        </div>
+        <div class="form-field">
+          <label>CVV</label>
+          <input type="text" id="card-cvv" placeholder="123" maxlength="4" inputmode="numeric"/>
+        </div>
+      </div>
+    </div>
+
+    <!-- Alt pay forms -->
+    <div id="form-paypal" class="alt-pay-form">
+      <div class="alt-pay-info">You'll be redirected to PayPal to complete your payment securely.</div>
+      <button class="alt-pay-btn btn-paypal" onclick="completeOrder()">Continue with PayPal →</button>
+    </div>
+    <div id="form-venmo" class="alt-pay-form">
+      <div class="alt-pay-info">You'll be redirected to Venmo to complete your payment.</div>
+      <button class="alt-pay-btn btn-venmo" onclick="completeOrder()">Continue with Venmo →</button>
+    </div>
+    <div id="form-apple" class="alt-pay-form">
+      <div class="alt-pay-info">Use Face ID or Touch ID to pay instantly.</div>
+      <button class="alt-pay-btn btn-apple" onclick="completeOrder()">🍎 Pay with Apple Pay</button>
+    </div>
+    <div id="form-google" class="alt-pay-form">
+      <div class="alt-pay-info">Pay quickly and securely with your Google account.</div>
+      <button class="alt-pay-btn btn-google" onclick="completeOrder()">G Pay</button>
+    </div>
+    <div id="form-cashapp" class="alt-pay-form">
+      <div class="alt-pay-info">Pay instantly using your Cash App balance or linked card.</div>
+      <button class="alt-pay-btn btn-cashapp" onclick="completeOrder()">Pay with Cash App</button>
+    </div>
+    <div id="form-zelle" class="alt-pay-form">
+      <div class="alt-pay-info">Send payment directly through Zelle — no fees, instant transfer.</div>
+      <button class="alt-pay-btn btn-zelle" onclick="completeOrder()">Pay with Zelle</button>
+    </div>
+
+    <button class="complete-btn" id="complete-btn">Complete Purchase</button>
+    <p class="secure-note">🔒 Payments are secure and encrypted</p>
+  </div>
+</div>
+
+<!-- Success Overlay -->
+<div class="success-overlay" id="success-overlay">
+  <div class="success-card">
+    <div class="success-icon">✓</div>
+    <h2>Purchase Confirmed!</h2>
+    <p class="subtitle">You bought <strong id="success-title"></strong></p>
+    <p class="success-total-line">Total paid: <span id="success-total"></span></p>
+    <div class="exchange-box">
+      <p>📦 Time to get your book!</p>
+      <p>Message the seller to arrange a pickup or drop-off in your neighborhood.</p>
+    </div>
+    <button class="success-msg-btn" onclick="location.href='message-thread.html'">💬 Message Seller</button>
+    <a href="browse.html" class="success-browse">Browse more books →</a>
+  </div>
+</div>
+
+<footer><span>LittleBookExchange</span> · Books finding new homes in your neighborhood · © 2026</footer>
+
+<script>
+const TAX_RATE = 0.0825;
+const SVC_FEE  = 0.10;
+
+const SEED = [
+  {id:1,  title:"The Great Gatsby",       author:"F. Scott Fitzgerald", genre:"Fiction",     condition:"Good",       price:0, city:"Chicago, IL", emoji:"📘", gradient:"c1"},
+  {id:2,  title:"Educated",               author:"Tara Westover",       genre:"Non-Fiction", condition:"Fair",       price:3, city:"Chicago, IL", emoji:"📗", gradient:"c2"},
+  {id:3,  title:"Atomic Habits",          author:"James Clear",          genre:"Self-Help",   condition:"Good",       price:5, city:"Chicago, IL", emoji:"📕", gradient:"c3"},
+  {id:4,  title:"Harry Potter",           author:"J.K. Rowling",         genre:"Fiction",     condition:"Well-Loved", price:0, city:"Chicago, IL", emoji:"📙", gradient:"c4"},
+  {id:5,  title:"Where the Crawdads Sing",author:"Delia Owens",          genre:"Fiction",     condition:"Good",       price:2, city:"Chicago, IL", emoji:"📒", gradient:"c5"},
+  {id:6,  title:"The Alchemist",          author:"Paulo Coelho",         genre:"Fiction",     condition:"Fair",       price:0, city:"Chicago, IL", emoji:"📓", gradient:"c6"},
+  {id:7,  title:"Becoming",               author:"Michelle Obama",       genre:"Biography",   condition:"Good",       price:4, city:"Chicago, IL", emoji:"📔", gradient:"c7"},
+  {id:8,  title:"The Hunger Games",       author:"Suzanne Collins",      genre:"Fiction",     condition:"Well-Loved", price:0, city:"Chicago, IL", emoji:"📖", gradient:"c8"},
+  {id:9,  title:"To Kill a Mockingbird",  author:"Harper Lee",           genre:"Fiction",     condition:"Good",       price:1, city:"Chicago, IL", emoji:"📘", gradient:"c1"},
+  {id:10, title:"1984",                   author:"George Orwell",        genre:"Fiction",     condition:"Fair",       price:0, city:"Chicago, IL", emoji:"📗", gradient:"c2"},
+];
+
+function fmt(n) { return '$' + n.toFixed(2); }
+
+function getListings() {
+  if (!localStorage.getItem('lbe_listings')) {
+    localStorage.setItem('lbe_listings', JSON.stringify(SEED));
+  }
+  return JSON.parse(localStorage.getItem('lbe_listings'));
+}
+
+let currentBook = null;
+let orderTotal = 0;
+
+function loadBook() {
+  const id  = parseInt(localStorage.getItem('lbe_current_book') || '1');
+  const all = getListings();
+  const book = all.find(b => b.id === id) || all.find(b => b.price > 0);
+  if (!book) return;
+  currentBook = book;
+
+  document.getElementById('co-thumb').className  = `book-thumb ${book.gradient}`;
+  document.getElementById('co-thumb').textContent = book.emoji;
+  document.getElementById('co-title').textContent  = book.title;
+  document.getElementById('co-author').textContent = `by ${book.author}`;
+  document.getElementById('co-cond').textContent   = book.condition + ' Condition';
+  document.getElementById('co-price').textContent  = fmt(book.price);
+
+  const fee   = book.price * SVC_FEE;
+  const tax   = book.price * TAX_RATE;
+  orderTotal  = book.price + fee + tax;
+
+  document.getElementById('line-book').textContent  = fmt(book.price);
+  document.getElementById('line-fee').textContent   = fmt(fee);
+  document.getElementById('line-tax').textContent   = fmt(tax);
+  document.getElementById('line-total').textContent = fmt(orderTotal);
+  document.getElementById('complete-btn').textContent = `Complete Purchase · ${fmt(orderTotal)}`;
+
+  document.title = `Checkout — ${book.title}`;
+}
+
+// Payment method switching
+let activeMethod = 'card';
+document.querySelectorAll('.method-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.method-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    activeMethod = tab.dataset.method;
+
+    document.getElementById('form-card').style.display    = 'none';
+    document.querySelectorAll('.alt-pay-form').forEach(f => f.style.display = 'none');
+
+    if (activeMethod === 'card') {
+      document.getElementById('form-card').style.display = 'flex';
+      document.getElementById('complete-btn').style.display = 'block';
+    } else {
+      document.getElementById(`form-${activeMethod}`).style.display = 'flex';
+      document.getElementById('complete-btn').style.display = 'none';
+    }
+  });
+});
+
+// Card number formatting
+document.getElementById('card-number').addEventListener('input', e => {
+  let v = e.target.value.replace(/\D/g, '').substring(0, 16);
+  e.target.value = v.replace(/(.{4})/g, '$1 ').trim();
+});
+
+// Expiry formatting
+document.getElementById('card-expiry').addEventListener('input', e => {
+  let v = e.target.value.replace(/\D/g, '').substring(0, 4);
+  if (v.length >= 3) v = v.substring(0,2) + ' / ' + v.substring(2);
+  e.target.value = v;
+});
+
+// CVV — digits only
+document.getElementById('card-cvv').addEventListener('input', e => {
+  e.target.value = e.target.value.replace(/\D/g, '').substring(0, 4);
+});
+
+const SELLER_NAMES = ['Sarah M.', 'Jamie K.', 'Chris P.', 'Dana R.', 'Pat L.', 'Avery B.', 'Quinn S.', 'Blake T.'];
+
+function completeOrder() {
+  if (!currentBook) return;
+
+  // Mark book as sold in listings
+  const listings = getListings();
+  const book = listings.find(b => b.id === currentBook.id);
+  if (book) { book.status = 'sold'; localStorage.setItem('lbe_listings', JSON.stringify(listings)); }
+
+  // Add to pending exchange queue as a purchase (buyer side)
+  const sales = JSON.parse(localStorage.getItem('lbe_sales') || '[]');
+  sales.push({
+    id: Date.now(),
+    role: 'buyer',
+    bookId: currentBook.id,
+    title: currentBook.title,
+    author: currentBook.author,
+    emoji: currentBook.emoji,
+    gradient: currentBook.gradient,
+    price: currentBook.price,
+    total: orderTotal,
+    counterparty: SELLER_NAMES[Math.floor(Math.random() * SELLER_NAMES.length)],
+    soldAt: new Date().toLocaleDateString('en-US', {month:'long', day:'numeric', year:'numeric'}),
+    status: 'pending'
+  });
+  localStorage.setItem('lbe_sales', JSON.stringify(sales));
+
+  document.getElementById('success-title').textContent = currentBook.title;
+  document.getElementById('success-total').textContent = fmt(orderTotal);
+  document.getElementById('success-overlay').classList.add('show');
+}
+
+document.getElementById('complete-btn').addEventListener('click', () => {
+  const num  = document.getElementById('card-number').value.replace(/\s/g,'');
+  const name = document.getElementById('card-name').value.trim();
+  const exp  = document.getElementById('card-expiry').value.trim();
+  const cvv  = document.getElementById('card-cvv').value.trim();
+  if (num.length < 16 || !name || exp.length < 7 || cvv.length < 3) {
+    alert('Please fill in all card details.');
+    return;
+  }
+  completeOrder();
+});
+
+loadBook();
+</script>
+</body>
+</html>

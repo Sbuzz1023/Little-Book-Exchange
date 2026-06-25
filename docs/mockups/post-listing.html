@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Post a Book — LittleBookExchange</title>
+<link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Nunito', sans-serif; background: #fffbf0; color: #2d2d2d; }
+nav { background: #fff; padding: 0 32px; height: 68px; display: flex; align-items: center; justify-content: space-between; border-bottom: 4px solid #f97316; }
+.nav-logo { font-family: 'Pacifico', cursive; font-size: 22px; color: #f97316; display: flex; align-items: center; gap: 10px; cursor: pointer; }
+.nav-logo .icon { background: #f97316; border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+.nav-links { display: flex; gap: 22px; align-items: center; }
+.nav-links a { text-decoration: none; color: #2d2d2d; font-weight: 700; font-size: 15px; }
+.nav-btn { background: #f97316; color: #fff !important; padding: 9px 22px; border-radius: 999px; font-weight: 800 !important; }
+
+.page { max-width: 600px; margin: 0 auto; padding: 40px 32px; }
+h1 { font-family: 'Pacifico', cursive; font-size: 30px; color: #f97316; margin-bottom: 4px; }
+.sub { color: #aaa; font-weight: 700; font-size: 14px; margin-bottom: 28px; }
+.form-card { background: #fff; border-radius: 28px; padding: 36px; border: 2px solid #f3f4f6; box-shadow: 0 8px 0 #e5e7eb; }
+.section-heading { font-family: 'Pacifico', cursive; font-size: 15px; color: #f97316; margin: 28px 0 16px; padding-bottom: 8px; border-bottom: 2px dashed #fed7aa; display: flex; align-items: center; gap: 8px; }
+.section-heading:first-child { margin-top: 0; }
+.field { margin-bottom: 18px; }
+label { display: block; font-size: 12px; font-weight: 900; color: #444; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+input, select, textarea { width: 100%; border: 2px solid #fed7aa; border-radius: 14px; padding: 12px 16px; font-family: 'Nunito', sans-serif; font-size: 14px; font-weight: 700; background: #fffbf0; color: #2d2d2d; outline: none; transition: border-color 0.15s; }
+input:focus, select:focus, textarea:focus { border-color: #f97316; }
+textarea { resize: none; }
+.row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 18px; }
+.chip-group { display: flex; gap: 10px; flex-wrap: wrap; }
+.chip { padding: 9px 18px; border-radius: 999px; font-weight: 800; font-size: 13px; border: 2px solid #e5e7eb; background: #fff; color: #555; cursor: pointer; transition: all 0.12s; user-select: none; }
+.chip:hover { border-color: #f97316; color: #f97316; }
+.chip.selected { background: #f97316; border-color: #f97316; color: #fff; }
+.genre-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.genre-chip { padding: 8px 14px; border-radius: 12px; font-weight: 800; font-size: 12px; border: 2px solid #e5e7eb; background: #fff; color: #555; cursor: pointer; transition: all 0.12s; user-select: none; text-align: center; }
+.genre-chip:hover { border-color: #f97316; color: #f97316; }
+.genre-chip.selected { background: #fff7ed; border-color: #fed7aa; color: #c2410c; }
+.price-toggle { display: flex; gap: 10px; margin-bottom: 14px; }
+.price-chip { padding: 9px 20px; border-radius: 999px; font-weight: 800; font-size: 13px; border: 2px solid #e5e7eb; background: #fff; color: #555; cursor: pointer; transition: all 0.12s; }
+.price-chip.free.selected { background: #0d9488; border-color: #0d9488; color: #fff; }
+.price-chip.free:hover { border-color: #0d9488; color: #0d9488; }
+.price-chip.sale.selected { background: #f97316; border-color: #f97316; color: #fff; }
+.price-chip.sale:hover { border-color: #f97316; color: #f97316; }
+.price-wrap { position: relative; }
+.price-wrap span { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); font-weight: 800; color: #aaa; font-size: 16px; }
+.price-wrap input { padding-left: 28px; }
+.hint { font-size: 12px; color: #aaa; font-weight: 600; margin-top: 5px; }
+.upload-area { border: 2.5px dashed #fed7aa; border-radius: 14px; padding: 28px; text-align: center; cursor: pointer; background: #fffbf0; transition: border-color 0.15s; }
+.upload-area:hover { border-color: #f97316; }
+.upload-icon { font-size: 36px; margin-bottom: 8px; }
+.upload-text { font-size: 14px; font-weight: 700; color: #aaa; }
+.upload-text strong { color: #f97316; }
+.preview-box { background: #fff7ed; border: 2px solid #fed7aa; border-radius: 14px; padding: 16px 20px; margin-top: 16px; margin-bottom: 16px; }
+.preview-box p { font-size: 13px; font-weight: 700; color: #c2410c; margin-bottom: 4px; }
+.preview-meta { font-size: 12px; color: #aaa; font-weight: 600; }
+.submit-btn { width: 100%; background: #f97316; color: #fff; padding: 16px; border-radius: 14px; font-family: 'Nunito', sans-serif; font-weight: 900; font-size: 17px; border: none; cursor: pointer; box-shadow: 0 5px 0 #c2410c; margin-top: 12px; }
+.error-msg { color: #ef4444; font-size: 12px; font-weight: 700; margin-top: 4px; display: none; }
+.opt { color: #bbb; font-weight: 600; font-size: 11px; text-transform: none; letter-spacing: 0; margin-left: 4px; }
+footer { background: #1a1a1a; color: #999; text-align: center; padding: 26px 32px; font-size: 14px; font-weight: 700; margin-top: 60px; }
+footer span { color: #f97316; font-family: 'Pacifico', cursive; font-size: 16px; }
+</style>
+</head>
+<body>
+<nav>
+  <div class="nav-logo" onclick="location.href='homepage.html'"><div class="icon">🏡</div> LittleBookExchange</div>
+  <div class="nav-links">
+    <a href="browse.html">Browse</a>
+    <a href="post-listing.html" style="color:#f97316">Post a Book</a>
+    <a href="messages.html">Messages</a>
+    <a href="profile.html">Profile</a>
+    <a href="homepage.html" class="nav-btn">Sign Out</a>
+  </div>
+</nav>
+
+<div class="page">
+  <h1>Post a Book</h1>
+  <p class="sub">Share a book with your neighbors in <strong style="color:#2d2d2d">Chicago, IL</strong></p>
+
+  <div class="form-card">
+    <div class="section-heading">📖 Book Info</div>
+    <div class="field">
+      <label>Book Title *</label>
+      <input type="text" id="f-title" placeholder="e.g. The Great Gatsby"/>
+      <p class="error-msg" id="err-title">Please enter a title.</p>
+    </div>
+    <div class="field">
+      <label>Author *</label>
+      <input type="text" id="f-author" placeholder="e.g. F. Scott Fitzgerald"/>
+      <p class="error-msg" id="err-author">Please enter an author.</p>
+    </div>
+    <div class="row">
+      <div class="field" style="margin-bottom:0">
+        <label>Format</label>
+        <div class="chip-group" id="format-chips">
+          <div class="chip selected">Paperback</div>
+          <div class="chip">Hardcover</div>
+        </div>
+      </div>
+      <div class="field" style="margin-bottom:0">
+        <label>Year <span class="opt">(optional)</span></label>
+        <input type="number" id="f-year" placeholder="e.g. 2019" min="1800" max="2026"/>
+      </div>
+    </div>
+
+    <div class="section-heading">🏷️ Genre *</div>
+    <div class="field">
+      <div class="genre-grid" id="genre-grid">
+        <div class="genre-chip selected" data-genre="Fiction">📚 Fiction</div>
+        <div class="genre-chip" data-genre="Non-Fiction">🌍 Non-Fiction</div>
+        <div class="genre-chip" data-genre="Mystery">🔍 Mystery / Thriller</div>
+        <div class="genre-chip" data-genre="Sci-Fi">🚀 Sci-Fi / Fantasy</div>
+        <div class="genre-chip" data-genre="Romance">💕 Romance</div>
+        <div class="genre-chip" data-genre="Children's">👶 Children's</div>
+        <div class="genre-chip" data-genre="Biography">📖 Biography</div>
+        <div class="genre-chip" data-genre="Self-Help">🧠 Self-Help</div>
+        <div class="genre-chip" data-genre="History">🏛️ History</div>
+        <div class="genre-chip" data-genre="Cooking">🍳 Cooking</div>
+        <div class="genre-chip" data-genre="Art">🎨 Art / Design</div>
+        <div class="genre-chip" data-genre="Other">✨ Other</div>
+      </div>
+    </div>
+
+    <div class="section-heading">💰 Condition & Price</div>
+    <div class="field">
+      <label>Condition *</label>
+      <select id="f-condition">
+        <option value="Good">Good — barely used</option>
+        <option value="Fair">Fair — some wear</option>
+        <option value="Well-Loved">Well-Loved — lots of character</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Listing Type</label>
+      <div class="price-toggle">
+        <div class="price-chip free selected" id="btn-free" onclick="setPriceType('free')">🎁 Give for Free</div>
+        <div class="price-chip sale" id="btn-sale" onclick="setPriceType('sale')">💲 Set a Price</div>
+      </div>
+      <div class="price-wrap">
+        <span>$</span>
+        <input type="number" id="f-price" placeholder="0.00" min="0" step="0.50" style="opacity:0.4;pointer-events:none;"/>
+      </div>
+      <p class="hint" id="price-hint">Currently listing as FREE — toggle above to set a price</p>
+    </div>
+
+    <div class="section-heading">📝 Extra Details</div>
+    <div class="field">
+      <label>Description <span class="opt">(optional)</span></label>
+      <textarea id="f-desc" rows="3" placeholder="Any notes — edition, highlighting, pickup preferences..."></textarea>
+    </div>
+    <div class="row">
+      <div class="field" style="margin-bottom:0">
+        <label>ISBN <span class="opt">(optional)</span></label>
+        <input type="text" id="f-isbn" placeholder="978-..."/>
+      </div>
+      <div class="field" style="margin-bottom:0">
+        <label>Language <span class="opt">(optional)</span></label>
+        <select id="f-language">
+          <option>English</option>
+          <option>Spanish</option>
+          <option>French</option>
+          <option>German</option>
+          <option>Portuguese</option>
+          <option>Other</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="section-heading">📸 Photo</div>
+    <div class="field">
+      <div class="upload-area">
+        <div class="upload-icon">📸</div>
+        <div class="upload-text"><strong>Click to upload</strong> a photo of your book</div>
+        <div class="hint" style="margin-top:6px">JPG or PNG · Max 5MB</div>
+      </div>
+    </div>
+
+    <div class="preview-box">
+      <p>Your listing will appear as:</p>
+      <div class="preview-meta" id="preview-text">The Great Gatsby · F. Scott Fitzgerald · Fiction · Paperback · Good condition · <span style="color:#0d9488;font-weight:800">FREE</span> · Chicago, IL</div>
+    </div>
+
+    <button class="submit-btn" id="submit-btn">Post My Book →</button>
+  </div>
+</div>
+
+<footer><span>LittleBookExchange</span> · Books finding new homes in your neighborhood · © 2026</footer>
+
+<script>
+const EMOJIS    = ["📘","📗","📕","📙","📒","📓","📔","📖"];
+const GRADIENTS = ["c1","c2","c3","c4","c5","c6","c7","c8"];
+
+let priceType = 'free';
+let selectedGenre = 'Fiction';
+let selectedFormat = 'Paperback';
+
+function setPriceType(type) {
+  priceType = type;
+  const priceInput = document.getElementById('f-price');
+  const hint = document.getElementById('price-hint');
+  if (type === 'free') {
+    document.getElementById('btn-free').classList.add('selected');
+    document.getElementById('btn-sale').classList.remove('selected');
+    priceInput.style.opacity = '0.4';
+    priceInput.style.pointerEvents = 'none';
+    hint.textContent = 'Currently listing as FREE — toggle above to set a price';
+  } else {
+    document.getElementById('btn-sale').classList.add('selected');
+    document.getElementById('btn-free').classList.remove('selected');
+    priceInput.style.opacity = '1';
+    priceInput.style.pointerEvents = 'auto';
+    priceInput.focus();
+    hint.textContent = 'Enter your asking price above';
+  }
+  updatePreview();
+}
+
+function updatePreview() {
+  const title    = document.getElementById('f-title').value || 'Your Book';
+  const author   = document.getElementById('f-author').value || 'Author';
+  const cond     = document.getElementById('f-condition').value;
+  const priceVal = priceType === 'free' ? 0 : parseFloat(document.getElementById('f-price').value || 0);
+  const priceStr = priceType === 'free' ? '<span style="color:#0d9488;font-weight:800">FREE</span>' : `<span style="color:#f97316;font-weight:800">$${priceVal.toFixed(2)}</span>`;
+  document.getElementById('preview-text').innerHTML =
+    `${title} · ${author} · ${selectedGenre} · ${selectedFormat} · ${cond} condition · ${priceStr} · Chicago, IL`;
+}
+
+function getListings() {
+  return JSON.parse(localStorage.getItem('lbe_listings') || '[]');
+}
+
+function validate() {
+  let ok = true;
+  const title = document.getElementById('f-title').value.trim();
+  const author = document.getElementById('f-author').value.trim();
+  document.getElementById('err-title').style.display = title ? 'none' : 'block';
+  document.getElementById('err-author').style.display = author ? 'none' : 'block';
+  if (!title || !author) ok = false;
+  return ok;
+}
+
+document.getElementById('submit-btn').addEventListener('click', () => {
+  if (!validate()) return;
+
+  const listings = getListings();
+  const newId = listings.length ? Math.max(...listings.map(b=>b.id)) + 1 : 1;
+  const priceVal = priceType === 'free' ? 0 : parseFloat(document.getElementById('f-price').value || 0);
+  const idx = newId % EMOJIS.length;
+
+  const book = {
+    id: newId,
+    title:     document.getElementById('f-title').value.trim(),
+    author:    document.getElementById('f-author').value.trim(),
+    genre:     selectedGenre,
+    condition: document.getElementById('f-condition').value,
+    price:     priceVal,
+    format:    selectedFormat,
+    desc:      document.getElementById('f-desc').value.trim(),
+    city:      'Chicago, IL',
+    emoji:     EMOJIS[idx],
+    gradient:  GRADIENTS[idx],
+    mine:      true,
+    status:    'active',
+  };
+
+  listings.unshift(book);
+  localStorage.setItem('lbe_listings', JSON.stringify(listings));
+  localStorage.setItem('lbe_current_book', book.id);
+
+  // Flash confirmation then redirect
+  const btn = document.getElementById('submit-btn');
+  btn.textContent = '✓ Posted! Redirecting...';
+  btn.style.background = '#0d9488';
+  setTimeout(() => location.href = 'profile.html', 1000);
+});
+
+// Genre chips
+document.querySelectorAll('.genre-chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    document.querySelectorAll('.genre-chip').forEach(c => c.classList.remove('selected'));
+    chip.classList.add('selected');
+    selectedGenre = chip.dataset.genre;
+    updatePreview();
+  });
+});
+
+// Format chips
+document.querySelectorAll('#format-chips .chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    document.querySelectorAll('#format-chips .chip').forEach(c => c.classList.remove('selected'));
+    chip.classList.add('selected');
+    selectedFormat = chip.textContent.trim();
+    updatePreview();
+  });
+});
+
+// Live preview
+['f-title','f-author','f-condition','f-price'].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('input', updatePreview);
+});
+
+updatePreview();
+</script>
+</body>
+</html>

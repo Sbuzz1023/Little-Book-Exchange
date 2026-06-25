@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Profile — LittleBookExchange</title>
+<link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body { font-family: 'Nunito', sans-serif; background: #fffbf0; color: #2d2d2d; }
+nav { background: #fff; padding: 0 32px; height: 68px; display: flex; align-items: center; justify-content: space-between; border-bottom: 4px solid #f97316; }
+.nav-logo { font-family: 'Pacifico', cursive; font-size: 22px; color: #f97316; display: flex; align-items: center; gap: 10px; cursor: pointer; }
+.nav-logo .icon { background: #f97316; border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+.nav-links { display: flex; gap: 22px; align-items: center; }
+.nav-links a { text-decoration: none; color: #2d2d2d; font-weight: 700; font-size: 15px; }
+.nav-btn { background: #f97316; color: #fff !important; padding: 9px 22px; border-radius: 999px; font-weight: 800 !important; }
+
+.page { max-width: 640px; margin: 0 auto; padding: 40px 32px; display: flex; flex-direction: column; gap: 28px; }
+.card { background: #fff; border-radius: 24px; padding: 28px; border: 2px solid #f3f4f6; box-shadow: 0 6px 0 #e5e7eb; }
+.card h2 { font-family: 'Pacifico', cursive; font-size: 22px; color: #f97316; margin-bottom: 20px; }
+label { display: block; font-size: 12px; font-weight: 900; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+input { width: 100%; border: 2px solid #fed7aa; border-radius: 12px; padding: 12px 16px; font-family: 'Nunito', sans-serif; font-size: 15px; font-weight: 700; background: #fffbf0; color: #2d2d2d; outline: none; margin-bottom: 16px; }
+input:focus { border-color: #f97316; }
+.save-btn { background: #f97316; color: #fff; border: none; padding: 12px 28px; border-radius: 12px; font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 15px; cursor: pointer; box-shadow: 0 3px 0 #c2410c; }
+.save-btn:active { box-shadow: none; transform: translateY(3px); }
+
+.listings-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+.listings-header h2 { font-family: 'Pacifico', cursive; font-size: 22px; color: #f97316; margin-bottom: 0; }
+.post-btn { background: #0d9488; color: #fff; border: none; padding: 9px 20px; border-radius: 999px; font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 13px; cursor: pointer; box-shadow: 0 3px 0 #0f766e; }
+
+.listing-row { display: flex; align-items: center; gap: 14px; padding: 14px 0; border-bottom: 2px solid #f3f4f6; }
+.listing-row:last-child { border-bottom: none; }
+.listing-thumb { width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; }
+.c1{background:linear-gradient(145deg,#fde68a,#fca5a5);}
+.c2{background:linear-gradient(145deg,#99f6e4,#bfdbfe);}
+.c3{background:linear-gradient(145deg,#fca5a5,#fda4af);}
+.c4{background:linear-gradient(145deg,#c4b5fd,#93c5fd);}
+.c5{background:linear-gradient(145deg,#6ee7b7,#fde68a);}
+.c6{background:linear-gradient(145deg,#fdba74,#fb7185);}
+.c7{background:linear-gradient(145deg,#a5f3fc,#6ee7b7);}
+.c8{background:linear-gradient(145deg,#ddd6fe,#fca5a5);}
+.listing-info { flex: 1; min-width: 0; }
+.listing-title { font-weight: 900; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+.listing-title:hover { color: #f97316; }
+.listing-meta { font-size: 12px; color: #aaa; font-weight: 600; }
+.status { font-size: 11px; font-weight: 800; padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
+.s-active { background: #dcfce7; color: #166534; }
+.s-sold   { background: #dbeafe; color: #1d4ed8; }
+.s-given  { background: #f3e8ff; color: #6b21a8; }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.action-btn { font-size: 11px; font-weight: 800; background: none; border: none; cursor: pointer; padding: 0; white-space: nowrap; }
+.mark-sold  { color: #3b82f6; }
+.mark-given { color: #a78bfa; }
+.mark-active { color: #16a34a; }
+.delete-btn { color: #f87171; }
+.empty-row { color: #aaa; font-size: 14px; font-weight: 700; padding: 24px 0; text-align: center; }
+.empty-row a { color: #f97316; font-weight: 800; text-decoration: none; }
+
+/* Saved books */
+.saved-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.saved-card { display: flex; align-items: center; gap: 12px; padding: 12px; background: #fff7ed; border: 2px solid #fed7aa; border-radius: 16px; cursor: pointer; transition: transform 0.12s; }
+.saved-card:hover { transform: translateY(-2px); }
+.saved-thumb { width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; }
+.saved-info { flex: 1; min-width: 0; }
+.saved-title { font-weight: 900; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.saved-meta { font-size: 11px; color: #aaa; font-weight: 600; }
+.unsave-btn { background: none; border: none; cursor: pointer; font-size: 16px; color: #f43f5e; flex-shrink: 0; line-height: 1; padding: 4px; }
+.unsave-btn:hover { transform: scale(1.2); }
+
+.pending-badge { display: inline-flex; align-items: center; justify-content: center; background: #f97316; color: #fff; font-size: 11px; font-weight: 900; border-radius: 999px; min-width: 20px; height: 20px; padding: 0 6px; margin-left: 8px; vertical-align: middle; }
+.exchange-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.exchange-col-head { font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.8px; padding: 7px 12px; border-radius: 10px; margin-bottom: 10px; }
+.ech-sold   { background: #fff7ed; color: #f97316; }
+.ech-bought { background: #f0fdf4; color: #0d9488; }
+.exchange-item { border: 2px solid #f3f4f6; border-radius: 16px; padding: 14px; margin-bottom: 10px; }
+.ei-sold   { border-color: #fed7aa; background: #fffbf7; }
+.ei-bought { border-color: #99f6e4; background: #f7fffe; }
+.ei-book { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.ei-thumb { width: 38px; height: 38px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
+.ei-info { flex: 1; min-width: 0; }
+.ei-title  { font-weight: 900; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ei-author { font-size: 11px; color: #aaa; font-weight: 600; }
+.ei-party  { font-size: 12px; font-weight: 800; color: #555; margin-bottom: 3px; }
+.ei-meta   { font-size: 11px; color: #aaa; font-weight: 700; margin-bottom: 10px; }
+.ei-btns   { display: flex; flex-direction: column; gap: 6px; }
+.ei-msg-btn  { background: #f97316; color: #fff; border: none; padding: 7px 10px; border-radius: 10px; font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 11px; cursor: pointer; width: 100%; }
+.ei-msg-teal { background: #0d9488; }
+.ei-done-btn { background: none; color: #aaa; border: 2px solid #e5e7eb; padding: 5px 10px; border-radius: 10px; font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 11px; cursor: pointer; width: 100%; }
+.ei-done-btn:hover { border-color: #0d9488; color: #0d9488; }
+.col-empty { color: #ccc; font-size: 13px; font-weight: 700; text-align: center; padding: 24px 10px; }
+
+.tbr-input-row { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+.tbr-input-row input { flex: 1; min-width: 120px; border: 2px solid #fed7aa; border-radius: 12px; padding: 9px 12px; font-family: 'Nunito', sans-serif; font-size: 13px; font-weight: 700; background: #fffbf0; color: #2d2d2d; outline: none; }
+.tbr-input-row input:focus { border-color: #f97316; }
+.tbr-add-btn { background: #f97316; color: #fff; border: none; padding: 9px 18px; border-radius: 12px; font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 13px; cursor: pointer; white-space: nowrap; box-shadow: 0 3px 0 #c2410c; }
+.tbr-add-btn:active { box-shadow: none; transform: translateY(3px); }
+.tbr-row { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 2px solid #f3f4f6; }
+.tbr-row:last-child { border-bottom: none; }
+.tbr-icon { font-size: 22px; flex-shrink: 0; }
+.tbr-info { flex: 1; min-width: 0; }
+.tbr-title { font-weight: 900; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tbr-author { font-size: 12px; color: #aaa; font-weight: 600; }
+.tbr-available { font-size: 11px; font-weight: 800; padding: 3px 10px; border-radius: 999px; background: #dcfce7; color: #166534; white-space: nowrap; flex-shrink: 0; }
+.tbr-remove { background: none; border: none; color: #f87171; font-size: 20px; cursor: pointer; line-height: 1; padding: 4px; flex-shrink: 0; }
+.tbr-remove:hover { color: #ef4444; }
+.tbr-notify-btn { background: #f3f4f6; color: #555; border: 2px solid #e5e7eb; padding: 4px 12px; border-radius: 999px; font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 11px; cursor: pointer; white-space: nowrap; flex-shrink: 0; }
+.tbr-notify-btn:hover { border-color: #f97316; color: #f97316; background: #fff7ed; }
+.tbr-row-available { cursor: pointer; }
+.tbr-row-available:hover .tbr-title { color: #f97316; }
+.tbr-available { cursor: pointer; }
+
+.toast { position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%) translateY(80px); background: #1a1a1a; color: #fff; padding: 12px 24px; border-radius: 999px; font-weight: 800; font-size: 14px; transition: transform 0.25s; z-index: 999; }
+.toast.show { transform: translateX(-50%) translateY(0); }
+
+.jump-nav { background: #fff; border: 2px solid #f3f4f6; border-radius: 16px; padding: 12px 16px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; box-shadow: 0 3px 0 #e5e7eb; }
+.jump-label { font-size: 11px; font-weight: 900; color: #aaa; text-transform: uppercase; letter-spacing: 0.6px; white-space: nowrap; }
+.jump-link { font-size: 12px; font-weight: 800; color: #f97316; text-decoration: none; padding: 4px 12px; border-radius: 999px; border: 2px solid #fed7aa; background: #fff7ed; transition: all 0.12s; white-space: nowrap; }
+.jump-link:hover { background: #f97316; color: #fff; border-color: #f97316; }
+
+.profile-card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+.profile-card-top h2 { margin-bottom: 0; }
+.edit-profile-btn { background: none; border: 2px solid #e5e7eb; color: #555; padding: 7px 16px; border-radius: 999px; font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 13px; cursor: pointer; }
+.edit-profile-btn:hover { border-color: #f97316; color: #f97316; }
+.cancel-edit-btn { background: none; border: 2px solid #e5e7eb; color: #aaa; padding: 10px 20px; border-radius: 12px; font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 14px; cursor: pointer; }
+.cancel-edit-btn:hover { border-color: #f87171; color: #f87171; }
+.profile-view-fields { display: flex; gap: 28px; flex-wrap: wrap; }
+.profile-stat { display: flex; flex-direction: column; gap: 4px; }
+.profile-stat-label { font-size: 11px; font-weight: 900; color: #aaa; text-transform: uppercase; letter-spacing: 0.5px; }
+.profile-stat-value { font-size: 20px; font-weight: 900; color: #1a1a1a; }
+
+footer { background: #1a1a1a; color: #999; text-align: center; padding: 26px 32px; font-size: 14px; font-weight: 700; margin-top: 40px; }
+footer span { color: #f97316; font-family: 'Pacifico', cursive; font-size: 16px; }
+</style>
+</head>
+<body>
+<nav>
+  <div class="nav-logo" onclick="location.href='homepage.html'"><div class="icon">🏡</div> LittleBookExchange</div>
+  <div class="nav-links">
+    <a href="browse.html">Browse</a>
+    <a href="post-listing.html">Post a Book</a>
+    <a href="messages.html">Messages</a>
+    <a href="profile.html" style="color:#f97316">Profile</a>
+    <a href="homepage.html" class="nav-btn">Sign Out</a>
+  </div>
+</nav>
+
+<div class="page">
+
+  <!-- Jump Navigation -->
+  <div class="jump-nav">
+    <span class="jump-label">Jump to</span>
+    <a href="#profile"   class="jump-link">Profile</a>
+    <a href="#saved"     class="jump-link">Saved Books</a>
+    <a href="#tbr"       class="jump-link">To Be Read</a>
+    <a href="#listings"  class="jump-link">My Listings</a>
+    <a href="#exchanges" class="jump-link">Pending Exchanges</a>
+  </div>
+
+  <!-- Profile Form -->
+  <div class="card" id="profile">
+    <div class="profile-card-top">
+      <h2>Your Profile</h2>
+      <button class="edit-profile-btn" id="edit-profile-btn" onclick="toggleProfileEdit()">✏️ Edit</button>
+    </div>
+    <!-- View mode -->
+    <div id="profile-view" class="profile-view-fields">
+      <div class="profile-stat">
+        <span class="profile-stat-label">Name</span>
+        <span class="profile-stat-value" id="view-name">Sean B.</span>
+      </div>
+      <div class="profile-stat">
+        <span class="profile-stat-label">City</span>
+        <span class="profile-stat-value" id="view-city">Chicago</span>
+      </div>
+      <div class="profile-stat">
+        <span class="profile-stat-label">State</span>
+        <span class="profile-stat-value" id="view-state">IL</span>
+      </div>
+    </div>
+    <!-- Edit mode -->
+    <div id="profile-edit" style="display:none">
+      <label>Name</label>
+      <input type="text" id="p-name" value="Sean B."/>
+      <label>City</label>
+      <input type="text" id="p-city" value="Chicago"/>
+      <label>State</label>
+      <input type="text" id="p-state" value="IL"/>
+      <div style="display:flex;gap:10px;margin-top:4px">
+        <button class="save-btn" id="profile-save-btn">Save Changes</button>
+        <button class="cancel-edit-btn" onclick="cancelProfileEdit()">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Saved Books -->
+  <div class="card" id="saved">
+    <div class="listings-header">
+      <h2>❤️ Saved Books</h2>
+    </div>
+    <div class="saved-grid" id="saved-grid"></div>
+    <div id="saved-empty" class="empty-row" style="display:none">
+      No saved books yet. <a href="browse.html">Browse listings</a> and tap the ♡ to save!
+    </div>
+  </div>
+
+  <!-- To Be Read -->
+  <div class="card" id="tbr">
+    <div class="listings-header">
+      <h2>📚 To Be Read</h2>
+    </div>
+    <p style="font-size:13px;color:#aaa;font-weight:700;margin-bottom:16px">Add books you want to read — we'll alert you when one is listed nearby.</p>
+    <div class="tbr-input-row">
+      <input type="text" id="tbr-title" placeholder="Book title..."/>
+      <input type="text" id="tbr-author" placeholder="Author (optional)..."/>
+      <button class="tbr-add-btn" id="tbr-add-btn">+ Add</button>
+    </div>
+    <div id="tbr-list"></div>
+    <div id="tbr-empty" class="empty-row" style="display:none">No books on your TBR yet. Add one above!</div>
+  </div>
+
+  <!-- My Listings -->
+  <div class="card" id="listings">
+    <div class="listings-header">
+      <h2>My Listings</h2>
+      <button class="post-btn" onclick="location.href='post-listing.html'">+ Post a Book</button>
+    </div>
+    <div id="my-listings"></div>
+    <div id="listings-empty" class="empty-row" style="display:none">
+      You haven't posted any books yet. <a href="post-listing.html">Post your first one!</a>
+    </div>
+  </div>
+
+  <!-- Pending Exchanges -->
+  <div class="card" id="exchanges">
+    <div class="listings-header">
+      <h2>📦 Pending Exchanges <span class="pending-badge" id="sales-badge" style="display:none"></span></h2>
+    </div>
+    <p style="font-size:13px;color:#aaa;font-weight:700;margin-bottom:16px">Books you've sold that need to be handed off, and books you've bought that you're waiting to receive.</p>
+    <div id="sales-queue"></div>
+    <div id="sales-empty" class="empty-row" style="display:none">No pending exchanges — you're all caught up! 🎉</div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<footer><span>LittleBookExchange</span> · Books finding new homes in your neighborhood · © 2026</footer>
+
+<script>
+const STATE_ABBR = {
+  'alabama':'AL','alaska':'AK','arizona':'AZ','arkansas':'AR','california':'CA',
+  'colorado':'CO','connecticut':'CT','delaware':'DE','florida':'FL','georgia':'GA',
+  'hawaii':'HI','idaho':'ID','illinois':'IL','indiana':'IN','iowa':'IA',
+  'kansas':'KS','kentucky':'KY','louisiana':'LA','maine':'ME','maryland':'MD',
+  'massachusetts':'MA','michigan':'MI','minnesota':'MN','mississippi':'MS','missouri':'MO',
+  'montana':'MT','nebraska':'NE','nevada':'NV','new hampshire':'NH','new jersey':'NJ',
+  'new mexico':'NM','new york':'NY','north carolina':'NC','north dakota':'ND','ohio':'OH',
+  'oklahoma':'OK','oregon':'OR','pennsylvania':'PA','rhode island':'RI','south carolina':'SC',
+  'south dakota':'SD','tennessee':'TN','texas':'TX','utah':'UT','vermont':'VT',
+  'virginia':'VA','washington':'WA','west virginia':'WV','wisconsin':'WI','wyoming':'WY',
+  'district of columbia':'DC'
+};
+function toStateAbbr(val) {
+  const mapped = STATE_ABBR[val.toLowerCase().trim()];
+  if (mapped) return mapped;
+  return val.trim().length <= 2 ? val.toUpperCase() : val;
+}
+
+function fmt(n) { return '$' + Number(n).toFixed(2); }
+
+function getListings() { return JSON.parse(localStorage.getItem('lbe_listings') || '[]'); }
+function setListings(l) { localStorage.setItem('lbe_listings', JSON.stringify(l)); }
+function getSaved()    { return JSON.parse(localStorage.getItem('lbe_saved') || '[]'); }
+function setSaved(s)   { localStorage.setItem('lbe_saved', JSON.stringify(s)); }
+
+const SALES_SEED = [
+  {id:1001, role:'seller', bookId:3, title:"Atomic Habits",          author:"James Clear",          emoji:"📕", gradient:"c3", price:5, total:5.96, counterparty:"Alex M.",    soldAt:"June 23, 2026", status:"pending"},
+  {id:1002, role:'seller', bookId:7, title:"Becoming",               author:"Michelle Obama",        emoji:"📔", gradient:"c7", price:4, total:4.77, counterparty:"Jordan T.",  soldAt:"June 24, 2026", status:"pending"},
+  {id:1003, role:'buyer',  bookId:5, title:"Where the Crawdads Sing",author:"Delia Owens",           emoji:"📒", gradient:"c5", price:2, total:2.39, counterparty:"Sarah M.",   soldAt:"June 24, 2026", status:"pending"},
+];
+function getSales() {
+  if (!localStorage.getItem('lbe_sales')) localStorage.setItem('lbe_sales', JSON.stringify(SALES_SEED));
+  return JSON.parse(localStorage.getItem('lbe_sales'));
+}
+function setSales(s) { localStorage.setItem('lbe_sales', JSON.stringify(s)); }
+
+function renderSalesQueue() {
+  const pending = getSales().filter(s => s.status === 'pending');
+  const sold    = pending.filter(s => s.role === 'seller');
+  const bought  = pending.filter(s => s.role === 'buyer');
+  const badge   = document.getElementById('sales-badge');
+  const el      = document.getElementById('sales-queue');
+  const empty   = document.getElementById('sales-empty');
+  badge.textContent   = pending.length;
+  badge.style.display = pending.length ? 'inline-flex' : 'none';
+  if (!pending.length) { el.innerHTML = ''; empty.style.display = 'block'; return; }
+  empty.style.display = 'none';
+
+  function itemHTML(s) {
+    const isSeller = s.role === 'seller';
+    return `
+      <div class="exchange-item ${isSeller ? 'ei-sold' : 'ei-bought'}">
+        <div class="ei-book">
+          <div class="ei-thumb ${s.gradient}">${s.emoji}</div>
+          <div class="ei-info">
+            <div class="ei-title">${s.title}</div>
+            <div class="ei-author">${s.author}</div>
+          </div>
+        </div>
+        <div class="ei-party">${isSeller ? '👤 Buyer' : '🏪 Seller'}: ${s.counterparty}</div>
+        <div class="ei-meta">${fmt(s.total)} · ${s.soldAt}</div>
+        <div class="ei-btns">
+          <button class="ei-msg-btn ${isSeller ? '' : 'ei-msg-teal'}" onclick="location.href='message-thread.html'">
+            💬 ${isSeller ? 'Message Buyer' : 'Message Seller'}
+          </button>
+          <button class="ei-done-btn" onclick="markComplete(${s.id})">
+            ✓ ${isSeller ? 'Mark Handed Off' : 'Mark Received'}
+          </button>
+        </div>
+      </div>`;
+  }
+
+  el.innerHTML = `
+    <div class="exchange-columns">
+      <div class="exchange-col">
+        <div class="exchange-col-head ech-sold">📤 Sold (${sold.length})</div>
+        ${sold.length ? sold.map(itemHTML).join('') : '<div class="col-empty">Nothing sold yet</div>'}
+      </div>
+      <div class="exchange-col">
+        <div class="exchange-col-head ech-bought">📥 Bought (${bought.length})</div>
+        ${bought.length ? bought.map(itemHTML).join('') : '<div class="col-empty">Nothing bought yet</div>'}
+      </div>
+    </div>`;
+}
+
+function markComplete(id) {
+  const sales = getSales();
+  const s = sales.find(x => x.id === id);
+  if (!s) return;
+  s.status = 'completed';
+  setSales(sales);
+  renderSalesQueue();
+  showToast(s.role === 'seller' ? '✓ Handed off successfully!' : '✓ Book received — enjoy reading!');
+}
+
+function priceLabel(b) {
+  return b.price === 0 ? '<span style="color:#0d9488;font-weight:800">FREE</span>' : `<span style="color:#f97316;font-weight:800">$${Number(b.price).toFixed(2)}</span>`;
+}
+
+function renderSaved() {
+  const saved = getSaved();
+  const grid  = document.getElementById('saved-grid');
+  const empty = document.getElementById('saved-empty');
+  if (!saved.length) { grid.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display = 'none';
+  grid.innerHTML = saved.map(b => `
+    <div class="saved-card" onclick="viewBook(${b.id})">
+      <div class="saved-thumb ${b.gradient}">${b.emoji}</div>
+      <div class="saved-info">
+        <div class="saved-title">${b.title}</div>
+        <div class="saved-meta">${b.author} · ${b.price===0?'FREE':'$'+Number(b.price).toFixed(2)}</div>
+      </div>
+      <button class="unsave-btn" onclick="unsave(event,${b.id})" title="Remove">♥</button>
+    </div>`).join('');
+}
+
+function unsave(e, id) {
+  e.stopPropagation();
+  let saved = getSaved().filter(s => s.id !== id);
+  setSaved(saved);
+  renderSaved();
+  showToast('💔 Removed from saved');
+}
+
+function viewBook(id) {
+  localStorage.setItem('lbe_current_book', id);
+  location.href = 'book-detail.html';
+}
+
+function renderMyListings() {
+  const mine  = getListings().filter(b => b.mine);
+  const el    = document.getElementById('my-listings');
+  const empty = document.getElementById('listings-empty');
+  if (!mine.length) { el.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display = 'none';
+
+  el.innerHTML = mine.map(b => {
+    const statusClass = b.status === 'sold' ? 's-sold' : b.status === 'given' ? 's-given' : 's-active';
+    const statusLabel = b.status === 'sold' ? 'Sold' : b.status === 'given' ? 'Given Away' : 'Active';
+    const actionBtns = b.status === 'active'
+      ? `<button class="action-btn mark-sold"  onclick="markStatus(${b.id},'sold')">Mark Sold</button>
+         <button class="action-btn mark-given" onclick="markStatus(${b.id},'given')">Mark Given</button>`
+      : `<button class="action-btn mark-active" onclick="markStatus(${b.id},'active')">Re-list</button>`;
+    return `
+      <div class="listing-row" id="row-${b.id}">
+        <div class="listing-thumb ${b.gradient}">${b.emoji}</div>
+        <div class="listing-info">
+          <div class="listing-title" onclick="viewBook(${b.id})">${b.title}</div>
+          <div class="listing-meta">${b.author} · ${b.price===0?'FREE':'$'+Number(b.price).toFixed(2)} · ${b.condition}</div>
+        </div>
+        <span class="status ${statusClass}">${statusLabel}</span>
+        <div class="actions">
+          ${actionBtns}
+          <button class="action-btn delete-btn" onclick="deleteListing(${b.id})">Delete</button>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function markStatus(id, status) {
+  const listings = getListings();
+  const book = listings.find(b => b.id === id);
+  if (!book) return;
+  book.status = status;
+  setListings(listings);
+  // also update saved copy if present
+  let saved = getSaved();
+  const si = saved.findIndex(s => s.id === id);
+  if (si >= 0) { saved[si].status = status; setSaved(saved); }
+  renderMyListings();
+  renderSaved();
+  showToast(status === 'sold' ? '✓ Marked as sold!' : status === 'given' ? '✓ Marked as given away!' : '✓ Re-listed!');
+}
+
+function deleteListing(id) {
+  if (!confirm('Delete this listing?')) return;
+  let listings = getListings().filter(b => b.id !== id);
+  setListings(listings);
+  let saved = getSaved().filter(s => s.id !== id);
+  setSaved(saved);
+  renderMyListings();
+  renderSaved();
+  showToast('🗑️ Listing deleted');
+}
+
+function getTBR() { return JSON.parse(localStorage.getItem('lbe_tbr') || '[]'); }
+function setTBR(t) { localStorage.setItem('lbe_tbr', JSON.stringify(t)); }
+
+function isTBRAvailable(entry) {
+  return getListings().some(b =>
+    (!b.status || b.status === 'active') && !b.mine &&
+    b.title.toLowerCase().includes(entry.title.toLowerCase()) &&
+    (!entry.author || b.author.toLowerCase().includes(entry.author.toLowerCase()))
+  );
+}
+
+function renderTBR() {
+  const list = getTBR();
+  const el    = document.getElementById('tbr-list');
+  const empty = document.getElementById('tbr-empty');
+  if (!list.length) { el.innerHTML = ''; empty.style.display = 'block'; return; }
+  empty.style.display = 'none';
+  el.innerHTML = list.map((entry, i) => {
+    const avail = isTBRAvailable(entry);
+    return `
+      <div class="tbr-row ${avail ? 'tbr-row-available' : ''}" ${avail ? `onclick="viewTBRResults(${i})"` : ''}>
+        <div class="tbr-icon">📖</div>
+        <div class="tbr-info">
+          <div class="tbr-title">${entry.title}</div>
+          ${entry.author ? `<div class="tbr-author">by ${entry.author}</div>` : ''}
+        </div>
+        ${avail
+          ? '<span class="tbr-available">✓ Available now!</span>'
+          : `<button class="tbr-notify-btn" onclick="event.stopPropagation();notifyTBR(${i})">🔔 Notify Me</button>`}
+        <button class="tbr-remove" onclick="event.stopPropagation();removeTBR(${i})" title="Remove">×</button>
+      </div>`;
+  }).join('');
+}
+
+function viewTBRResults(i) {
+  const entry = getTBR()[i];
+  localStorage.setItem('lbe_tbr_search', JSON.stringify(entry));
+  location.href = 'browse.html';
+}
+
+function notifyTBR(i) {
+  showToast('🔔 We\'ll notify you when this becomes available!');
+}
+
+function addTBR() {
+  const titleEl  = document.getElementById('tbr-title');
+  const authorEl = document.getElementById('tbr-author');
+  const title    = titleEl.value.trim();
+  if (!title) { titleEl.focus(); return; }
+  const list = getTBR();
+  list.push({ title, author: authorEl.value.trim() });
+  setTBR(list);
+  titleEl.value = '';
+  authorEl.value = '';
+  renderTBR();
+  showToast('📚 Added to your TBR list!');
+}
+
+function removeTBR(i) {
+  const list = getTBR();
+  list.splice(i, 1);
+  setTBR(list);
+  renderTBR();
+  showToast('Removed from TBR');
+}
+
+document.getElementById('tbr-add-btn').addEventListener('click', addTBR);
+document.getElementById('tbr-title').addEventListener('keyup', e => { if (e.key === 'Enter') addTBR(); });
+
+function toggleProfileEdit() {
+  document.getElementById('profile-view').style.display = 'none';
+  document.getElementById('profile-edit').style.display = 'block';
+  document.getElementById('edit-profile-btn').style.display = 'none';
+}
+
+function cancelProfileEdit() {
+  document.getElementById('profile-view').style.display = 'flex';
+  document.getElementById('profile-edit').style.display = 'none';
+  document.getElementById('edit-profile-btn').style.display = 'inline-block';
+}
+
+document.getElementById('p-state').addEventListener('input', e => {
+  const abbr = toStateAbbr(e.target.value);
+  if (abbr !== e.target.value) e.target.value = abbr;
+});
+
+document.getElementById('profile-save-btn').addEventListener('click', () => {
+  const name  = document.getElementById('p-name').value.trim();
+  const city  = document.getElementById('p-city').value.trim();
+  const state = document.getElementById('p-state').value.trim();
+  document.getElementById('view-name').textContent  = name  || '—';
+  document.getElementById('view-city').textContent  = city  || '—';
+  document.getElementById('view-state').textContent = state || '—';
+  cancelProfileEdit();
+  showToast('✓ Profile saved!');
+});
+
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+renderSaved();
+renderTBR();
+renderMyListings();
+renderSalesQueue();
+</script>
+</body>
+</html>
