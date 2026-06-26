@@ -12,17 +12,21 @@ export const metadata: Metadata = {
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   let userName: string | null = null
 
-  try {
-    const { createClient } = await import('@/lib/supabase/server')
-    const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (user) {
-      const { data: p } = await supabase.from('profiles').select('username').eq('id', user.id).single()
-      userName = p?.username ?? user.email ?? 'Me'
-    }
-  } catch {
-    const demoUser = cookies().get('lbe_demo_user')?.value
-    if (demoUser) userName = demoUser
+  // Check demo cookie first — getUser() returns null silently with placeholder URL
+  // so we can't rely on the catch block to read it
+  const demoCookie = cookies().get('lbe_demo_user')?.value
+  if (demoCookie) {
+    userName = demoCookie
+  } else {
+    try {
+      const { createClient } = await import('@/lib/supabase/server')
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        const { data: p } = await supabase.from('profiles').select('username').eq('id', user.id).single()
+        userName = p?.username ?? user.email ?? 'Me'
+      }
+    } catch {}
   }
 
   return (

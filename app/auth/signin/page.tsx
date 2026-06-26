@@ -15,7 +15,7 @@ export default function SignInPage({
     // Demo mode: Supabase not configured — accept any credentials
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL?.startsWith('http')) {
       const { cookies } = await import('next/headers')
-      cookies().set('lbe_demo_user', name || 'demouser', { path: '/', maxAge: 60 * 60 * 24 * 7 })
+      cookies().set('lbe_demo_user', name || 'demouser', { path: '/', maxAge: 60 * 60 * 24 * 7, sameSite: 'lax' })
       go(searchParams.redirect ?? '/profile')
     }
 
@@ -38,7 +38,7 @@ export default function SignInPage({
     } catch (err: any) {
       if (err?.digest?.startsWith('NEXT_REDIRECT')) throw err
       const { cookies } = await import('next/headers')
-      cookies().set('lbe_demo_user', name || 'demouser', { path: '/', maxAge: 60 * 60 * 24 * 7 })
+      cookies().set('lbe_demo_user', name || 'demouser', { path: '/', maxAge: 60 * 60 * 24 * 7, sameSite: 'lax' })
       go(searchParams.redirect ?? '/profile')
     }
   }
