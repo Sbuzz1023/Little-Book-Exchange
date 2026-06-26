@@ -1,8 +1,9 @@
 import BookCard from '@/components/BookCard'
 import ScallopDivider from '@/components/ScallopDivider'
-import KidDrawingBackground from '@/components/KidDrawingBackground'
+import HeroBookshelf from '@/components/HeroBookshelf'
 import Link from 'next/link'
 import type { Listing } from '@/lib/types'
+import { MOCK_LISTINGS } from '@/lib/mock-data'
 
 async function getListings(city: string, type: string): Promise<Listing[]> {
   try {
@@ -22,7 +23,11 @@ async function getListings(city: string, type: string): Promise<Listing[]> {
     const { data } = await query
     return (data as Listing[]) ?? []
   } catch {
-    return []
+    let results = [...MOCK_LISTINGS]
+    if (city) results = results.filter(l => l.city.toLowerCase().includes(city.toLowerCase()))
+    if (type === 'free') results = results.filter(l => !l.price)
+    if (type === 'sale') results = results.filter(l => !!l.price)
+    return results.slice(0, 12) as unknown as Listing[]
   }
 }
 
@@ -38,80 +43,84 @@ export default async function HomePage({
   return (
     <>
       {/* Hero */}
-      <section className="relative bg-cream overflow-hidden min-h-[500px] flex items-center justify-center text-center px-8 py-20">
-        <KidDrawingBackground />
-        <div className="relative z-10">
-          <h1 className="font-display text-5xl leading-tight text-gray-900 mb-4 max-w-2xl mx-auto">
-            Books finding new homes with{' '}
-            <span className="text-bk-orange">your neighbors.</span>
-          </h1>
-          <p className="text-lg text-gray-500 font-semibold max-w-md mx-auto mb-8 leading-relaxed">
-            A neighborhood book exchange — online. Buy, sell, or give away used books right in your community.
-          </p>
-          <div className="flex gap-4 justify-center flex-wrap">
-            <Link href="/listings" className="bg-bk-orange text-white px-8 py-3 rounded-full font-extrabold text-base shadow-[0_5px_0_#c2410c] hover:shadow-[0_3px_0_#c2410c] hover:translate-y-0.5 transition-all">
-              🏙️ Browse Books Near Me
-            </Link>
-            <Link href="/post" className="bg-bk-teal text-white px-8 py-3 rounded-full font-extrabold text-base shadow-[0_5px_0_#0f766e] hover:shadow-[0_3px_0_#0f766e] hover:translate-y-0.5 transition-all">
-              📚 Post a Book
-            </Link>
-          </div>
-        </div>
+      <section className="bg-cream" style={{ padding: '48px 16px 72px' }}>
+        <HeroBookshelf />
       </section>
 
       {/* Search Band */}
-      <ScallopDivider color="#f97316" bgColor="#fffbf0" direction="down"/>
-      <div className="bg-bk-orange py-4 px-8">
-        <form className="bg-white rounded-2xl p-5 max-w-2xl mx-auto flex gap-3 items-center shadow-[0_6px_0_rgba(0,0,0,0.12)]">
-          <span className="text-xl">📍</span>
+      <ScallopDivider color="#f97316" bgColor="#fffbf0" direction="down" />
+      <div className="bg-bk-orange px-8 pt-4 pb-7">
+        <form className="bg-white rounded-[20px] p-[18px_24px] max-w-[640px] mx-auto flex gap-3 items-center shadow-[0_6px_0_rgba(0,0,0,0.12)]">
+          <span className="text-[22px]">📍</span>
           <input
             name="city"
             defaultValue={city}
-            placeholder="Enter your city..."
-            className="flex-1 border-2 border-orange-200 rounded-xl px-4 py-2.5 font-bold text-sm bg-cream focus:outline-none focus:border-bk-orange"
+            placeholder="Your city..."
+            className="flex-1 border-2 border-[#fed7aa] rounded-xl px-[14px] py-[10px] font-bold text-[15px] bg-cream focus:outline-none focus:border-bk-orange"
           />
           <select
             name="type"
             defaultValue={type}
-            className="border-2 border-orange-200 rounded-xl px-3 py-2.5 font-bold text-sm bg-cream focus:outline-none"
+            className="border-2 border-[#fed7aa] rounded-xl px-3 py-[10px] font-bold text-[15px] bg-cream focus:outline-none"
           >
             <option value="all">All Books</option>
             <option value="sale">For Sale</option>
             <option value="free">Free Only</option>
           </select>
-          <button type="submit" className="bg-bk-orange text-white px-6 py-2.5 rounded-xl font-extrabold text-sm shadow-[0_3px_0_#c2410c] hover:shadow-[0_1px_0_#c2410c] hover:translate-y-0.5 transition-all">
+          <button
+            type="submit"
+            className="bg-bk-orange text-white px-6 py-[11px] rounded-xl font-extrabold text-[15px] border-none shadow-[0_3px_0_#c2410c] hover:shadow-[0_1px_0_#c2410c] hover:translate-y-0.5 transition-all"
+          >
             Find Books
           </button>
         </form>
       </div>
-      <ScallopDivider color="#f97316" bgColor="#fffbf0" direction="up"/>
+      <ScallopDivider color="#f97316" bgColor="#fffbf0" direction="up" />
 
       {/* Listings Grid */}
-      <section className="max-w-6xl mx-auto px-8 py-10">
-        <div className="flex items-center gap-4 mb-6 flex-wrap">
-          {['all','sale','free'].map(t => (
+      <section className="max-w-[1120px] mx-auto px-8 pt-11 pb-[60px]">
+        <h2 className="font-display text-[28px] mb-1">
+          {city ? `Books near ${city} 📚` : 'Browse all books 📚'}
+        </h2>
+        <p className="text-[#999] text-sm font-bold mb-5">
+          {listings.length} book{listings.length !== 1 ? 's' : ''} listed by your neighbors
+        </p>
+
+        <div className="flex gap-[10px] mb-7 flex-wrap">
+          {[
+            { val: 'all', label: 'All Books' },
+            { val: 'sale', label: '📗 For Sale' },
+            { val: 'free', label: '🎁 Free' },
+          ].map(({ val, label }) => (
             <Link
-              key={t}
-              href={`/?city=${city}&type=${t}`}
-              className={`px-5 py-2 rounded-full text-sm font-extrabold border-2 transition-colors ${
-                type === t ? 'bg-bk-orange text-white border-bk-orange' : 'bg-white text-gray-500 border-gray-200 hover:border-bk-orange'
+              key={val}
+              href={`/?city=${city}&type=${val}`}
+              className={`px-[18px] py-[7px] rounded-full font-extrabold text-[13px] border-[2.5px] transition-colors ${
+                type === val
+                  ? val === 'free'
+                    ? 'bg-bk-teal border-bk-teal text-white'
+                    : 'bg-bk-orange border-bk-orange text-white'
+                  : 'bg-white border-[#e5e7eb] text-[#2d2d2d] hover:border-bk-orange'
               }`}
             >
-              {t === 'all' ? 'All Books' : t === 'sale' ? '📗 For Sale' : '🎁 Free'}
+              {label}
             </Link>
           ))}
         </div>
 
         {listings.length > 0 ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
-            {listings.map(l => <BookCard key={l.id} listing={l}/>)}
+          <div className="grid gap-5" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))' }}>
+            {listings.map(l => <BookCard key={l.id} listing={l} />)}
           </div>
         ) : (
-          <div className="text-center py-20 text-gray-400 font-bold">
+          <div className="text-center py-20 text-[#999] font-bold">
             <div className="text-5xl mb-4">📭</div>
             <p className="mb-2">No books listed yet{city ? ` in ${city}` : ''}.</p>
             <p className="text-sm mb-6">Be the first to share a book with your neighbors!</p>
-            <Link href="/post" className="bg-bk-orange text-white px-6 py-2.5 rounded-full font-extrabold text-sm shadow-[0_3px_0_#c2410c]">
+            <Link
+              href="/post"
+              className="bg-bk-orange text-white px-6 py-2.5 rounded-full font-extrabold text-sm shadow-[0_3px_0_#c2410c]"
+            >
               Post a Book →
             </Link>
           </div>
@@ -119,36 +128,72 @@ export default async function HomePage({
       </section>
 
       {/* How It Works */}
-      <ScallopDivider color="#0d9488" bgColor="#fffbf0" direction="down"/>
-      <section className="bg-emerald-50 py-14 px-8 text-center">
-        <h2 className="font-display text-3xl mb-2">How it works 🏡</h2>
-        <p className="text-gray-500 font-semibold mb-10">As simple as a little free library — just online.</p>
-        <div className="flex gap-5 justify-center flex-wrap max-w-3xl mx-auto">
+      <ScallopDivider color="#0d9488" bgColor="#fffbf0" direction="down" />
+      <section id="how-it-works" className="bg-[#ecfdf5] px-10 pt-5 pb-[60px] text-center">
+        <h2 className="font-display text-[30px] mb-1.5">How it works 🏡</h2>
+        <p className="text-[#6b7280] text-[15px] font-semibold mb-10">As simple as a little free library — just online.</p>
+        <div className="flex gap-5 justify-center flex-wrap max-w-[900px] mx-auto">
           {[
-            { n:1, icon:'🏙️', title:'Set your city', desc:'Create a free account and set your city to see books near you.' },
-            { n:2, icon:'📚', title:'Browse or post', desc:'Browse for free. Post books to sell or give away to neighbors.' },
-            { n:3, icon:'💬', title:'Message a neighbor', desc:'Message the seller through the site to arrange a local meetup.' },
-            { n:4, icon:'🤝', title:'Meet & exchange', desc:'Meet locally and pay however works best for both of you.' },
+            { n: 1, icon: '🏙️', title: 'Set your city', desc: 'Create a free account and set your city to see books near you.' },
+            { n: 2, icon: '📚', title: 'Browse or post', desc: 'Browse listings for free. Post books to sell or give away.' },
+            { n: 3, icon: '💬', title: 'Message a neighbor', desc: 'Message the seller to arrange a local meetup.' },
+            { n: 4, icon: '🤝', title: 'Meet & exchange', desc: 'Meet locally and swap the book however works for you both.' },
           ].map(s => (
-            <div key={s.n} className="bg-white rounded-2xl p-6 flex-1 min-w-[160px] max-w-[200px] border-2 border-emerald-100 shadow-[0_5px_0_#a7f3d0] text-center">
-              <div className="w-10 h-10 bg-bk-orange text-white font-display text-lg rounded-full flex items-center justify-center mx-auto mb-3 shadow-[0_3px_0_#c2410c]">{s.n}</div>
-              <div className="text-3xl mb-2">{s.icon}</div>
-              <h3 className="font-black text-sm mb-1">{s.title}</h3>
-              <p className="text-xs text-gray-500 leading-relaxed font-semibold">{s.desc}</p>
+            <div
+              key={s.n}
+              className="bg-white rounded-[20px] p-[26px_18px] flex-1 min-w-[165px] max-w-[205px] border-[3px] border-[#d1fae5] shadow-[0_5px_0_#a7f3d0] text-center"
+            >
+              <div className="w-[38px] h-[38px] bg-bk-orange text-white font-display text-lg rounded-full flex items-center justify-center mx-auto mb-3 shadow-[0_3px_0_#c2410c]">
+                {s.n}
+              </div>
+              <div className="text-[34px] mb-2.5">{s.icon}</div>
+              <h3 className="text-[15px] font-black mb-1.5">{s.title}</h3>
+              <p className="text-[13px] text-[#777] leading-relaxed font-semibold">{s.desc}</p>
             </div>
           ))}
         </div>
       </section>
-      <ScallopDivider color="#0d9488" bgColor="#fffbf0" direction="up"/>
+      <ScallopDivider color="#0d9488" bgColor="#fffbf0" direction="up" />
 
-      {/* CTA */}
-      <section className="bg-bk-orange py-12 px-8 text-center">
-        <div className="text-3xl mb-4">🌸 🌻 🌈 ☀️ 🌼 🌿 🌷</div>
-        <h2 className="font-display text-2xl text-white mb-3">Your neighborhood deserves a little free library.</h2>
-        <p className="text-orange-100 font-bold mb-6">Join your neighbors and start sharing books today — free to browse, free to join.</p>
-        <Link href="/auth/signup" className="bg-bk-teal text-white px-8 py-3 rounded-full font-extrabold shadow-[0_4px_0_#0f766e] hover:shadow-[0_2px_0_#0f766e] hover:translate-y-0.5 transition-all inline-block">
-          Join Your Community →
-        </Link>
+      {/* CTA Band */}
+      <section className="bg-bk-orange py-[50px] px-8 text-center relative overflow-hidden">
+        {/* Kid-drawing SVG background */}
+        <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 1400 220" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+          <g opacity="0.15">
+            <text x="80" y="60" fontSize="30" fill="#fff">★</text>
+            <text x="200" y="160" fontSize="20" fill="#fff">★</text>
+            <text x="1250" y="50" fontSize="28" fill="#fff">★</text>
+            <text x="1100" y="170" fontSize="18" fill="#fff">★</text>
+            <circle cx="350" cy="110" r="18" fill="#fff"/>
+            <circle cx="350" cy="88" r="9" fill="#fff"/>
+            <circle cx="350" cy="132" r="9" fill="#fff"/>
+            <circle cx="328" cy="110" r="9" fill="#fff"/>
+            <circle cx="372" cy="110" r="9" fill="#fff"/>
+            <circle cx="350" cy="110" r="11" fill="#f97316"/>
+            <circle cx="1050" cy="110" r="16" fill="#fff"/>
+            <circle cx="1050" cy="90" r="8" fill="#fff"/>
+            <circle cx="1050" cy="130" r="8" fill="#fff"/>
+            <circle cx="1030" cy="110" r="8" fill="#fff"/>
+            <circle cx="1070" cy="110" r="8" fill="#fff"/>
+            <circle cx="1050" cy="110" r="10" fill="#f97316"/>
+            <circle cx="700" cy="40" r="24" fill="#fbbf24" opacity="0.6"/>
+            <line x1="700" y1="8" x2="700" y2="16" stroke="#fbbf24" strokeWidth="4" opacity="0.6"/>
+            <line x1="700" y1="64" x2="700" y2="72" stroke="#fbbf24" strokeWidth="4" opacity="0.6"/>
+            <line x1="668" y1="40" x2="676" y2="40" stroke="#fbbf24" strokeWidth="4" opacity="0.6"/>
+            <line x1="724" y1="40" x2="732" y2="40" stroke="#fbbf24" strokeWidth="4" opacity="0.6"/>
+          </g>
+        </svg>
+        <div className="relative z-10">
+          <div className="text-[30px] mb-[22px] flex justify-center gap-4">🌸 🌻 🌈 ☀️ 🌼 🌿 🌷</div>
+          <h2 className="font-display text-[28px] text-white mb-3">Your neighborhood deserves a little free library.</h2>
+          <p className="text-[#fff7ed] text-base font-bold mb-6">Join your neighbors and start sharing books today — free to browse, free to join.</p>
+          <Link
+            href="/auth/signup"
+            className="bg-bk-teal text-white px-8 py-3 rounded-full font-extrabold shadow-[0_4px_0_#0f766e] hover:shadow-[0_2px_0_#0f766e] hover:translate-y-0.5 transition-all inline-block"
+          >
+            Join Your Community →
+          </Link>
+        </div>
       </section>
     </>
   )

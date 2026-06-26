@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
+import ContactToggle from './ContactToggle'
 
 export default function SignUpPage({
   searchParams,
@@ -8,27 +9,43 @@ export default function SignUpPage({
 }) {
   async function signUp(formData: FormData) {
     'use server'
-    const { createClient } = await import('@/lib/supabase/server')
-    const supabase = createClient()
-    const { error } = await supabase.auth.signUp({
-      email: formData.get('email') as string,
-      password: formData.get('password') as string,
-      options: {
-        data: {
-          name: formData.get('name') as string,
-          city: formData.get('city') as string,
+    try {
+      const { createClient } = await import('@/lib/supabase/server')
+      const supabase = createClient()
+      const { error } = await supabase.auth.signUp({
+        email: formData.get('email') as string,
+        password: formData.get('password') as string,
+        options: {
+          data: {
+            username:           (formData.get('username') as string).toLowerCase().replace(/\s+/g, ''),
+            city:               formData.get('city') as string,
+            state:              formData.get('state') as string,
+            phone:              formData.get('phone') as string,
+            contact_preference: formData.get('contact_preference') as string,
+          },
         },
-      },
-    })
-    if (error) redirect(`/auth/signup?error=${encodeURIComponent(error.message)}`)
-    redirect('/')
+      })
+      if (error) redirect(`/auth/signup?error=${encodeURIComponent(error.message)}`)
+      redirect('/')
+    } catch (err: any) {
+      if (err?.digest?.startsWith('NEXT_REDIRECT')) throw err
+      redirect(`/auth/signup?error=${encodeURIComponent('Unable to connect. Please try again later.')}`)
+    }
   }
 
+  const labelStyle: React.CSSProperties = {
+    fontSize: 12, fontWeight: 900, color: '#888', textTransform: 'uppercase', letterSpacing: '0.5px',
+  }
+  const req = <span style={{ color: '#f97316', marginLeft: 2 }}>*</span>
+  const inputClass = "w-full border-2 border-[#fed7aa] rounded-[14px] px-4 bg-cream font-bold text-[15px] focus:outline-none focus:border-bk-orange"
+  const inputStyle: React.CSSProperties = { padding: '13px 16px' }
+  const hintStyle: React.CSSProperties = { fontSize: 11, color: '#bbb', fontWeight: 600, marginTop: 5 }
+
   return (
-    <div className="min-h-[80vh] flex items-center justify-center px-8">
-      <div className="bg-white rounded-3xl p-10 w-full max-w-md border-2 border-gray-100 shadow-[0_8px_0_#e5e7eb]">
-        <h1 className="font-display text-3xl text-bk-orange mb-2 text-center">Join the Exchange</h1>
-        <p className="text-gray-400 font-semibold text-center mb-8">Free to join. Free to browse.</p>
+    <div className="flex items-center justify-center px-8" style={{ minHeight: 'calc(100vh - 68px)', padding: '40px 32px' }}>
+      <div className="bg-white rounded-[28px] p-10 w-full max-w-[440px] border-2 border-gray-100 shadow-[0_8px_0_#e5e7eb]">
+        <h1 className="font-display text-[28px] text-bk-orange text-center mb-1.5">Join the Exchange</h1>
+        <p className="text-[14px] font-bold text-center mb-7" style={{ color: '#aaa' }}>Free to join. Free to browse. 📚</p>
 
         {searchParams.error && (
           <div className="bg-red-50 border-2 border-red-200 rounded-xl px-4 py-3 text-red-700 font-bold text-sm mb-4">
@@ -36,45 +53,74 @@ export default function SignUpPage({
           </div>
         )}
 
+        <p className="text-[11px] font-semibold mb-4" style={{ color: '#bbb' }}>
+          Fields marked <span style={{ color: '#f97316' }}>*</span> are required.
+        </p>
+
         <form action={signUp} className="space-y-4">
-          <input
-            name="name"
-            placeholder="Your name"
-            required
-            className="w-full border-2 border-orange-200 rounded-xl px-4 py-3 font-bold focus:outline-none focus:border-bk-orange"
-          />
-          <input
-            name="city"
-            placeholder="Your city (e.g. Chicago, IL)"
-            required
-            className="w-full border-2 border-orange-200 rounded-xl px-4 py-3 font-bold focus:outline-none focus:border-bk-orange"
-          />
-          <input
-            name="email"
-            type="email"
-            placeholder="Email address"
-            required
-            className="w-full border-2 border-orange-200 rounded-xl px-4 py-3 font-bold focus:outline-none focus:border-bk-orange"
-          />
-          <input
-            name="password"
-            type="password"
-            placeholder="Password (min 6 chars)"
-            minLength={6}
-            required
-            className="w-full border-2 border-orange-200 rounded-xl px-4 py-3 font-bold focus:outline-none focus:border-bk-orange"
-          />
+
+          {/* Username */}
+          <div>
+            <label className="block mb-1.5" style={labelStyle}>Username{req}</label>
+            <input name="username" type="text" placeholder="e.g. sarahreads" required
+              className={inputClass} style={inputStyle} />
+          </div>
+
+          {/* City */}
+          <div>
+            <label className="block mb-1.5" style={labelStyle}>City{req}</label>
+            <input name="city" type="text" placeholder="e.g. Chicago" required
+              className={inputClass} style={inputStyle} />
+          </div>
+
+          {/* State */}
+          <div>
+            <label className="block mb-1.5" style={labelStyle}>State{req}</label>
+            <input name="state" type="text" placeholder="e.g. IL" required
+              className={inputClass} style={inputStyle} />
+          </div>
+
+          {/* Phone */}
+          <div>
+            <label className="block mb-1.5" style={labelStyle}>Phone Number{req}</label>
+            <input name="phone" type="tel" placeholder="e.g. (312) 555-0100" required
+              className={inputClass} style={inputStyle} />
+            <p style={hintStyle}>📱 Used for notifications only. We will never share your number.</p>
+          </div>
+
+          {/* Email */}
+          <div>
+            <label className="block mb-1.5" style={labelStyle}>Email Address{req}</label>
+            <input name="email" type="email" placeholder="you@email.com" required
+              className={inputClass} style={inputStyle} />
+            <p style={hintStyle}>✉️ Used for notifications only. We will never share your email.</p>
+          </div>
+
+          {/* Preferred contact toggle */}
+          <div>
+            <label className="block mb-2" style={labelStyle}>Preferred Contact{req}</label>
+            <ContactToggle />
+          </div>
+
+          {/* Password */}
+          <div>
+            <label className="block mb-1.5" style={labelStyle}>Password{req}</label>
+            <input name="password" type="password" placeholder="At least 6 characters" required minLength={6}
+              className={inputClass} style={inputStyle} />
+          </div>
+
           <button
             type="submit"
-            className="w-full bg-bk-orange text-white py-3 rounded-xl font-extrabold shadow-[0_4px_0_#c2410c] hover:shadow-[0_2px_0_#c2410c] hover:translate-y-0.5 transition-all"
+            className="w-full bg-bk-orange text-white rounded-[14px] font-black text-base shadow-[0_5px_0_#c2410c] hover:shadow-[0_3px_0_#c2410c] hover:translate-y-0.5 transition-all mt-2"
+            style={{ padding: 15, border: 'none' }}
           >
             Create My Account →
           </button>
         </form>
 
-        <p className="text-center text-gray-400 font-semibold mt-6 text-sm">
+        <p className="text-center font-bold text-[14px] mt-5" style={{ color: '#aaa' }}>
           Already have an account?{' '}
-          <Link href="/auth/signin" className="text-bk-orange font-bold hover:underline">Sign in</Link>
+          <Link href="/auth/signin" className="text-bk-orange font-extrabold hover:underline">Sign in</Link>
         </p>
       </div>
     </div>

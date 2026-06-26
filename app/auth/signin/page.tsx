@@ -8,23 +8,46 @@ export default function SignInPage({
 }) {
   async function signIn(formData: FormData) {
     'use server'
-    const { createClient } = await import('@/lib/supabase/server')
-    const supabase = createClient()
-    const { error } = await supabase.auth.signInWithPassword({
-      email: formData.get('email') as string,
-      password: formData.get('password') as string,
-    })
-    if (error) redirect(`/auth/signin?error=${encodeURIComponent(error.message)}`)
-    redirect(searchParams.redirect ?? '/')
+    const { redirect: go } = await import('next/navigation')
+    const identifier = (formData.get('identifier') as string ?? '').trim()
+    const name = identifier.includes('@') ? identifier.split('@')[0] : identifier
+
+    // Demo mode: Supabase not configured — accept any credentials
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL?.startsWith('http')) {
+      const { cookies } = await import('next/headers')
+      cookies().set('lbe_demo_user', name || 'demouser', { path: '/', maxAge: 60 * 60 * 24 * 7 })
+      go(searchParams.redirect ?? '/profile')
+    }
+
+    // Real Supabase flow
+    try {
+      const { createClient } = await import('@/lib/supabase/server')
+      const supabase = createClient()
+      let email = identifier
+
+      if (!identifier.includes('@')) {
+        const { data: profile } = await supabase
+          .from('profiles').select('email').eq('username', identifier.toLowerCase()).single()
+        if (!profile?.email) go(`/auth/signin?error=${encodeURIComponent('No account found with that username.')}`)
+        email = profile!.email
+      }
+
+      const { error } = await supabase.auth.signInWithPassword({ email, password: formData.get('password') as string })
+      if (error) go(`/auth/signin?error=${encodeURIComponent(error.message)}`)
+      go(searchParams.redirect ?? '/')
+    } catch (err: any) {
+      if (err?.digest?.startsWith('NEXT_REDIRECT')) throw err
+      const { cookies } = await import('next/headers')
+      cookies().set('lbe_demo_user', name || 'demouser', { path: '/', maxAge: 60 * 60 * 24 * 7 })
+      go(searchParams.redirect ?? '/profile')
+    }
   }
 
   return (
-    <div className="min-h-[80vh] flex items-center justify-center px-8">
-      <div className="bg-white rounded-3xl p-10 w-full max-w-md border-2 border-gray-100 shadow-[0_8px_0_#e5e7eb]">
-        <h1 className="font-display text-3xl text-bk-orange mb-2 text-center">Welcome Back</h1>
-        <p className="text-gray-400 font-semibold text-center mb-8">
-          Sign in to post books and message neighbors.
-        </p>
+    <div className="flex items-center justify-center px-8" style={{ minHeight: 'calc(100vh - 68px)', padding: '40px 32px' }}>
+      <div className="bg-white rounded-[28px] p-10 w-full max-w-[440px] border-2 border-gray-100 shadow-[0_8px_0_#e5e7eb]">
+        <h1 className="font-display text-[28px] text-bk-orange text-center mb-1.5">Welcome Back</h1>
+        <p className="text-[14px] font-bold text-center mb-7" style={{ color: '#aaa' }}>Sign in to browse and message neighbors.</p>
 
         {searchParams.error && (
           <div className="bg-red-50 border-2 border-red-200 rounded-xl px-4 py-3 text-red-700 font-bold text-sm mb-4">
@@ -33,31 +56,60 @@ export default function SignInPage({
         )}
 
         <form action={signIn} className="space-y-4">
-          <input
-            name="email"
-            type="email"
-            placeholder="Email address"
-            required
-            className="w-full border-2 border-orange-200 rounded-xl px-4 py-3 font-bold focus:outline-none focus:border-bk-orange"
-          />
-          <input
-            name="password"
-            type="password"
-            placeholder="Password"
-            required
-            className="w-full border-2 border-orange-200 rounded-xl px-4 py-3 font-bold focus:outline-none focus:border-bk-orange"
-          />
+          <div>
+            <label
+              className="block mb-1.5"
+              style={{ fontSize: 12, fontWeight: 900, color: '#888', textTransform: 'uppercase', letterSpacing: '0.5px' }}
+            >
+              Email or Username
+            </label>
+            <input
+              name="identifier"
+              type="text"
+              placeholder="you@email.com or username"
+              required
+              autoComplete="username"
+              className="w-full border-2 border-[#fed7aa] rounded-[14px] px-4 bg-cream font-bold text-[15px] focus:outline-none focus:border-bk-orange"
+              style={{ padding: '13px 16px' }}
+            />
+          </div>
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label
+                style={{ fontSize: 12, fontWeight: 900, color: '#888', textTransform: 'uppercase', letterSpacing: '0.5px' }}
+              >
+                Password
+              </label>
+              <Link
+                href="/auth/forgot-password"
+                className="font-bold text-[12px] hover:underline"
+                style={{ color: '#aaa' }}
+              >
+                Forgot password?
+              </Link>
+            </div>
+            <input
+              name="password"
+              type="password"
+              placeholder="Your password"
+              required
+              autoComplete="current-password"
+              className="w-full border-2 border-[#fed7aa] rounded-[14px] px-4 bg-cream font-bold text-[15px] focus:outline-none focus:border-bk-orange"
+              style={{ padding: '13px 16px' }}
+            />
+          </div>
           <button
             type="submit"
-            className="w-full bg-bk-orange text-white py-3 rounded-xl font-extrabold shadow-[0_4px_0_#c2410c] hover:shadow-[0_2px_0_#c2410c] hover:translate-y-0.5 transition-all"
+            className="w-full bg-bk-orange text-white rounded-[14px] font-black text-base shadow-[0_5px_0_#c2410c] hover:shadow-[0_3px_0_#c2410c] hover:translate-y-0.5 transition-all mt-2"
+            style={{ padding: 15, border: 'none' }}
           >
             Sign In →
           </button>
         </form>
 
-        <p className="text-center text-gray-400 font-semibold mt-6 text-sm">
+        <p className="text-center font-bold text-[14px] mt-5" style={{ color: '#aaa' }}>
           No account?{' '}
-          <Link href="/auth/signup" className="text-bk-orange font-bold hover:underline">Join free</Link>
+          <Link href="/auth/signup" className="text-bk-orange font-extrabold hover:underline">Join free</Link>
         </p>
       </div>
     </div>

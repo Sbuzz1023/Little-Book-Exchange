@@ -19,6 +19,8 @@ export type Listing = {
   photo_url: string | null
   city: string
   status: ListingStatus
+  genre?: string
+  format?: string
   created_at: string
   profiles?: Profile
 }
