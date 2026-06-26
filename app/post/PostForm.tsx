@@ -73,8 +73,8 @@ export default function PostForm({ city, action, error }: Props) {
       <input type="hidden" name="price" value="1" />
 
       <div
-        className="bg-white border-2 border-gray-100 shadow-[0_8px_0_#e5e7eb]"
-        style={{ borderRadius: 28, padding: 36 }}
+        className="bg-white border-2 border-gray-100 shadow-[0_8px_0_#e5e7eb] p-5 md:p-9"
+        style={{ borderRadius: 28 }}
       >
         {/* Book Info */}
         <SectionHeading emoji="📖" title="Book Info" />
@@ -103,7 +103,7 @@ export default function PostForm({ city, action, error }: Props) {
           />
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 18 }}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-[14px] mb-[18px]">
           <div>
             <FieldLabel>Format</FieldLabel>
             <div className="flex gap-2 flex-wrap">

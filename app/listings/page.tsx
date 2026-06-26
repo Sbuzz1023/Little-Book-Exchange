@@ -128,16 +128,19 @@ export default async function ListingsPage({
   }
 
   return (
-    <div
-      className="mx-auto"
-      style={{ display: 'flex', gap: 28, maxWidth: 1160, padding: '36px 32px', alignItems: 'flex-start' }}
-    >
-      {/* Sidebar */}
+    <div className="mx-auto px-4 py-6 md:px-8 md:py-9 flex flex-col md:flex-row md:gap-7" style={{ maxWidth: 1160, alignItems: 'flex-start' }}>
+      {/* Sidebar / Filters */}
+      <div className="w-full md:w-[240px] md:flex-shrink-0 md:sticky md:top-6 mb-4 md:mb-0">
+        <details open className="md:contents">
+          <summary className="md:hidden cursor-pointer list-none flex items-center justify-between bg-white border-2 border-gray-100 rounded-[16px] px-5 py-3 font-extrabold text-[14px] text-bk-orange shadow-[0_3px_0_#e5e7eb] mb-2">
+            🔍 Filters {activeFilters.length > 0 ? `(${activeFilters.length} active)` : ''}
+            <span className="text-[18px] font-black">⌄</span>
+          </summary>
       <form
         method="GET"
         action="/listings"
         className="bg-white border-2 border-gray-100 shadow-[0_5px_0_#e5e7eb]"
-        style={{ width: 240, flexShrink: 0, borderRadius: 24, padding: 24, position: 'sticky', top: 24 }}
+        style={{ borderRadius: 24, padding: 24 }}
       >
         <h2 className="font-display text-[18px] text-bk-orange mb-5">🔍 Filters</h2>
 
@@ -287,6 +290,8 @@ export default async function ListingsPage({
           Clear All
         </Link>
       </form>
+        </details>
+      </div>
 
       {/* Main content */}
       <div style={{ flex: 1, minWidth: 0 }}>

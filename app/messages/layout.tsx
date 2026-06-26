@@ -1,8 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { cookies } from 'next/headers'
 import { MOCK_CONVERSATIONS, MOCK_USER_ID } from '@/lib/mock-data'
-import ConversationSidebar from './ConversationSidebar'
 import LockScroll from './LockScroll'
+import MessagesShell from './MessagesShell'
 
 function isDemo() {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL?.startsWith('http')) return true
@@ -44,21 +44,9 @@ export default async function MessagesLayout({ children }: { children: React.Rea
   return (
     <>
       <LockScroll />
-      <div style={{
-        position: 'fixed',
-        top: 68,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        display: 'flex',
-        overflow: 'hidden',
-        zIndex: 10,
-      }}>
-        <ConversationSidebar conversations={conversations} userId={userId} />
-        <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-          {children}
-        </div>
-      </div>
+      <MessagesShell conversations={conversations} userId={userId}>
+        {children}
+      </MessagesShell>
     </>
   )
 }

@@ -49,36 +49,40 @@ export default async function HomePage({
 
       {/* Search Band */}
       <ScallopDivider color="#f97316" bgColor="#fffbf0" direction="down" />
-      <div className="bg-bk-orange px-8 pt-4 pb-7">
-        <form className="bg-white rounded-[20px] p-[18px_24px] max-w-[640px] mx-auto flex gap-3 items-center shadow-[0_6px_0_rgba(0,0,0,0.12)]">
-          <span className="text-[22px]">📍</span>
-          <input
-            name="city"
-            defaultValue={city}
-            placeholder="Your city..."
-            className="flex-1 border-2 border-[#fed7aa] rounded-xl px-[14px] py-[10px] font-bold text-[15px] bg-cream focus:outline-none focus:border-bk-orange"
-          />
-          <select
-            name="type"
-            defaultValue={type}
-            className="border-2 border-[#fed7aa] rounded-xl px-3 py-[10px] font-bold text-[15px] bg-cream focus:outline-none"
-          >
-            <option value="all">All Books</option>
-            <option value="sale">For Sale</option>
-            <option value="free">Free Only</option>
-          </select>
-          <button
-            type="submit"
-            className="bg-bk-orange text-white px-6 py-[11px] rounded-xl font-extrabold text-[15px] border-none shadow-[0_3px_0_#c2410c] hover:shadow-[0_1px_0_#c2410c] hover:translate-y-0.5 transition-all"
-          >
-            Find Books
-          </button>
+      <div className="bg-bk-orange px-4 md:px-8 pt-4 pb-7">
+        <form className="bg-white rounded-[20px] p-4 md:p-[18px_24px] max-w-[640px] mx-auto shadow-[0_6px_0_rgba(0,0,0,0.12)] flex flex-col sm:flex-row gap-3 sm:items-center">
+          <div className="flex items-center gap-2 sm:flex-1">
+            <span className="text-[22px] shrink-0">📍</span>
+            <input
+              name="city"
+              defaultValue={city}
+              placeholder="Your city..."
+              className="flex-1 border-2 border-[#fed7aa] rounded-xl px-[14px] py-[10px] font-bold text-[15px] bg-cream focus:outline-none focus:border-bk-orange"
+            />
+          </div>
+          <div className="flex gap-3 items-center">
+            <select
+              name="type"
+              defaultValue={type}
+              className="flex-1 sm:flex-none border-2 border-[#fed7aa] rounded-xl px-3 py-[10px] font-bold text-[15px] bg-cream focus:outline-none"
+            >
+              <option value="all">All Books</option>
+              <option value="sale">For Sale</option>
+              <option value="free">Free Only</option>
+            </select>
+            <button
+              type="submit"
+              className="bg-bk-orange text-white px-6 py-[11px] rounded-xl font-extrabold text-[15px] border-none shadow-[0_3px_0_#c2410c] hover:shadow-[0_1px_0_#c2410c] hover:translate-y-0.5 transition-all whitespace-nowrap"
+            >
+              Find Books
+            </button>
+          </div>
         </form>
       </div>
       <ScallopDivider color="#f97316" bgColor="#fffbf0" direction="up" />
 
       {/* Listings Grid */}
-      <section className="max-w-[1120px] mx-auto px-8 pt-11 pb-[60px]">
+      <section className="max-w-[1120px] mx-auto px-4 md:px-8 pt-8 md:pt-11 pb-[60px]">
         <h2 className="font-display text-[28px] mb-1">
           {city ? `Books near ${city} 📚` : 'Browse all books 📚'}
         </h2>
@@ -129,7 +133,7 @@ export default async function HomePage({
 
       {/* How It Works */}
       <ScallopDivider color="#0d9488" bgColor="#fffbf0" direction="down" />
-      <section id="how-it-works" className="bg-[#ecfdf5] px-10 pt-5 pb-[60px] text-center">
+      <section id="how-it-works" className="bg-[#ecfdf5] px-4 md:px-10 pt-5 pb-[60px] text-center">
         <h2 className="font-display text-[30px] mb-1.5">How it works 🏡</h2>
         <p className="text-[#6b7280] text-[15px] font-semibold mb-10">As simple as a little free library — just online.</p>
         <div className="flex gap-5 justify-center flex-wrap max-w-[900px] mx-auto">
@@ -156,7 +160,7 @@ export default async function HomePage({
       <ScallopDivider color="#0d9488" bgColor="#fffbf0" direction="up" />
 
       {/* CTA Band */}
-      <section className="bg-bk-orange py-[50px] px-8 text-center relative overflow-hidden">
+      <section className="bg-bk-orange py-[50px] px-4 md:px-8 text-center relative overflow-hidden">
         {/* Kid-drawing SVG background */}
         <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 1400 220" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
           <g opacity="0.15">

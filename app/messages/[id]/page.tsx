@@ -138,6 +138,13 @@ export default function ThreadPage({ params }: { params: { id: string } }) {
         flexShrink: 0, display: 'flex', alignItems: 'center', gap: 14,
         padding: '14px 20px', background: '#fff', borderBottom: '2px solid #e5e7eb',
       }}>
+        <a
+          href="/messages"
+          className="md:hidden font-extrabold text-bk-orange text-[20px] leading-none shrink-0"
+          style={{ textDecoration: 'none', marginRight: 4 }}
+        >
+          ‹
+        </a>
         {loading ? (
           <div style={{ height: 24, width: 200, background: '#f3f4f6', borderRadius: 8 }} />
         ) : (

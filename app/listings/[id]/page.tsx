@@ -96,7 +96,7 @@ export default async function ListingDetailPage({ params }: { params: { id: stri
   }
 
   return (
-    <div className="max-w-[680px] mx-auto px-8 py-10">
+    <div className="max-w-[680px] mx-auto px-4 py-6 md:px-8 md:py-10">
       <Link
         href="/listings"
         className="text-bk-orange font-bold text-[14px] inline-block mb-6 hover:underline"
@@ -127,7 +127,7 @@ export default async function ListingDetailPage({ params }: { params: { id: stri
         </div>
 
         {/* Body */}
-        <div style={{ padding: 32 }}>
+        <div className="p-5 md:p-8">
           <h1 className="font-display text-[30px] mb-1" style={{ color: '#1a1a1a' }}>{listing.title}</h1>
           <p className="font-bold text-[18px] mb-5" style={{ color: '#888' }}>by {listing.author}</p>
 
