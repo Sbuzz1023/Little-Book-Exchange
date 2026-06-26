@@ -136,7 +136,7 @@ export default async function HomePage({
       <section id="how-it-works" className="bg-[#ecfdf5] px-4 md:px-10 pt-5 pb-[60px] text-center">
         <h2 className="font-display text-[30px] mb-1.5">How it works 🏡</h2>
         <p className="text-[#6b7280] text-[15px] font-semibold mb-10">As simple as a little free library — just online.</p>
-        <div className="flex gap-5 justify-center flex-wrap max-w-[900px] mx-auto">
+        <div className="grid grid-cols-2 md:flex gap-5 justify-center max-w-[900px] mx-auto">
           {[
             { n: 1, icon: '🏙️', title: 'Set your city', desc: 'Create a free account and set your city to see books near you.' },
             { n: 2, icon: '📚', title: 'Browse or post', desc: 'Browse listings for free. Post books to sell or give away.' },
@@ -145,7 +145,7 @@ export default async function HomePage({
           ].map(s => (
             <div
               key={s.n}
-              className="bg-white rounded-[20px] p-[26px_18px] flex-1 min-w-[165px] max-w-[205px] border-[3px] border-[#d1fae5] shadow-[0_5px_0_#a7f3d0] text-center"
+              className="bg-white rounded-[20px] p-[20px_14px] md:p-[26px_18px] md:flex-1 md:max-w-[205px] border-[3px] border-[#d1fae5] shadow-[0_5px_0_#a7f3d0] text-center"
             >
               <div className="w-[38px] h-[38px] bg-bk-orange text-white font-display text-lg rounded-full flex items-center justify-center mx-auto mb-3 shadow-[0_3px_0_#c2410c]">
                 {s.n}
@@ -188,7 +188,7 @@ export default async function HomePage({
           </g>
         </svg>
         <div className="relative z-10">
-          <div className="text-[30px] mb-[22px] flex justify-center gap-4">🌸 🌻 🌈 ☀️ 🌼 🌿 🌷</div>
+          <div className="text-[30px] mb-[22px] flex justify-center gap-4 flex-wrap">🌸 🌻 🌈 ☀️ 🌼 🌿 🌷</div>
           <h2 className="font-display text-[28px] text-white mb-3">Your neighborhood deserves a little free library.</h2>
           <p className="text-[#fff7ed] text-base font-bold mb-6">Join your neighbors and start sharing books today — free to browse, free to join.</p>
           <Link

@@ -1,7 +1,7 @@
 export default function MessagesPage() {
   return (
     <div
-      className="flex-1 flex flex-col items-center justify-center text-center px-8"
+      className="flex-1 flex flex-col items-center justify-center text-center px-4"
       style={{ background: '#fffbf0', color: '#ccc' }}
     >
       <div style={{ fontSize: 56, marginBottom: 16 }}>💬</div>
