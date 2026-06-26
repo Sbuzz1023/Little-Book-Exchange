@@ -42,12 +42,12 @@ const BOOKS = [
 
 export default function HeroBookshelf() {
   const [hovered, setHovered] = useState<string | null>(null)
-  const [city, setCity] = useState('')
+  const [title, setTitle] = useState('')
   const router = useRouter()
 
   function doSearch(e?: React.FormEvent) {
     if (e) e.preventDefault()
-    router.push(city.trim() ? `/listings?city=${encodeURIComponent(city.trim())}` : '/listings')
+    router.push(title.trim() ? `/listings?title=${encodeURIComponent(title.trim())}` : '/listings')
   }
 
   return (
@@ -137,11 +137,11 @@ export default function HeroBookshelf() {
         className="mt-6 max-w-[520px] mx-auto flex items-center gap-3 bg-white rounded-2xl px-4 py-[14px] border-2 border-[#fed7aa]"
         style={{ boxShadow: '0 4px 0 rgba(249,115,22,0.2)' }}
       >
-        <span className="text-[20px] shrink-0">📍</span>
+        <span className="text-[20px] shrink-0">🔍</span>
         <input
-          value={city}
-          onChange={e => setCity(e.target.value)}
-          placeholder="Search books by city..."
+          value={title}
+          onChange={e => setTitle(e.target.value)}
+          placeholder="Search by book title..."
           className="flex-1 bg-transparent font-bold focus:outline-none text-[15px]"
           style={{ border: 'none', minWidth: 0, color: '#2d2d2d' }}
         />
