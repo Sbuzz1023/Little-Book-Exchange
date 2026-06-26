@@ -128,7 +128,7 @@ export default async function ListingsPage({
   }
 
   return (
-    <div className="mx-auto px-4 py-6 md:px-8 md:py-9 flex flex-col md:flex-row md:gap-7" style={{ maxWidth: 1160, alignItems: 'flex-start' }}>
+    <div className="mx-auto px-4 py-6 md:px-8 md:py-9 flex flex-col md:flex-row md:gap-7 md:items-start" style={{ maxWidth: 1160 }}>
       {/* Sidebar / Filters */}
       <div className="w-full md:w-[240px] md:flex-shrink-0 md:sticky md:top-6 mb-4 md:mb-0">
         <details open className="md:contents">
