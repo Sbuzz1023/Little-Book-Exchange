@@ -42,117 +42,122 @@ const BOOKS = [
 
 export default function HeroBookshelf() {
   const [hovered, setHovered] = useState<string | null>(null)
+  const [city, setCity] = useState('')
   const router = useRouter()
 
+  function doSearch(e?: React.FormEvent) {
+    if (e) e.preventDefault()
+    router.push(city.trim() ? `/listings?city=${encodeURIComponent(city.trim())}` : '/listings')
+  }
+
   return (
-    <div className="relative mx-auto" style={{ maxWidth: 680 }}>
-      <style>{`#hero-search::placeholder { color: rgba(255,255,255,0.6); }`}</style>
+    <>
+      <div className="relative mx-auto" style={{ maxWidth: 680 }}>
+        {/* Ground shadow */}
+        <div
+          className="absolute pointer-events-none"
+          style={{
+            bottom: -18,
+            left: '14%',
+            right: '14%',
+            height: 52,
+            background: 'rgba(30,30,30,0.22)',
+            filter: 'blur(28px)',
+            borderRadius: '50%',
+          }}
+        />
 
-      {/* Ground shadow */}
-      <div
-        className="absolute pointer-events-none"
-        style={{
-          bottom: -18,
-          left: '14%',
-          right: '14%',
-          height: 52,
-          background: 'rgba(30,30,30,0.22)',
-          filter: 'blur(28px)',
-          borderRadius: '50%',
-        }}
-      />
+        {/* Image */}
+        <Image
+          src="/hero-bg.jpeg"
+          alt="Browse, list, and search books in your community"
+          width={680}
+          height={680}
+          priority
+          style={{
+            width: '100%',
+            height: 'auto',
+            display: 'block',
+            mixBlendMode: 'multiply',
+            position: 'relative',
+          }}
+        />
 
-      {/* Image */}
-      <Image
-        src="/hero-bg.jpeg"
-        alt="Browse, list, and search books in your community"
-        width={680}
-        height={680}
-        priority
-        style={{
-          width: '100%',
-          height: 'auto',
-          display: 'block',
-          mixBlendMode: 'multiply',
-          position: 'relative',
-        }}
-      />
+        {/* Clickable book overlays */}
+        {BOOKS.map(book => (
+          <Link
+            key={book.id}
+            href={book.href}
+            aria-label={book.label}
+            onMouseEnter={() => setHovered(book.id)}
+            onMouseLeave={() => setHovered(null)}
+            style={{
+              position: 'absolute',
+              left: book.left,
+              top: '42%',
+              width: '7%',
+              height: '31%',
+              borderRadius: 10,
+              transformOrigin: 'center bottom',
+              transition: 'transform 0.15s ease, background 0.15s ease, box-shadow 0.15s ease',
+              transform: hovered === book.id
+                ? 'scale(1.09) translateY(-10px)'
+                : 'scale(1) translateY(0)',
+              background: hovered === book.id ? book.color : 'transparent',
+              boxShadow: hovered === book.id ? book.shadow : 'none',
+            }}
+          />
+        ))}
 
-      {/* Book overlays */}
-      {BOOKS.map(book => (
-        <Link
-          key={book.id}
-          href={book.href}
-          aria-label={book.label}
-          onMouseEnter={() => setHovered(book.id)}
+        {/* Search book — clickable area where the search form used to live */}
+        <button
+          aria-label="Search books"
+          onClick={doSearch}
+          onMouseEnter={() => setHovered('search')}
           onMouseLeave={() => setHovered(null)}
           style={{
             position: 'absolute',
-            left: book.left,
-            top: '42%',
-            width: '7%',
-            height: '31%',
+            left: '30%',
+            top: '80%',
+            width: '40%',
+            height: '6%',
             borderRadius: 10,
-            transformOrigin: 'center bottom',
-            transition: 'transform 0.15s ease, background 0.15s ease, box-shadow 0.15s ease',
-            transform: hovered === book.id
-              ? 'scale(1.09) translateY(-10px)'
-              : 'scale(1) translateY(0)',
-            background: hovered === book.id ? book.color : 'transparent',
-            boxShadow: hovered === book.id ? book.shadow : 'none',
+            border: 'none',
+            cursor: 'pointer',
+            background: hovered === 'search' ? 'rgba(37,60,110,0.35)' : 'transparent',
+            boxShadow: hovered === 'search' ? '0 8px 24px rgba(37,60,110,0.5)' : 'none',
+            transition: 'background 0.15s ease, box-shadow 0.15s ease',
           }}
         />
-      ))}
+      </div>
 
-      {/* Search bar — covers the blue search book */}
+      {/* Search bar below the library */}
       <form
-        action="/listings"
-        method="get"
-        className="absolute flex items-center gap-2"
-        style={{
-          left: '30%',
-          top: '80%',
-          width: '40%',
-          height: '6%',
-          background: '#253c6e',
-          border: '2px solid rgba(255,255,255,0.55)',
-          borderRadius: 10,
-          padding: '0 8px 0 12px',
-        }}
+        onSubmit={doSearch}
+        className="mt-6 max-w-[520px] mx-auto flex items-center gap-3 bg-white rounded-2xl px-4 py-[14px] border-2 border-[#fed7aa]"
+        style={{ boxShadow: '0 4px 0 rgba(249,115,22,0.2)' }}
       >
-        <span style={{ fontSize: 15, flexShrink: 0, opacity: 0.9 }}>🔍</span>
+        <span className="text-[20px] shrink-0">📍</span>
         <input
-          name="title"
-          type="text"
-          id="hero-search"
-          placeholder="Search books..."
-          className="flex-1 bg-transparent font-bold focus:outline-none"
-          style={{
-            border: 'none',
-            fontSize: 15,
-            minWidth: 0,
-            color: '#fff',
-            caretColor: '#fff',
-          }}
+          value={city}
+          onChange={e => setCity(e.target.value)}
+          placeholder="Search books by city..."
+          className="flex-1 bg-transparent font-bold focus:outline-none text-[15px]"
+          style={{ border: 'none', minWidth: 0, color: '#2d2d2d' }}
         />
         <button
           type="submit"
-          className="font-extrabold shrink-0"
+          className="bg-bk-orange text-white font-extrabold text-[14px] rounded-xl shrink-0"
           style={{
-            background: 'rgba(255,255,255,0.25)',
-            border: '1.5px solid rgba(255,255,255,0.6)',
-            borderRadius: 7,
-            color: '#fff',
-            fontSize: 14,
+            padding: '9px 18px',
+            border: 'none',
+            boxShadow: '0 3px 0 #c2410c',
             cursor: 'pointer',
-            padding: '3px 10px',
-            fontFamily: 'inherit',
           }}
         >
-          Go
+          Find Books
         </button>
       </form>
-
-    </div>
+    </>
   )
 }
