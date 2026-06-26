@@ -3,6 +3,13 @@
 @tailwind components;
 @tailwind utilities;
 
+html {
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
 body {
   background-color: #fffbf0;
+  overflow-x: hidden;
+  max-width: 100%;
 }
