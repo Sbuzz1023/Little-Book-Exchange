@@ -2,6 +2,11 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function middleware(request: NextRequest) {
+  // Demo users always pass through — cookie presence = authenticated
+  if (request.cookies.get('lbe_demo_user')) {
+    return NextResponse.next({ request })
+  }
+
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   if (!supabaseUrl || !supabaseUrl.startsWith('http')) {
     return NextResponse.next({ request })

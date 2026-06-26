@@ -9,10 +9,22 @@ function initials(name: string) {
   return name.slice(0, 2).toUpperCase()
 }
 
-function readDemoCookie(): string | null {
+function readDemoUser(): string | null {
   if (typeof document === 'undefined') return null
+  // Check cookie first
   const match = document.cookie.match(/(?:^|; )lbe_demo_user=([^;]*)/)
-  return match ? decodeURIComponent(match[1]) : null
+  const cookieVal = match ? decodeURIComponent(match[1]) : null
+  if (cookieVal) {
+    // Sync to localStorage as backup in case cookie gets cleared
+    try { localStorage.setItem('lbe_demo_user', cookieVal) } catch {}
+    return cookieVal
+  }
+  // Fallback to localStorage
+  try { return localStorage.getItem('lbe_demo_user') } catch { return null }
+}
+
+function clearDemoUser() {
+  try { localStorage.removeItem('lbe_demo_user') } catch {}
 }
 
 export default function Nav({ userName: serverUserName }: { userName?: string | null }) {
@@ -24,7 +36,7 @@ export default function Nav({ userName: serverUserName }: { userName?: string | 
 
   const [userName, setUserName] = useState<string | null>(serverUserName ?? null)
   useEffect(() => {
-    setUserName(readDemoCookie())
+    setUserName(readDemoUser())
   }, [pathname])
 
   // Close mobile menu on route change
@@ -84,7 +96,7 @@ export default function Nav({ userName: serverUserName }: { userName?: string | 
                     <Link href="/profile" className="flex items-center gap-2.5 px-4 py-3 font-bold text-[14px] text-[#2d2d2d] hover:bg-[#fff7ed] hover:text-bk-orange transition-colors" onClick={() => setAvatarOpen(false)}>📊 Dashboard</Link>
                     <Link href="/messages" className="flex items-center gap-2.5 px-4 py-3 font-bold text-[14px] text-[#2d2d2d] hover:bg-[#fff7ed] hover:text-bk-orange transition-colors" onClick={() => setAvatarOpen(false)}>💬 Messages</Link>
                     <div style={{ borderTop: '2px solid #f3f4f6' }}>
-                      <Link href="/auth/signout" className="flex items-center gap-2.5 px-4 py-3 font-bold text-[14px] text-[#888] hover:bg-red-50 hover:text-red-500 transition-colors">🚪 Sign Out</Link>
+                      <a href="/auth/signout" onClick={clearDemoUser} className="flex items-center gap-2.5 px-4 py-3 font-bold text-[14px] text-[#888] hover:bg-red-50 hover:text-red-500 transition-colors">🚪 Sign Out</a>
                     </div>
                   </div>
                 )}
@@ -157,9 +169,9 @@ export default function Nav({ userName: serverUserName }: { userName?: string | 
               <Link href="/messages" className="flex items-center gap-3 px-5 py-4 font-bold text-[15px] text-[#2d2d2d] border-b border-gray-100 hover:bg-[#fff7ed] hover:text-bk-orange transition-colors">
                 💬 Messages
               </Link>
-              <Link href="/auth/signout" className="flex items-center gap-3 px-5 py-4 font-bold text-[15px] text-red-400 hover:bg-red-50 transition-colors">
+              <a href="/auth/signout" onClick={clearDemoUser} className="flex items-center gap-3 px-5 py-4 font-bold text-[15px] text-red-400 hover:bg-red-50 transition-colors">
                 🚪 Sign Out
-              </Link>
+              </a>
             </>
           ) : (
             <>
