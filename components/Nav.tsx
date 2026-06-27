@@ -1,7 +1,7 @@
 'use client'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useState, useRef, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 
 function initials(name: string) {
   const parts = name.split(/[\s._\-]+/).filter(Boolean)
@@ -32,7 +32,6 @@ export default function Nav({ userName: serverUserName }: { userName?: string | 
   const isHome = pathname === '/'
   const [avatarOpen, setAvatarOpen] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
-  const avatarRef = useRef<HTMLDivElement>(null)
 
   const [userName, setUserName] = useState<string | null>(serverUserName ?? null)
   useEffect(() => {
@@ -45,16 +44,12 @@ export default function Nav({ userName: serverUserName }: { userName?: string | 
     setAvatarOpen(false)
   }, [pathname])
 
-  // Close avatar dropdown when clicking outside
+  // Close avatar dropdown on any outside click
   useEffect(() => {
     if (!avatarOpen) return
-    function handleClick(e: MouseEvent) {
-      if (avatarRef.current && !avatarRef.current.contains(e.target as Node)) {
-        setAvatarOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClick)
-    return () => document.removeEventListener('mousedown', handleClick)
+    const close = () => setAvatarOpen(false)
+    document.addEventListener('click', close)
+    return () => document.removeEventListener('click', close)
   }, [avatarOpen])
 
   return (
@@ -85,9 +80,9 @@ export default function Nav({ userName: serverUserName }: { userName?: string | 
               <Link href="/messages" className="font-bold text-[15px] text-[#2d2d2d] hover:text-bk-orange transition-colors">Messages</Link>
 
               {/* Avatar dropdown */}
-              <div className="relative" ref={avatarRef}>
+              <div className="relative">
                 <button
-                  onClick={() => setAvatarOpen(o => !o)}
+                  onClick={(e) => { e.stopPropagation(); setAvatarOpen(o => !o) }}
                   className="flex items-center justify-center font-black text-[13px] text-white rounded-full select-none"
                   style={{ width: 38, height: 38, background: '#f97316', boxShadow: avatarOpen ? '0 1px 0 #c2410c' : '0 3px 0 #c2410c', border: 'none', cursor: 'pointer', letterSpacing: '0.5px', transform: avatarOpen ? 'translateY(2px)' : 'none', transition: 'all 0.1s' }}
                 >
@@ -96,7 +91,8 @@ export default function Nav({ userName: serverUserName }: { userName?: string | 
                 {avatarOpen && (
                   <div
                     className="absolute right-0 bg-white border-2 border-gray-100 rounded-[16px] overflow-hidden"
-                    style={{ top: 'calc(100% + 8px)', minWidth: 160, boxShadow: '0 8px 24px rgba(0,0,0,0.10)', zIndex: 100 }}
+                    style={{ top: 'calc(100% + 8px)', minWidth: 160, boxShadow: '0 8px 24px rgba(0,0,0,0.10)', zIndex: 9999 }}
+                    onClick={(e) => e.stopPropagation()}
                   >
                     <div className="px-4 py-3 font-black text-[13px] border-b-2 border-gray-100" style={{ color: '#aaa' }}>{userName}</div>
                     <Link href="/profile" className="flex items-center gap-2.5 px-4 py-3 font-bold text-[14px] text-[#2d2d2d] hover:bg-[#fff7ed] hover:text-bk-orange transition-colors" onClick={() => setAvatarOpen(false)}>📊 Dashboard</Link>
