@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 
 // ─── Mock Data ──────────────────────────────────────────────────────────────
 
@@ -124,12 +124,13 @@ function StatCard({ icon, label, value, sub, color }: { icon: string; label: str
 // ─── Admin login ─────────────────────────────────────────────────────────────
 
 function LoginGate({ onAuth }: { onAuth: () => void }) {
-  const [code, setCode] = useState('')
   const [err, setErr] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
   function submit(e: React.FormEvent) {
     e.preventDefault()
-    if (code === ADMIN_PASSCODE) { onAuth() }
-    else { setErr(true); setCode('') }
+    const val = inputRef.current?.value ?? ''
+    if (val === ADMIN_PASSCODE) { onAuth() }
+    else { setErr(true); if (inputRef.current) inputRef.current.value = '' }
   }
   return (
     <div className="min-h-[80vh] flex items-center justify-center px-4">
@@ -141,9 +142,10 @@ function LoginGate({ onAuth }: { onAuth: () => void }) {
         </div>
         <form onSubmit={submit} className="space-y-4">
           <input
-            type="password"
-            value={code}
-            onChange={e => { setCode(e.target.value); setErr(false) }}
+            ref={inputRef}
+            type="text"
+            autoComplete="off"
+            onChange={() => setErr(false)}
             placeholder="Admin passcode"
             className="w-full border-2 border-[#e2e8f0] rounded-xl px-4 py-3 font-bold text-[15px] focus:outline-none focus:border-bk-orange text-center tracking-widest"
             autoFocus
