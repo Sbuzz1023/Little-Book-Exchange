@@ -1,5 +1,4 @@
 @import url('https://fonts.googleapis.com/css2?family=Pacifico&family=Nunito:wght@400;600;700;800;900&display=swap');
-@import 'leaflet/dist/leaflet.css';
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -17,4 +16,10 @@ body {
   width: 100%;
   max-width: 100vw;
   overscroll-behavior-x: none;
+}
+
+/* Prevent Tailwind base reset from breaking Leaflet tile images */
+.leaflet-container img {
+  max-width: none !important;
+  box-shadow: none !important;
 }
