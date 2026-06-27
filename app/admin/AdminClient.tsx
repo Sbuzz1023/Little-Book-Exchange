@@ -682,7 +682,7 @@ export default function AdminClient() {
     setAuthed('no')
   }
 
-  if (authed === 'loading') return null
+  if (authed === 'loading') return <LoginGate onAuth={handleAuth} />
   if (authed === 'no') return <LoginGate onAuth={handleAuth} />
 
   const pendingReports = reports.filter(r => r.status === 'pending').length

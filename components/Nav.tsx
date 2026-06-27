@@ -97,6 +97,9 @@ export default function Nav({ userName: serverUserName }: { userName?: string | 
                     <Link href="/profile" className="flex items-center gap-2.5 px-4 py-3 font-bold text-[14px] text-[#2d2d2d] hover:bg-[#fff7ed] hover:text-bk-orange transition-colors" onClick={() => setAvatarOpen(false)}>📊 Dashboard</Link>
                     <Link href="/messages" className="flex items-center gap-2.5 px-4 py-3 font-bold text-[14px] text-[#2d2d2d] hover:bg-[#fff7ed] hover:text-bk-orange transition-colors" onClick={() => setAvatarOpen(false)}>💬 Messages</Link>
                     <div style={{ borderTop: '2px solid #f3f4f6' }}>
+                      <Link href="/admin" className="flex items-center gap-2.5 px-4 py-3 font-bold text-[14px] text-[#2d2d2d] hover:bg-[#fff7ed] hover:text-bk-orange transition-colors" onClick={() => setAvatarOpen(false)}>🔐 Admin Panel</Link>
+                    </div>
+                    <div style={{ borderTop: '2px solid #f3f4f6' }}>
                       <a href="/auth/signout" onClick={clearDemoUser} className="flex items-center gap-2.5 px-4 py-3 font-bold text-[14px] text-[#888] hover:bg-red-50 hover:text-red-500 transition-colors">🚪 Sign Out</a>
                     </div>
                   </div>
@@ -172,6 +175,9 @@ export default function Nav({ userName: serverUserName }: { userName?: string | 
               </Link>
               <Link href="/messages" className="flex items-center gap-3 px-5 py-4 font-bold text-[15px] text-[#2d2d2d] border-b border-gray-100 hover:bg-[#fff7ed] hover:text-bk-orange transition-colors">
                 💬 Messages
+              </Link>
+              <Link href="/admin" className="flex items-center gap-3 px-5 py-4 font-bold text-[15px] text-[#2d2d2d] border-b border-gray-100 hover:bg-[#fff7ed] hover:text-bk-orange transition-colors">
+                🔐 Admin Panel
               </Link>
               <a href="/auth/signout" onClick={clearDemoUser} className="flex items-center gap-3 px-5 py-4 font-bold text-[15px] text-red-400 hover:bg-red-50 transition-colors">
                 🚪 Sign Out
