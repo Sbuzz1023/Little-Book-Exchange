@@ -1,7 +1,7 @@
 'use client'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 function initials(name: string) {
   const parts = name.split(/[\s._\-]+/).filter(Boolean)
@@ -31,15 +31,17 @@ export default function Nav({ userName: serverUserName }: { userName?: string | 
   const pathname = usePathname()
   const isHome = pathname === '/'
   const [mobileOpen, setMobileOpen] = useState(false)
+  const detailsRef = useRef<HTMLDetailsElement>(null)
 
   const [userName, setUserName] = useState<string | null>(serverUserName ?? null)
   useEffect(() => {
     setUserName(readDemoUser())
   }, [pathname])
 
-  // Close mobile menu on route change
+  // Close both menus on route change
   useEffect(() => {
     setMobileOpen(false)
+    if (detailsRef.current) detailsRef.current.open = false
   }, [pathname])
 
   return (
@@ -70,7 +72,7 @@ export default function Nav({ userName: serverUserName }: { userName?: string | 
               <Link href="/messages" className="font-bold text-[15px] text-[#2d2d2d] hover:text-bk-orange transition-colors">Messages</Link>
 
               {/* Avatar dropdown — uses native <details> toggle, no JS state needed */}
-              <details style={{ position: 'relative' }}>
+              <details ref={detailsRef} style={{ position: 'relative' }}>
                 <summary style={{
                   listStyle: 'none',
                   width: 38, height: 38,
