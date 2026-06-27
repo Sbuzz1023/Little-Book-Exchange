@@ -32,26 +32,30 @@ export default function Nav({ userName: serverUserName }: { userName?: string | 
   const isHome = pathname === '/'
   const [avatarOpen, setAvatarOpen] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const avatarRef = useRef<HTMLDivElement>(null)
 
   const [userName, setUserName] = useState<string | null>(serverUserName ?? null)
   useEffect(() => {
     setUserName(readDemoUser())
   }, [pathname])
 
-  // Close mobile menu on route change
+  // Close menus on route change
   useEffect(() => {
     setMobileOpen(false)
+    setAvatarOpen(false)
   }, [pathname])
 
-  function handleMouseEnter() {
-    if (timerRef.current) clearTimeout(timerRef.current)
-    setAvatarOpen(true)
-  }
-
-  function handleMouseLeave() {
-    timerRef.current = setTimeout(() => setAvatarOpen(false), 120)
-  }
+  // Close avatar dropdown when clicking outside
+  useEffect(() => {
+    if (!avatarOpen) return
+    function handleClick(e: MouseEvent) {
+      if (avatarRef.current && !avatarRef.current.contains(e.target as Node)) {
+        setAvatarOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [avatarOpen])
 
   return (
     <>
@@ -81,10 +85,11 @@ export default function Nav({ userName: serverUserName }: { userName?: string | 
               <Link href="/messages" className="font-bold text-[15px] text-[#2d2d2d] hover:text-bk-orange transition-colors">Messages</Link>
 
               {/* Avatar dropdown */}
-              <div className="relative" onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
+              <div className="relative" ref={avatarRef}>
                 <button
+                  onClick={() => setAvatarOpen(o => !o)}
                   className="flex items-center justify-center font-black text-[13px] text-white rounded-full select-none"
-                  style={{ width: 38, height: 38, background: '#f97316', boxShadow: '0 3px 0 #c2410c', border: 'none', cursor: 'pointer', letterSpacing: '0.5px' }}
+                  style={{ width: 38, height: 38, background: '#f97316', boxShadow: avatarOpen ? '0 1px 0 #c2410c' : '0 3px 0 #c2410c', border: 'none', cursor: 'pointer', letterSpacing: '0.5px', transform: avatarOpen ? 'translateY(2px)' : 'none', transition: 'all 0.1s' }}
                 >
                   {initials(userName)}
                 </button>
