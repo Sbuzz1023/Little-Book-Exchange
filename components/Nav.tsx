@@ -30,7 +30,6 @@ function clearDemoUser() {
 export default function Nav({ userName: serverUserName }: { userName?: string | null }) {
   const pathname = usePathname()
   const isHome = pathname === '/'
-  const [avatarOpen, setAvatarOpen] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
 
   const [userName, setUserName] = useState<string | null>(serverUserName ?? null)
@@ -38,22 +37,10 @@ export default function Nav({ userName: serverUserName }: { userName?: string | 
     setUserName(readDemoUser())
   }, [pathname])
 
-  // Close menus on route change
+  // Close mobile menu on route change
   useEffect(() => {
     setMobileOpen(false)
-    setAvatarOpen(false)
   }, [pathname])
-
-  // Close avatar dropdown on outside click
-  useEffect(() => {
-    if (!avatarOpen) return
-    function handleClick(e: MouseEvent) {
-      const target = e.target as HTMLElement
-      if (!target.closest('[data-avatar-menu]')) setAvatarOpen(false)
-    }
-    document.addEventListener('mousedown', handleClick)
-    return () => document.removeEventListener('mousedown', handleClick)
-  }, [avatarOpen])
 
   return (
     <>
@@ -82,43 +69,45 @@ export default function Nav({ userName: serverUserName }: { userName?: string | 
               <Link href="/profile" className="font-bold text-[15px] text-[#2d2d2d] hover:text-bk-orange transition-colors">Dashboard</Link>
               <Link href="/messages" className="font-bold text-[15px] text-[#2d2d2d] hover:text-bk-orange transition-colors">Messages</Link>
 
-              {/* Avatar dropdown */}
-              <div className="relative" data-avatar-menu>
-                <button
-                  onClick={() => setAvatarOpen(o => !o)}
-                  className="flex items-center justify-center font-black text-[13px] text-white rounded-full select-none"
-                  style={{ width: 38, height: 38, background: '#f97316', boxShadow: '0 3px 0 #c2410c', border: 'none', cursor: 'pointer', letterSpacing: '0.5px' }}
-                >
+              {/* Avatar dropdown — uses native <details> toggle, no JS state needed */}
+              <details style={{ position: 'relative' }}>
+                <summary style={{
+                  listStyle: 'none',
+                  width: 38, height: 38,
+                  background: '#f97316',
+                  borderRadius: '50%',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  cursor: 'pointer',
+                  fontWeight: 900, fontSize: 13, color: '#fff',
+                  letterSpacing: '0.5px',
+                  boxShadow: '0 3px 0 #c2410c',
+                  userSelect: 'none',
+                }}>
                   {initials(userName)}
-                </button>
-                {/* Fixed position so nothing can clip it */}
-                <div
-                  data-avatar-menu
-                  style={{
-                    display: avatarOpen ? 'block' : 'none',
-                    position: 'fixed',
-                    top: 76,
-                    right: 16,
-                    minWidth: 180,
-                    background: '#fff',
-                    border: '2px solid #f3f4f6',
-                    borderRadius: 16,
-                    overflow: 'hidden',
-                    boxShadow: '0 8px 32px rgba(0,0,0,0.14)',
-                    zIndex: 99999,
-                  }}
-                >
+                </summary>
+                <div style={{
+                  position: 'fixed',
+                  top: 76,
+                  right: 16,
+                  minWidth: 180,
+                  background: '#fff',
+                  border: '2px solid #f3f4f6',
+                  borderRadius: 16,
+                  overflow: 'hidden',
+                  boxShadow: '0 8px 32px rgba(0,0,0,0.14)',
+                  zIndex: 99999,
+                }}>
                   <div className="px-4 py-3 font-black text-[13px] border-b-2 border-gray-100" style={{ color: '#aaa' }}>{userName}</div>
-                  <Link href="/profile" className="flex items-center gap-2.5 px-4 py-3 font-bold text-[14px] text-[#2d2d2d] hover:bg-[#fff7ed] hover:text-bk-orange transition-colors" onClick={() => setAvatarOpen(false)}>📊 Dashboard</Link>
-                  <Link href="/messages" className="flex items-center gap-2.5 px-4 py-3 font-bold text-[14px] text-[#2d2d2d] hover:bg-[#fff7ed] hover:text-bk-orange transition-colors" onClick={() => setAvatarOpen(false)}>💬 Messages</Link>
+                  <Link href="/profile" className="flex items-center gap-2.5 px-4 py-3 font-bold text-[14px] text-[#2d2d2d] hover:bg-[#fff7ed] hover:text-bk-orange transition-colors">📊 Dashboard</Link>
+                  <Link href="/messages" className="flex items-center gap-2.5 px-4 py-3 font-bold text-[14px] text-[#2d2d2d] hover:bg-[#fff7ed] hover:text-bk-orange transition-colors">💬 Messages</Link>
                   <div style={{ borderTop: '2px solid #f3f4f6' }}>
-                    <Link href="/admin" className="flex items-center gap-2.5 px-4 py-3 font-bold text-[14px] text-[#2d2d2d] hover:bg-[#fff7ed] hover:text-bk-orange transition-colors" onClick={() => setAvatarOpen(false)}>🔐 Admin Panel</Link>
+                    <Link href="/admin" className="flex items-center gap-2.5 px-4 py-3 font-bold text-[14px] text-[#2d2d2d] hover:bg-[#fff7ed] hover:text-bk-orange transition-colors">🔐 Admin Panel</Link>
                   </div>
                   <div style={{ borderTop: '2px solid #f3f4f6' }}>
                     <a href="/auth/signout" onClick={clearDemoUser} className="flex items-center gap-2.5 px-4 py-3 font-bold text-[14px] text-[#888] hover:bg-red-50 hover:text-red-500 transition-colors">🚪 Sign Out</a>
                   </div>
                 </div>
-              </div>
+              </details>
             </>
           ) : (
             <>

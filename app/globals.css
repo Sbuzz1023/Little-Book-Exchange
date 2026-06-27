@@ -18,6 +18,10 @@ body {
   overscroll-behavior-x: none;
 }
 
+/* Hide default details/summary triangle marker */
+details summary::-webkit-details-marker { display: none; }
+details summary::marker { display: none; }
+
 /* Prevent Tailwind base reset from breaking Leaflet tile images */
 .leaflet-container img {
   max-width: none !important;
