@@ -195,14 +195,20 @@ export default function LocationsClient() {
           <h1 className="font-display text-[17px] md:text-[19px] text-white whitespace-nowrap shrink-0">
             🗺️ <span className="hidden sm:inline">LFL </span>Locations
           </h1>
-          <form onSubmit={handleSearch} className="flex-1 flex items-center gap-1.5 bg-white/20 border border-white/40 rounded-xl px-2.5 py-1.5 min-w-0">
+          <form onSubmit={handleSearch} className="flex items-center gap-1.5 bg-white/20 border border-white/40 rounded-xl px-2.5 py-1.5 w-[220px] md:w-[260px] shrink-0">
             <span className="text-white text-[14px] shrink-0">🔍</span>
             <input
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder="Search by city or address…"
-              className="flex-1 bg-transparent font-bold text-[13px] text-white placeholder:text-white/60 focus:outline-none min-w-0"
+              placeholder="City or address…"
+              className="flex-1 bg-transparent font-bold text-[13px] text-white placeholder:text-white/60 focus:outline-none min-w-0 w-0"
             />
+            {(search || searchLabel) && (
+              <button type="button" onClick={clearSearch}
+                className="text-white/70 hover:text-white font-black text-[16px] leading-none shrink-0">
+                ×
+              </button>
+            )}
             <button type="submit" disabled={searching}
               className="bg-white text-bk-orange font-extrabold text-[12px] px-2.5 py-1 rounded-lg shrink-0 disabled:opacity-60">
               {searching ? '…' : 'Go'}
