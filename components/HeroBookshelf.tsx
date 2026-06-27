@@ -109,11 +109,11 @@ export default function HeroBookshelf() {
           />
         ))}
 
-        {/* Search book — clickable area where the search form used to live */}
-        <button
-          aria-label="Search books"
-          onClick={doSearch}
-          onMouseEnter={() => setHovered('search')}
+        {/* Blue horizontal book — links to Libraries/Locations page */}
+        <Link
+          href="/locations"
+          aria-label="Find library locations"
+          onMouseEnter={() => setHovered('locations')}
           onMouseLeave={() => setHovered(null)}
           style={{
             position: 'absolute',
@@ -122,13 +122,27 @@ export default function HeroBookshelf() {
             width: '40%',
             height: '6%',
             borderRadius: 10,
-            border: 'none',
-            cursor: 'pointer',
-            background: hovered === 'search' ? 'rgba(37,60,110,0.35)' : 'transparent',
-            boxShadow: hovered === 'search' ? '0 8px 24px rgba(37,60,110,0.5)' : 'none',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: hovered === 'locations' ? 'rgba(47,89,125,0.35)' : 'transparent',
+            boxShadow: hovered === 'locations' ? '0 8px 24px rgba(37,60,110,0.5)' : 'none',
             transition: 'background 0.15s ease, box-shadow 0.15s ease',
           }}
-        />
+        >
+          <span style={{
+            fontFamily: 'Nunito, sans-serif',
+            fontWeight: 900,
+            fontSize: 'clamp(7px, 1.4vw, 13px)',
+            color: '#fff',
+            letterSpacing: '0.03em',
+            whiteSpace: 'nowrap',
+            textShadow: '0 1px 4px rgba(10,25,60,0.95), 0 0 10px rgba(10,25,60,0.8)',
+            userSelect: 'none',
+          }}>
+            Little Free Libraries &amp; Locations
+          </span>
+        </Link>
       </div>
 
       {/* Search bar below the library */}

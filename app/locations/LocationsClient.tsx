@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect, useMemo } from 'react'
 import dynamic from 'next/dynamic'
-import type { LibraryLocation } from './MapView'
+import type { LibraryLocation, Bounds } from './MapView'
 
 const MapView = dynamic(() => import('./MapView'), {
   ssr: false,
@@ -51,12 +51,14 @@ async function geocode(query: string): Promise<[number, number] | null> {
 }
 
 const DISTANCE_OPTIONS = [
-  { val: 0,  label: 'All' },
-  { val: 5,  label: '5 mi' },
-  { val: 10, label: '10 mi' },
-  { val: 25, label: '25 mi' },
-  { val: 50, label: '50 mi' },
-  { val: 100,label: '100 mi' },
+  { val: 0,   label: 'All' },
+  { val: 0.5, label: '½ mi' },
+  { val: 1,   label: '1 mi' },
+  { val: 5,   label: '5 mi' },
+  { val: 10,  label: '10 mi' },
+  { val: 25,  label: '25 mi' },
+  { val: 50,  label: '50 mi' },
+  { val: 100, label: '100 mi' },
 ]
 
 type FlyTo = { center: [number, number]; zoom: number; nonce: number }
@@ -70,6 +72,7 @@ export default function LocationsClient() {
   const [searching, setSearching] = useState(false)
   const [distance, setDistance] = useState(0)
   const [geoLoading, setGeoLoading] = useState(false)
+  const [mapBounds, setMapBounds] = useState<Bounds | null>(null)
 
   // Add location state
   const [addMode, setAddMode] = useState(false)
@@ -97,6 +100,9 @@ export default function LocationsClient() {
     let result = locations
     if (distance > 0 && userCoords) {
       result = result.filter(l => haversine(userCoords[0], userCoords[1], l.lat, l.lng) <= distance)
+    } else if (distance === 0 && mapBounds) {
+      const [[swLat, swLng], [neLat, neLng]] = mapBounds
+      result = result.filter(l => l.lat >= swLat && l.lat <= neLat && l.lng >= swLng && l.lng <= neLng)
     }
     if (userCoords) {
       result = [...result].sort((a, b) =>
@@ -105,14 +111,14 @@ export default function LocationsClient() {
       )
     }
     return result
-  }, [locations, userCoords, distance])
+  }, [locations, userCoords, distance, mapBounds])
 
   function applyLocation(coords: [number, number], label: string, zoom = 12) {
     setUserCoords(coords)
     setSearchLabel(label)
     setFlyTo({ center: coords, zoom, nonce: Date.now() })
-    // Auto-apply 25 mi filter when a location is set (if currently showing All)
-    if (distance === 0) setDistance(25)
+    // Auto-apply 5 mi filter when a location is set (if currently showing All)
+    if (distance === 0) setDistance(5)
   }
 
   function clearSearch() {
@@ -146,6 +152,13 @@ export default function LocationsClient() {
     setSearching(false)
     if (coords) applyLocation(coords, search.trim())
     else alert('Location not found. Try a city name or full address.')
+  }
+
+  function handleSetCenter(lat: number, lng: number) {
+    const coords: [number, number] = [lat, lng]
+    setUserCoords(coords)
+    setSearchLabel('Map pin')
+    if (distance === 0) setDistance(5)
   }
 
   function handleMapClick(lat: number, lng: number) {
@@ -223,16 +236,24 @@ export default function LocationsClient() {
         {/* ── Distance filter + active search label ── */}
         <div className="flex-shrink-0 bg-white border-b border-[#f3f4f6] px-3 md:px-5 py-1.5 flex items-center gap-1.5 flex-wrap">
           <span className="font-bold text-[11px] text-[#999] shrink-0">Distance:</span>
-          {DISTANCE_OPTIONS.map(opt => (
-            <button key={opt.val} onClick={() => setDistance(opt.val)}
-              className={`px-2.5 py-0.5 rounded-full font-extrabold text-[11px] border-2 transition-colors ${
-                distance === opt.val
-                  ? 'bg-bk-orange border-bk-orange text-white'
-                  : 'bg-white border-[#e5e7eb] text-[#666] hover:border-bk-orange'
-              }`}>
-              {opt.label}
-            </button>
-          ))}
+          {DISTANCE_OPTIONS.map(opt => {
+            const needsLocation = opt.val > 0 && !userCoords
+            return (
+              <button
+                key={opt.val}
+                onClick={() => !needsLocation && setDistance(opt.val)}
+                title={needsLocation ? 'Search a city or use My Location first' : undefined}
+                className={`px-2.5 py-0.5 rounded-full font-extrabold text-[11px] border-2 transition-colors ${
+                  distance === opt.val
+                    ? 'bg-bk-orange border-bk-orange text-white'
+                    : needsLocation
+                    ? 'bg-white border-[#e5e7eb] text-[#ccc] cursor-not-allowed'
+                    : 'bg-white border-[#e5e7eb] text-[#666] hover:border-bk-orange cursor-pointer'
+                }`}>
+                {opt.label}
+              </button>
+            )
+          })}
 
           {/* Active search label with clear */}
           {searchLabel && (
@@ -244,8 +265,8 @@ export default function LocationsClient() {
               </button>
             </div>
           )}
-          {distance > 0 && !userCoords && (
-            <span className="text-[11px] font-bold text-bk-orange ml-1">⚠️ Search a location first</span>
+          {!userCoords && (
+            <span className="text-[11px] font-semibold text-[#bbb] ml-1">Search a city or click the map to set radius center</span>
           )}
           <span className="ml-auto font-bold text-[11px] text-[#aaa] whitespace-nowrap">
             {lflCount} LFL{lflCount !== 1 ? 's' : ''} · {libCount} librar{libCount !== 1 ? 'ies' : 'y'}
@@ -319,6 +340,10 @@ export default function LocationsClient() {
               addMode={addMode}
               onMapClick={handleMapClick}
               onReport={setReportTarget}
+              radiusCenter={userCoords}
+              radiusMiles={distance}
+              onBoundsChange={setMapBounds}
+              onSetCenter={handleSetCenter}
             />
           </div>
 

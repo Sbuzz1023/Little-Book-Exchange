@@ -1,8 +1,7 @@
 'use client'
-import 'leaflet/dist/leaflet.css'
-import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from 'react-leaflet'
+import { MapContainer, TileLayer, Marker, Popup, Circle, useMap, useMapEvents } from 'react-leaflet'
 import L from 'leaflet'
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 
 export type LibraryLocation = {
   id: string
@@ -15,6 +14,8 @@ export type LibraryLocation = {
   description?: string
   isUserAdded?: boolean
 }
+
+export type Bounds = [[number, number], [number, number]]
 
 function pinIcon(type: 'lfl' | 'library' | 'pending') {
   const c = {
@@ -38,6 +39,20 @@ function pinIcon(type: 'lfl' | 'library' | 'pending') {
   })
 }
 
+function centerIcon() {
+  return L.divIcon({
+    className: '',
+    html: `<div style="
+      width:18px;height:18px;border-radius:50%;
+      background:#f97316;border:3px solid white;
+      outline:2px solid #c2410c;
+      box-shadow:0 2px 8px rgba(0,0,0,0.4);
+    "></div>`,
+    iconSize: [18, 18],
+    iconAnchor: [9, 9],
+  })
+}
+
 function MapFly({ center, zoom }: { center: [number, number]; zoom: number }) {
   const map = useMap()
   useEffect(() => {
@@ -47,9 +62,32 @@ function MapFly({ center, zoom }: { center: [number, number]; zoom: number }) {
   return null
 }
 
-function ClickHandler({ active, onMapClick }: { active: boolean; onMapClick: (lat: number, lng: number) => void }) {
+function BoundsTracker({ onBoundsChange }: { onBoundsChange: (b: Bounds) => void }) {
+  const cbRef = useRef(onBoundsChange)
+  cbRef.current = onBoundsChange
   useMapEvents({
-    click(e) { if (active) onMapClick(e.latlng.lat, e.latlng.lng) },
+    moveend(e) {
+      const b = e.target.getBounds()
+      cbRef.current([[b.getSouth(), b.getWest()], [b.getNorth(), b.getEast()]])
+    },
+    zoomend(e) {
+      const b = e.target.getBounds()
+      cbRef.current([[b.getSouth(), b.getWest()], [b.getNorth(), b.getEast()]])
+    },
+  })
+  return null
+}
+
+function ClickHandler({ addMode, onMapClick, onSetCenter }: {
+  addMode: boolean
+  onMapClick: (lat: number, lng: number) => void
+  onSetCenter: (lat: number, lng: number) => void
+}) {
+  useMapEvents({
+    click(e) {
+      if (addMode) onMapClick(e.latlng.lat, e.latlng.lng)
+      else onSetCenter(e.latlng.lat, e.latlng.lng)
+    },
   })
   return null
 }
@@ -61,21 +99,41 @@ interface Props {
   addMode: boolean
   onMapClick: (lat: number, lng: number) => void
   onReport: (loc: LibraryLocation) => void
+  radiusCenter: [number, number] | null
+  radiusMiles: number
+  onBoundsChange: (b: Bounds) => void
+  onSetCenter: (lat: number, lng: number) => void
 }
 
-export default function MapView({ locations, pendingPin, flyTo, addMode, onMapClick, onReport }: Props) {
+export default function MapView({
+  locations, pendingPin, flyTo, addMode,
+  onMapClick, onReport, radiusCenter, radiusMiles,
+  onBoundsChange, onSetCenter,
+}: Props) {
   return (
     <MapContainer
       center={[39.5, -98.35]}
       zoom={4}
-      style={{ width: '100%', height: '100%', cursor: addMode ? 'crosshair' : undefined }}
+      style={{ width: '100%', height: '100%', cursor: addMode ? 'crosshair' : 'crosshair' }}
     >
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
-      <ClickHandler active={addMode} onMapClick={onMapClick} />
+      <BoundsTracker onBoundsChange={onBoundsChange} />
+      <ClickHandler addMode={addMode} onMapClick={onMapClick} onSetCenter={onSetCenter} />
       {flyTo && <MapFly key={flyTo.nonce} center={flyTo.center} zoom={flyTo.zoom} />}
+
+      {radiusCenter && radiusMiles > 0 && (
+        <>
+          <Circle
+            center={radiusCenter}
+            radius={radiusMiles * 1609.344}
+            pathOptions={{ color: '#f97316', fillColor: '#f97316', fillOpacity: 0.07, weight: 2, dashArray: '6 4' }}
+          />
+          <Marker position={radiusCenter} icon={centerIcon()} interactive={false} />
+        </>
+      )}
 
       {locations.map(loc => (
         <Marker key={loc.id} position={[loc.lat, loc.lng]} icon={pinIcon(loc.type)}>
