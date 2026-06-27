@@ -72,6 +72,7 @@ export default function Nav({ userName: serverUserName }: { userName?: string | 
         {/* Desktop links */}
         <div className="hidden md:flex items-center gap-[22px]">
           <Link href="/listings" className="font-bold text-[15px] text-[#2d2d2d] hover:text-bk-orange transition-colors">Browse</Link>
+          <Link href="/locations" className="font-bold text-[15px] text-[#2d2d2d] hover:text-bk-orange transition-colors">Locations</Link>
           <Link href="/post" className="font-bold text-[15px] text-[#2d2d2d] hover:text-bk-orange transition-colors">Post a Book</Link>
 
           {userName ? (
@@ -157,6 +158,9 @@ export default function Nav({ userName: serverUserName }: { userName?: string | 
           )}
           <Link href="/listings" className="flex items-center gap-3 px-5 py-4 font-bold text-[15px] text-[#2d2d2d] border-b border-gray-100 hover:bg-[#fff7ed] hover:text-bk-orange transition-colors">
             🔍 Browse
+          </Link>
+          <Link href="/locations" className="flex items-center gap-3 px-5 py-4 font-bold text-[15px] text-[#2d2d2d] border-b border-gray-100 hover:bg-[#fff7ed] hover:text-bk-orange transition-colors">
+            🗺️ Locations
           </Link>
           <Link href="/post" className="flex items-center gap-3 px-5 py-4 font-bold text-[15px] text-[#2d2d2d] border-b border-gray-100 hover:bg-[#fff7ed] hover:text-bk-orange transition-colors">
             📚 Post a Book
