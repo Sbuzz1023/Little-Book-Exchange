@@ -44,12 +44,15 @@ export default function Nav({ userName: serverUserName }: { userName?: string | 
     setAvatarOpen(false)
   }, [pathname])
 
-  // Close avatar dropdown on any outside click
+  // Close avatar dropdown on outside click
   useEffect(() => {
     if (!avatarOpen) return
-    const close = () => setAvatarOpen(false)
-    document.addEventListener('click', close)
-    return () => document.removeEventListener('click', close)
+    function handleClick(e: MouseEvent) {
+      const target = e.target as HTMLElement
+      if (!target.closest('[data-avatar-menu]')) setAvatarOpen(false)
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
   }, [avatarOpen])
 
   return (
@@ -80,31 +83,41 @@ export default function Nav({ userName: serverUserName }: { userName?: string | 
               <Link href="/messages" className="font-bold text-[15px] text-[#2d2d2d] hover:text-bk-orange transition-colors">Messages</Link>
 
               {/* Avatar dropdown */}
-              <div className="relative">
+              <div className="relative" data-avatar-menu>
                 <button
-                  onClick={(e) => { e.stopPropagation(); setAvatarOpen(o => !o) }}
+                  onClick={() => setAvatarOpen(o => !o)}
                   className="flex items-center justify-center font-black text-[13px] text-white rounded-full select-none"
-                  style={{ width: 38, height: 38, background: '#f97316', boxShadow: avatarOpen ? '0 1px 0 #c2410c' : '0 3px 0 #c2410c', border: 'none', cursor: 'pointer', letterSpacing: '0.5px', transform: avatarOpen ? 'translateY(2px)' : 'none', transition: 'all 0.1s' }}
+                  style={{ width: 38, height: 38, background: '#f97316', boxShadow: '0 3px 0 #c2410c', border: 'none', cursor: 'pointer', letterSpacing: '0.5px' }}
                 >
                   {initials(userName)}
                 </button>
-                {avatarOpen && (
-                  <div
-                    className="absolute right-0 bg-white border-2 border-gray-100 rounded-[16px] overflow-hidden"
-                    style={{ top: 'calc(100% + 8px)', minWidth: 160, boxShadow: '0 8px 24px rgba(0,0,0,0.10)', zIndex: 9999 }}
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <div className="px-4 py-3 font-black text-[13px] border-b-2 border-gray-100" style={{ color: '#aaa' }}>{userName}</div>
-                    <Link href="/profile" className="flex items-center gap-2.5 px-4 py-3 font-bold text-[14px] text-[#2d2d2d] hover:bg-[#fff7ed] hover:text-bk-orange transition-colors" onClick={() => setAvatarOpen(false)}>📊 Dashboard</Link>
-                    <Link href="/messages" className="flex items-center gap-2.5 px-4 py-3 font-bold text-[14px] text-[#2d2d2d] hover:bg-[#fff7ed] hover:text-bk-orange transition-colors" onClick={() => setAvatarOpen(false)}>💬 Messages</Link>
-                    <div style={{ borderTop: '2px solid #f3f4f6' }}>
-                      <Link href="/admin" className="flex items-center gap-2.5 px-4 py-3 font-bold text-[14px] text-[#2d2d2d] hover:bg-[#fff7ed] hover:text-bk-orange transition-colors" onClick={() => setAvatarOpen(false)}>🔐 Admin Panel</Link>
-                    </div>
-                    <div style={{ borderTop: '2px solid #f3f4f6' }}>
-                      <a href="/auth/signout" onClick={clearDemoUser} className="flex items-center gap-2.5 px-4 py-3 font-bold text-[14px] text-[#888] hover:bg-red-50 hover:text-red-500 transition-colors">🚪 Sign Out</a>
-                    </div>
+                {/* Fixed position so nothing can clip it */}
+                <div
+                  data-avatar-menu
+                  style={{
+                    display: avatarOpen ? 'block' : 'none',
+                    position: 'fixed',
+                    top: 76,
+                    right: 16,
+                    minWidth: 180,
+                    background: '#fff',
+                    border: '2px solid #f3f4f6',
+                    borderRadius: 16,
+                    overflow: 'hidden',
+                    boxShadow: '0 8px 32px rgba(0,0,0,0.14)',
+                    zIndex: 99999,
+                  }}
+                >
+                  <div className="px-4 py-3 font-black text-[13px] border-b-2 border-gray-100" style={{ color: '#aaa' }}>{userName}</div>
+                  <Link href="/profile" className="flex items-center gap-2.5 px-4 py-3 font-bold text-[14px] text-[#2d2d2d] hover:bg-[#fff7ed] hover:text-bk-orange transition-colors" onClick={() => setAvatarOpen(false)}>📊 Dashboard</Link>
+                  <Link href="/messages" className="flex items-center gap-2.5 px-4 py-3 font-bold text-[14px] text-[#2d2d2d] hover:bg-[#fff7ed] hover:text-bk-orange transition-colors" onClick={() => setAvatarOpen(false)}>💬 Messages</Link>
+                  <div style={{ borderTop: '2px solid #f3f4f6' }}>
+                    <Link href="/admin" className="flex items-center gap-2.5 px-4 py-3 font-bold text-[14px] text-[#2d2d2d] hover:bg-[#fff7ed] hover:text-bk-orange transition-colors" onClick={() => setAvatarOpen(false)}>🔐 Admin Panel</Link>
                   </div>
-                )}
+                  <div style={{ borderTop: '2px solid #f3f4f6' }}>
+                    <a href="/auth/signout" onClick={clearDemoUser} className="flex items-center gap-2.5 px-4 py-3 font-bold text-[14px] text-[#888] hover:bg-red-50 hover:text-red-500 transition-colors">🚪 Sign Out</a>
+                  </div>
+                </div>
               </div>
             </>
           ) : (
