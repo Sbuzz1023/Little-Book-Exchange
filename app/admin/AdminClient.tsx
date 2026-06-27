@@ -52,7 +52,7 @@ const RECENT_ACTIVITY = [
   { id:8, type:'signup',  text:'Devon H. joined',                          time:'1d ago' },
 ]
 
-const ADMIN_PASSCODE = 'LBE2024'
+const ADMIN_PASSCODE = '123890'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -158,6 +158,75 @@ function LoginGate({ onAuth }: { onAuth: () => void }) {
   )
 }
 
+// ─── User Locations Chart ────────────────────────────────────────────────────
+
+type LocationView = 'city' | 'state' | 'street'
+
+function UserLocationsChart({ users }: { users: User[] }) {
+  const [view, setView] = useState<LocationView>('city')
+
+  const data = useMemo(() => {
+    const counts: Record<string, number> = {}
+    users.forEach(u => {
+      let key = ''
+      if (view === 'city') {
+        key = u.city
+      } else if (view === 'state') {
+        const parts = u.city.split(', ')
+        key = parts[1] ?? u.city
+      } else {
+        // street — mock: group by first word of city as a stand-in for neighbourhood
+        key = u.city.split(',')[0]
+      }
+      counts[key] = (counts[key] ?? 0) + 1
+    })
+    return Object.entries(counts)
+      .map(([label, count]) => ({ label, count }))
+      .sort((a, b) => b.count - a.count)
+  }, [users, view])
+
+  const max = Math.max(...data.map(d => d.count), 1)
+  const BAR_COLORS = ['#f97316','#0d9488','#8b5cf6','#3b82f6','#ec4899','#eab308','#14b8a6']
+
+  return (
+    <div className="bg-white rounded-2xl p-5 border border-[#f1f5f9] shadow-sm">
+      <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
+        <h3 className="font-black text-[15px] text-[#1e293b]">User Locations</h3>
+        <div className="flex gap-1.5">
+          {(['city','state','street'] as LocationView[]).map(v => (
+            <button key={v} onClick={() => setView(v)}
+              className={`px-3 py-1 rounded-full text-[11px] font-extrabold border-2 capitalize transition-colors ${view === v ? 'bg-bk-orange border-bk-orange text-white' : 'bg-white border-[#e2e8f0] text-[#64748b] hover:border-bk-orange'}`}>
+              {v === 'street' ? 'Neighbourhood' : v === 'city' ? 'City' : 'State'}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="space-y-2.5">
+        {data.map(({ label, count }, i) => (
+          <div key={label} className="flex items-center gap-3">
+            <div className="w-[130px] text-[12px] font-bold text-[#334155] truncate shrink-0 text-right">{label}</div>
+            <div className="flex-1 h-7 bg-[#f1f5f9] rounded-full overflow-hidden relative">
+              <div
+                className="h-full rounded-full transition-all duration-500 flex items-center"
+                style={{ width: `${(count / max) * 100}%`, background: BAR_COLORS[i % BAR_COLORS.length] }}
+              />
+            </div>
+            <div className="w-8 text-[13px] font-extrabold shrink-0" style={{ color: BAR_COLORS[i % BAR_COLORS.length] }}>
+              {count}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-4 pt-3 border-t border-[#f1f5f9] flex items-center justify-between text-[11px] font-bold text-[#94a3b8]">
+        <span>{users.length} total users</span>
+        <span>{data.length} unique {view === 'state' ? 'states' : view === 'city' ? 'cities' : 'neighbourhoods'}</span>
+      </div>
+    </div>
+  )
+}
+
 // ─── Dashboard tab ───────────────────────────────────────────────────────────
 
 function Dashboard({ users, reports, reviews }: { users: User[]; reports: Report[]; reviews: Review[] }) {
@@ -185,6 +254,8 @@ function Dashboard({ users, reports, reviews }: { users: User[]; reports: Report
         <h3 className="font-black text-[15px] text-[#1e293b] mb-4">Weekly Activity</h3>
         <ActivityChart data={WEEKLY_ACTIVITY} />
       </div>
+
+      <UserLocationsChart users={users} />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Recent activity */}
