@@ -25,16 +25,16 @@ function pinIcon(type: 'lfl' | 'library' | 'pending') {
   return L.divIcon({
     className: '',
     html: `<div style="
-      width:42px;height:42px;border-radius:50%;
+      width:40px;height:40px;border-radius:50%;
       background:${c.bg};border:3px solid white;
       outline:2px solid ${c.ring};
       display:flex;align-items:center;justify-content:center;
-      font-size:20px;cursor:pointer;
+      font-size:19px;cursor:pointer;
       box-shadow:0 4px 12px rgba(0,0,0,0.35);
     ">${c.emoji}</div>`,
-    iconSize: [42, 42],
-    iconAnchor: [21, 42],
-    popupAnchor: [0, -46],
+    iconSize: [40, 40],
+    iconAnchor: [20, 40],
+    popupAnchor: [0, -44],
   })
 }
 
@@ -49,9 +49,7 @@ function MapFly({ center, zoom }: { center: [number, number]; zoom: number }) {
 
 function ClickHandler({ active, onMapClick }: { active: boolean; onMapClick: (lat: number, lng: number) => void }) {
   useMapEvents({
-    click(e) {
-      if (active) onMapClick(e.latlng.lat, e.latlng.lng)
-    },
+    click(e) { if (active) onMapClick(e.latlng.lat, e.latlng.lng) },
   })
   return null
 }
@@ -62,10 +60,10 @@ interface Props {
   flyTo: { center: [number, number]; zoom: number; nonce: number } | null
   addMode: boolean
   onMapClick: (lat: number, lng: number) => void
-  onRemove: (id: string) => void
+  onReport: (loc: LibraryLocation) => void
 }
 
-export default function MapView({ locations, pendingPin, flyTo, addMode, onMapClick, onRemove }: Props) {
+export default function MapView({ locations, pendingPin, flyTo, addMode, onMapClick, onReport }: Props) {
   return (
     <MapContainer
       center={[39.5, -98.35]}
@@ -97,7 +95,7 @@ export default function MapView({ locations, pendingPin, flyTo, addMode, onMapCl
               {loc.description && (
                 <div style={{ fontSize: 13, color: '#888', fontStyle: 'italic', marginBottom: 10 }}>{loc.description}</div>
               )}
-              <div style={{ display: 'flex', gap: 8 }}>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                 <a
                   href={`https://www.google.com/maps/dir/?api=1&destination=${loc.lat},${loc.lng}`}
                   target="_blank"
@@ -111,13 +109,14 @@ export default function MapView({ locations, pendingPin, flyTo, addMode, onMapCl
                   Directions
                 </a>
                 <button
-                  onClick={() => onRemove(loc.id)}
+                  onClick={() => onReport(loc)}
                   style={{
-                    background: '#fff0f0', color: '#ef4444', border: '1.5px solid #fecaca',
-                    borderRadius: 8, padding: '5px 10px', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                    background: '#f8f9fa', color: '#888', border: '1.5px solid #e5e7eb',
+                    borderRadius: 8, padding: '5px 10px', fontSize: 11, fontWeight: 700,
+                    cursor: 'pointer', whiteSpace: 'nowrap',
                   }}
                 >
-                  Remove
+                  📩 Report
                 </button>
               </div>
             </div>
