@@ -10,7 +10,7 @@ const MOCK_USERS = [
   { id:'u4', username:'Tom B.',      email:'tom@example.com',     joined:'2024-05-01', booksPosted:2,  booksTraded:1,  credits:3,  status:'suspended',city:'Austin, TX',     bio:'',                               reviews:0 },
   { id:'u5', username:'Maria C.',    email:'maria@example.com',   joined:'2024-05-10', booksPosted:8,  booksTraded:6,  credits:18, status:'active',   city:'Brooklyn, NY',   bio:'Mystery & thriller fan.',       reviews:3 },
   { id:'u6', username:'Devon H.',    email:'devon@example.com',   joined:'2024-05-22', booksPosted:3,  booksTraded:2,  credits:5,  status:'active',   city:'Denver, CO',     bio:'Hiker who reads on trails.',    reviews:1 },
-  { id:'u7', username:'Lily T.',     email:'lily@example.com',    joined:'2024-06-01', booksPosted:6,  booksTraded:4,  credits:12, status:'active',   city:'Portland, OR',   bio:'Children's book collector.',   reviews:2 },
+  { id:'u7', username:'Lily T.',     email:'lily@example.com',    joined:'2024-06-01', booksPosted:6,  booksTraded:4,  credits:12, status:'active',   city:'Portland, OR',   bio:"Children's book collector.",   reviews:2 },
   { id:'u8', username:'Raj P.',      email:'raj@example.com',     joined:'2024-06-10', booksPosted:1,  booksTraded:0,  credits:1,  status:'active',   city:'Seattle, WA',    bio:'Just joined!',                  reviews:0 },
 ]
 
@@ -26,7 +26,7 @@ const MOCK_REVIEWS = [
   { id:'rv2', reviewer:'Priya N.',  book:'Dune',                   rating:5, text:'A sci-fi masterpiece. Highly recommend to anyone who loves world-building.', date:'2024-06-18', flagged:false },
   { id:'rv3', reviewer:'James K.',  book:'Twilight',               rating:2, text:'Not my thing but was in good condition.',                                   date:'2024-06-19', flagged:false },
   { id:'rv4', reviewer:'Tom B.',    book:'Harry Potter Sorcerer',  rating:1, text:'This is garbage, the seller is a scammer!!!',                              date:'2024-06-20', flagged:true  },
-  { id:'rv5', reviewer:'Maria C.',  book:'Gone Girl',              rating:4, text:'Couldn't put it down. Book was in excellent condition.',                    date:'2024-06-21', flagged:false },
+  { id:'rv5', reviewer:'Maria C.',  book:'Gone Girl',              rating:4, text:"Couldn't put it down. Book was in excellent condition.",                    date:'2024-06-21', flagged:false },
   { id:'rv6', reviewer:'Devon H.',  book:'Into the Wild',          rating:5, text:'One of my favorites. Glad to pass it along.',                               date:'2024-06-22', flagged:false },
 ]
 
