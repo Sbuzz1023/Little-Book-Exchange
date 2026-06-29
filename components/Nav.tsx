@@ -64,14 +64,18 @@ export default function Nav({ userName: serverUserName }: { userName?: string | 
         {/* Desktop links */}
         <div className="hidden md:flex items-center gap-[22px]">
           <Link href="/listings" className="font-bold text-[15px] text-[#2d2d2d] hover:text-bk-orange transition-colors">Browse</Link>
+          <span className="w-px h-5 bg-gray-200" />
           <Link href="/post" className="font-bold text-[15px] text-[#2d2d2d] hover:text-bk-orange transition-colors">Post a Book</Link>
 
           {userName ? (
             <>
-              <span className="w-px h-5 bg-gray-200 mx-1" />
+              <span className="w-px h-5 bg-gray-200" />
               <Link href="/locations" className="font-bold text-[15px] text-[#2d2d2d] hover:text-bk-orange transition-colors">Libraries</Link>
+              <span className="w-px h-5 bg-gray-200" />
               <Link href="/profile" className="font-bold text-[15px] text-[#2d2d2d] hover:text-bk-orange transition-colors">Dashboard</Link>
+              <span className="w-px h-5 bg-gray-200" />
               <Link href="/messages" className="font-bold text-[15px] text-[#2d2d2d] hover:text-bk-orange transition-colors">Messages</Link>
+              <span className="w-px h-5 bg-gray-200" />
 
               {/* Avatar dropdown — uses native <details> toggle, no JS state needed */}
               <details ref={detailsRef} style={{ position: 'relative' }}>
@@ -112,6 +116,7 @@ export default function Nav({ userName: serverUserName }: { userName?: string | 
           ) : (
             <>
               <Link href="/auth/signin" className="font-bold text-[15px] text-[#2d2d2d] hover:text-bk-orange transition-colors">Sign In</Link>
+              <span className="w-px h-5 bg-gray-200" />
               <Link href="/auth/signup" className="bg-bk-orange text-white px-[22px] py-[9px] rounded-full font-extrabold text-[15px] hover:bg-bk-orange-dark transition-colors">Sign Up</Link>
             </>
           )}
