@@ -68,7 +68,10 @@ export default function Nav({ userName: serverUserName }: { userName?: string | 
 
           {userName ? (
             <>
+              <span className="w-px h-5 bg-gray-200 mx-1" />
               <Link href="/locations" className="font-bold text-[15px] text-[#2d2d2d] hover:text-bk-orange transition-colors">Libraries</Link>
+              <Link href="/profile" className="font-bold text-[15px] text-[#2d2d2d] hover:text-bk-orange transition-colors">Dashboard</Link>
+              <Link href="/messages" className="font-bold text-[15px] text-[#2d2d2d] hover:text-bk-orange transition-colors">Messages</Link>
 
               {/* Avatar dropdown — uses native <details> toggle, no JS state needed */}
               <details ref={detailsRef} style={{ position: 'relative' }}>
@@ -99,11 +102,7 @@ export default function Nav({ userName: serverUserName }: { userName?: string | 
                   zIndex: 99999,
                 }}>
                   <div className="px-4 py-3 font-black text-[13px] border-b-2 border-gray-100" style={{ color: '#aaa' }}>{userName}</div>
-                  <Link href="/profile" className="flex items-center gap-2.5 px-4 py-3 font-bold text-[14px] text-[#2d2d2d] hover:bg-[#fff7ed] hover:text-bk-orange transition-colors">📊 Dashboard</Link>
-                  <Link href="/messages" className="flex items-center gap-2.5 px-4 py-3 font-bold text-[14px] text-[#2d2d2d] hover:bg-[#fff7ed] hover:text-bk-orange transition-colors">💬 Messages</Link>
-                  <div style={{ borderTop: '2px solid #f3f4f6' }}>
-                    <Link href="/admin" className="flex items-center gap-2.5 px-4 py-3 font-bold text-[14px] text-[#2d2d2d] hover:bg-[#fff7ed] hover:text-bk-orange transition-colors">🔐 Admin Panel</Link>
-                  </div>
+                  <Link href="/admin" className="flex items-center gap-2.5 px-4 py-3 font-bold text-[14px] text-[#2d2d2d] hover:bg-[#fff7ed] hover:text-bk-orange transition-colors">🔐 Admin Panel</Link>
                   <div style={{ borderTop: '2px solid #f3f4f6' }}>
                     <a href="/auth/signout" onClick={clearDemoUser} className="flex items-center gap-2.5 px-4 py-3 font-bold text-[14px] text-[#888] hover:bg-red-50 hover:text-red-500 transition-colors">🚪 Sign Out</a>
                   </div>
