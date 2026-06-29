@@ -35,8 +35,9 @@ export default function Nav({ userName: serverUserName }: { userName?: string | 
 
   const [userName, setUserName] = useState<string | null>(serverUserName ?? null)
   useEffect(() => {
-    setUserName(readDemoUser())
-  }, [pathname])
+    const demoUser = readDemoUser()
+    setUserName(demoUser ?? serverUserName ?? null)
+  }, [pathname, serverUserName])
 
   // Close both menus on route change
   useEffect(() => {
@@ -62,14 +63,12 @@ export default function Nav({ userName: serverUserName }: { userName?: string | 
 
         {/* Desktop links */}
         <div className="hidden md:flex items-center gap-[22px]">
-          <Link href="/listings" className="font-bold text-[15px] text-[#2d2d2d] hover:text-bk-orange transition-colors">Browse Posted Books</Link>
-          <Link href="/locations" className="font-bold text-[15px] text-[#2d2d2d] hover:text-bk-orange transition-colors">Libraries</Link>
+          <Link href="/listings" className="font-bold text-[15px] text-[#2d2d2d] hover:text-bk-orange transition-colors">Browse</Link>
           <Link href="/post" className="font-bold text-[15px] text-[#2d2d2d] hover:text-bk-orange transition-colors">Post a Book</Link>
 
           {userName ? (
             <>
-              <Link href="/profile" className="font-bold text-[15px] text-[#2d2d2d] hover:text-bk-orange transition-colors">Dashboard</Link>
-              <Link href="/messages" className="font-bold text-[15px] text-[#2d2d2d] hover:text-bk-orange transition-colors">Messages</Link>
+              <Link href="/locations" className="font-bold text-[15px] text-[#2d2d2d] hover:text-bk-orange transition-colors">Libraries</Link>
 
               {/* Avatar dropdown — uses native <details> toggle, no JS state needed */}
               <details ref={detailsRef} style={{ position: 'relative' }}>
@@ -114,7 +113,7 @@ export default function Nav({ userName: serverUserName }: { userName?: string | 
           ) : (
             <>
               <Link href="/auth/signin" className="font-bold text-[15px] text-[#2d2d2d] hover:text-bk-orange transition-colors">Sign In</Link>
-              <Link href="/auth/signup" className="bg-bk-orange text-white px-[22px] py-[9px] rounded-full font-extrabold text-[15px] hover:bg-bk-orange-dark transition-colors">Join Free</Link>
+              <Link href="/auth/signup" className="bg-bk-orange text-white px-[22px] py-[9px] rounded-full font-extrabold text-[15px] hover:bg-bk-orange-dark transition-colors">Sign Up</Link>
             </>
           )}
         </div>
@@ -165,24 +164,21 @@ export default function Nav({ userName: serverUserName }: { userName?: string | 
             </div>
           )}
           <Link href="/listings" className="flex items-center gap-3 px-5 py-4 font-bold text-[15px] text-[#2d2d2d] border-b border-gray-100 hover:bg-[#fff7ed] hover:text-bk-orange transition-colors">
-            🔍 Browse Posted Books
-          </Link>
-          <Link href="/locations" className="flex items-center gap-3 px-5 py-4 font-bold text-[15px] text-[#2d2d2d] border-b border-gray-100 hover:bg-[#fff7ed] hover:text-bk-orange transition-colors">
-            🗺️ Libraries
+            🔍 Browse
           </Link>
           <Link href="/post" className="flex items-center gap-3 px-5 py-4 font-bold text-[15px] text-[#2d2d2d] border-b border-gray-100 hover:bg-[#fff7ed] hover:text-bk-orange transition-colors">
             📚 Post a Book
           </Link>
           {userName ? (
             <>
-              <Link href="/profile" className="flex items-center gap-3 px-5 py-4 font-bold text-[15px] text-[#2d2d2d] border-b border-gray-100 hover:bg-[#fff7ed] hover:text-bk-orange transition-colors">
+              <Link href="/locations" className="flex items-center gap-3 px-5 py-4 font-bold text-[15px] text-[#2d2d2d] border-b border-gray-100 hover:bg-[#fff7ed] hover:text-bk-orange transition-colors">
+                🗺️ Libraries
+              </Link>
+              <Link href="/profile" className="flex items-center gap-3 px-5 py-4 font-bold text-[15px] text-[#2d2d2d] border-b border-gray-100 hover:bg-[#fff7ed] hover:text-bk-orange transition-colors md:hidden">
                 📊 Dashboard
               </Link>
-              <Link href="/messages" className="flex items-center gap-3 px-5 py-4 font-bold text-[15px] text-[#2d2d2d] border-b border-gray-100 hover:bg-[#fff7ed] hover:text-bk-orange transition-colors">
+              <Link href="/messages" className="flex items-center gap-3 px-5 py-4 font-bold text-[15px] text-[#2d2d2d] border-b border-gray-100 hover:bg-[#fff7ed] hover:text-bk-orange transition-colors md:hidden">
                 💬 Messages
-              </Link>
-              <Link href="/admin" className="flex items-center gap-3 px-5 py-4 font-bold text-[15px] text-[#2d2d2d] border-b border-gray-100 hover:bg-[#fff7ed] hover:text-bk-orange transition-colors">
-                🔐 Admin Panel
               </Link>
               <a href="/auth/signout" onClick={clearDemoUser} className="flex items-center gap-3 px-5 py-4 font-bold text-[15px] text-red-400 hover:bg-red-50 transition-colors">
                 🚪 Sign Out
@@ -195,7 +191,7 @@ export default function Nav({ userName: serverUserName }: { userName?: string | 
               </Link>
               <div className="px-5 py-4">
                 <Link href="/auth/signup" className="block text-center bg-bk-orange text-white px-6 py-3 rounded-full font-extrabold text-[15px]">
-                  Join Free
+                  Sign Up
                 </Link>
               </div>
             </>

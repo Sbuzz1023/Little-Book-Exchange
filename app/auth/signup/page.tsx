@@ -25,7 +25,7 @@ export default function SignUpPage({
           },
         },
       })
-      if (error) redirect(`/auth/signup?error=${encodeURIComponent(error.message)}`)
+      if (error) redirect(`/auth/signup?error=${encodeURIComponent(error.message || error.code || String(error) || 'Signup failed')}`)
       redirect('/')
     } catch (err: any) {
       if (err?.digest?.startsWith('NEXT_REDIRECT')) throw err
