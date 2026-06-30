@@ -55,18 +55,13 @@ async function getListings(params: {
     else if (params.sort === 'price-desc') query = query.order('price', { ascending: false })
     else query = query.order('created_at', { ascending: false })
 
-    const { data } = await query
+    const { data, error } = await query
+    if (error) console.error('Browse query error:', error)
+    console.log('Browse query returned', data?.length ?? 0, 'listings')
     return (data as Listing[]) ?? []
-  } catch {
-    let results = [...MOCK_LISTINGS]
-    if (params.city) results = results.filter(l => l.city.toLowerCase().includes(params.city!.toLowerCase()))
-    if (params.title) results = results.filter(l => l.title.toLowerCase().includes(params.title!.toLowerCase()))
-    if (params.author) results = results.filter(l => l.author.toLowerCase().includes(params.author!.toLowerCase()))
-    if (params.type === 'free') results = results.filter(l => !l.price)
-    if (params.type === 'sale') results = results.filter(l => !!l.price)
-    if (params.genre && params.genre !== 'all') results = results.filter(l => l.genre === params.genre)
-    if (params.condition && params.condition !== 'any') results = results.filter(l => l.condition.toLowerCase() === params.condition!)
-    return results as unknown as Listing[]
+  } catch (err) {
+    console.error('Browse listings exception:', err)
+    return []
   }
 }
 

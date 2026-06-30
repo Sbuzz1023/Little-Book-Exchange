@@ -76,7 +76,7 @@ export default function PostForm({ city, action, error }: Props) {
   }
 
   return (
-    <form action={action} encType="multipart/form-data">
+    <form action={action}>
       <input type="hidden" name="genre" value={genre} />
       <input type="hidden" name="format" value={format} />
       <input type="hidden" name="price" value="1" />

@@ -13,10 +13,12 @@ export async function createListing(formData: FormData) {
 
     let photo_url: string | null = null
     const file = formData.get('photo') as File
+    console.log('Photo file:', file?.name, 'size:', file?.size, 'type:', file?.type)
     if (file && file.size > 0) {
       const ext = file.name.split('.').pop()
       const path = `${user!.id}/${Date.now()}.${ext}`
-      const { data: upload } = await supabase.storage.from('book-photos').upload(path, file)
+      const { data: upload, error: uploadError } = await supabase.storage.from('book-photos').upload(path, file)
+      console.log('Upload result:', upload, 'error:', uploadError)
       if (upload) {
         const { data: { publicUrl } } = supabase.storage.from('book-photos').getPublicUrl(path)
         photo_url = publicUrl
