@@ -1,18 +1,6 @@
 'use client'
 import { useState, useEffect, useMemo, useRef } from 'react'
-
-// ─── Mock Data ──────────────────────────────────────────────────────────────
-
-const MOCK_USERS = [
-  { id:'u1', username:'Sarah M.',    email:'sarah@example.com',   joined:'2024-03-15', booksPosted:12, booksTraded:8,  credits:24, status:'active',   city:'Portland, OR',   bio:'Avid reader & coffee lover.',   reviews:4 },
-  { id:'u2', username:'James K.',    email:'james@example.com',   joined:'2024-04-02', booksPosted:5,  booksTraded:3,  credits:9,  status:'active',   city:'Seattle, WA',    bio:'Sci-fi enthusiast.',             reviews:2 },
-  { id:'u3', username:'Priya N.',    email:'priya@example.com',   joined:'2024-04-18', booksPosted:20, booksTraded:15, credits:41, status:'active',   city:'Chicago, IL',    bio:'Reading every genre I can.',    reviews:7 },
-  { id:'u4', username:'Tom B.',      email:'tom@example.com',     joined:'2024-05-01', booksPosted:2,  booksTraded:1,  credits:3,  status:'suspended',city:'Austin, TX',     bio:'',                               reviews:0 },
-  { id:'u5', username:'Maria C.',    email:'maria@example.com',   joined:'2024-05-10', booksPosted:8,  booksTraded:6,  credits:18, status:'active',   city:'Brooklyn, NY',   bio:'Mystery & thriller fan.',       reviews:3 },
-  { id:'u6', username:'Devon H.',    email:'devon@example.com',   joined:'2024-05-22', booksPosted:3,  booksTraded:2,  credits:5,  status:'active',   city:'Denver, CO',     bio:'Hiker who reads on trails.',    reviews:1 },
-  { id:'u7', username:'Lily T.',     email:'lily@example.com',    joined:'2024-06-01', booksPosted:6,  booksTraded:4,  credits:12, status:'active',   city:'Portland, OR',   bio:"Children's book collector.",   reviews:2 },
-  { id:'u8', username:'Raj P.',      email:'raj@example.com',     joined:'2024-06-10', booksPosted:1,  booksTraded:0,  credits:1,  status:'active',   city:'Seattle, WA',    bio:'Just joined!',                  reviews:0 },
-]
+import { createClient } from '@/lib/supabase/client'
 
 const MOCK_REPORTS = [
   { id:'rp1', locationName:'Hawthorne LFL',       city:'Portland, OR',  type:'lfl',     reason:'This library was removed last month — the host moved away.',        reporter:'sarah@example.com', date:'2024-06-20', status:'pending' },
@@ -57,7 +45,22 @@ const ADMIN_PASSCODE = '123890'
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 type Tab = 'dashboard' | 'users' | 'locations' | 'reviews'
-type User = typeof MOCK_USERS[0]
+type User = {
+  id: string
+  username: string
+  email: string
+  joined: string
+  booksPosted: number
+  booksSold: number
+  booksBought: number
+  credits: number
+  status: string
+  city: string
+  state: string
+  bio: string
+  reviews: number
+  is_admin: boolean
+}
 type Report = typeof MOCK_REPORTS[0]
 type Review = typeof MOCK_REVIEWS[0]
 
@@ -234,7 +237,7 @@ function UserLocationsChart({ users }: { users: User[] }) {
 function Dashboard({ users, reports, reviews }: { users: User[]; reports: Report[]; reviews: Review[] }) {
   const totalCredits = users.reduce((s, u) => s + u.credits, 0)
   const totalBooks   = users.reduce((s, u) => s + u.booksPosted, 0)
-  const totalTrades  = users.reduce((s, u) => s + u.booksTraded, 0)
+  const totalTrades  = users.reduce((s, u) => s + u.booksSold, 0)
   const pendingReports = reports.filter(r => r.status === 'pending').length
   const flaggedReviews = reviews.filter(r => r.flagged).length
 
@@ -299,7 +302,7 @@ function Dashboard({ users, reports, reviews }: { users: User[]; reports: Report
 
 // ─── Users tab ───────────────────────────────────────────────────────────────
 
-function UsersTab({ users, setUsers }: { users: User[]; setUsers: React.Dispatch<React.SetStateAction<User[]>> }) {
+function UsersTab({ users, setUsers, toggleAdmin }: { users: User[]; setUsers: React.Dispatch<React.SetStateAction<User[]>>; toggleAdmin: (id: string, current: boolean) => void }) {
   const [search, setSearch] = useState('')
   const [editTarget, setEditTarget] = useState<User | null>(null)
   const [form, setForm] = useState<User | null>(null)
@@ -339,7 +342,7 @@ function UsersTab({ users, setUsers }: { users: User[]; setUsers: React.Dispatch
           <table className="w-full">
             <thead>
               <tr className="border-b border-[#f1f5f9] bg-[#f8fafc]">
-                {['User','City','Books','Traded','Credits','Reviews','Status',''].map(h => (
+                {['User','City','State','Books','Sold','Bought','Credits','Reviews','Status','Admin',''].map(h => (
                   <th key={h} className="px-4 py-3 text-left text-[11px] font-extrabold text-[#94a3b8] uppercase tracking-wider whitespace-nowrap">{h}</th>
                 ))}
               </tr>
@@ -353,14 +356,22 @@ function UsersTab({ users, setUsers }: { users: User[]; setUsers: React.Dispatch
                     <div className="text-[10px] text-[#cbd5e1] font-semibold">Joined {u.joined}</div>
                   </td>
                   <td className="px-4 py-3 text-[12px] font-semibold text-[#64748b] whitespace-nowrap">{u.city}</td>
+                  <td className="px-4 py-3 text-[12px] font-semibold text-[#64748b] whitespace-nowrap">{u.state}</td>
                   <td className="px-4 py-3 text-[13px] font-extrabold text-[#f97316] text-center">{u.booksPosted}</td>
-                  <td className="px-4 py-3 text-[13px] font-extrabold text-[#0d9488] text-center">{u.booksTraded}</td>
-                  <td className="px-4 py-3 text-[13px] font-extrabold text-[#8b5cf6] text-center">{u.credits}</td>
+                  <td className="px-4 py-3 text-[13px] font-extrabold text-[#0d9488] text-center">{u.booksSold}</td>
+                  <td className="px-4 py-3 text-[13px] font-extrabold text-[#8b5cf6] text-center">{u.booksBought}</td>
+                  <td className="px-4 py-3 text-[13px] font-extrabold text-[#f59e0b] text-center">{u.credits}</td>
                   <td className="px-4 py-3 text-[13px] font-semibold text-[#64748b] text-center">{u.reviews}</td>
                   <td className="px-4 py-3">
                     <button onClick={() => toggleStatus(u)}
                       className={`text-[11px] font-extrabold px-2.5 py-1 rounded-full ${u.status === 'active' ? 'bg-[#ecfdf5] text-[#059669]' : 'bg-[#fef2f2] text-[#dc2626]'}`}>
                       {u.status === 'active' ? '● Active' : '● Suspended'}
+                    </button>
+                  </td>
+                  <td className="px-4 py-3">
+                    <button onClick={() => toggleAdmin(u.id, u.is_admin)}
+                      className={`text-[11px] font-extrabold px-2.5 py-1 rounded-full transition-colors ${u.is_admin ? 'bg-[#f97316] text-white' : 'bg-[#f1f5f9] text-[#94a3b8] hover:bg-[#fed7aa] hover:text-[#c2410c]'}`}>
+                      {u.is_admin ? '★ Admin' : '○ User'}
                     </button>
                   </td>
                   <td className="px-4 py-3">
@@ -428,17 +439,21 @@ function UsersTab({ users, setUsers }: { users: User[]; setUsers: React.Dispatch
             </div>
 
             {/* User stats */}
-            <div className="bg-[#f8fafc] rounded-xl p-4 mb-5 grid grid-cols-3 gap-3 text-center">
+            <div className="bg-[#f8fafc] rounded-xl p-4 mb-5 grid grid-cols-4 gap-3 text-center">
               <div>
                 <div className="text-[20px] font-black text-bk-orange">{form.booksPosted}</div>
-                <div className="text-[10px] font-bold text-[#94a3b8] uppercase">Books Posted</div>
+                <div className="text-[10px] font-bold text-[#94a3b8] uppercase">Posted</div>
               </div>
               <div>
-                <div className="text-[20px] font-black text-[#0d9488]">{form.booksTraded}</div>
-                <div className="text-[10px] font-bold text-[#94a3b8] uppercase">Books Traded</div>
+                <div className="text-[20px] font-black text-[#0d9488]">{form.booksSold}</div>
+                <div className="text-[10px] font-bold text-[#94a3b8] uppercase">Sold</div>
               </div>
               <div>
-                <div className="text-[20px] font-black text-[#8b5cf6]">{form.reviews}</div>
+                <div className="text-[20px] font-black text-[#8b5cf6]">{form.booksBought}</div>
+                <div className="text-[10px] font-bold text-[#94a3b8] uppercase">Bought</div>
+              </div>
+              <div>
+                <div className="text-[20px] font-black text-[#64748b]">{form.reviews}</div>
                 <div className="text-[10px] font-bold text-[#94a3b8] uppercase">Reviews</div>
               </div>
             </div>
@@ -662,7 +677,7 @@ const TABS: { id: Tab; label: string; icon: string }[] = [
 export default function AdminClient() {
   const [authed, setAuthed] = useState<'loading' | 'yes' | 'no'>('loading')
   const [tab, setTab] = useState<Tab>('dashboard')
-  const [users, setUsers] = useState(MOCK_USERS)
+  const [users, setUsers] = useState<User[]>([])
   const [reports, setReports] = useState(MOCK_REPORTS)
   const [reviews, setReviews] = useState(MOCK_REVIEWS)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -673,6 +688,45 @@ export default function AdminClient() {
       setAuthed(k === 'lbe_admin_2024' ? 'yes' : 'no')
     } catch { setAuthed('no') }
   }, [])
+
+  useEffect(() => {
+    if (authed !== 'yes') return
+    const supabase = createClient()
+    supabase
+      .from('profiles')
+      .select('id, username, email, city, state, created_at, is_admin')
+      .order('created_at', { ascending: false })
+      .then(({ data }) => {
+        if (!data) return
+        setUsers(data.map(p => ({
+          id: p.id,
+          username: p.username || p.email || 'Unknown',
+          email: p.email || '',
+          joined: p.created_at ? p.created_at.slice(0, 10) : '',
+          booksPosted: 0,
+          booksSold: 0,
+          booksBought: 0,
+          credits: 0,
+          status: 'active',
+          city: p.city || '',
+          state: p.state || '',
+          bio: '',
+          reviews: 0,
+          is_admin: p.is_admin || false,
+        })))
+      })
+  }, [authed])
+
+  async function toggleAdmin(userId: string, current: boolean) {
+    const supabase = createClient()
+    const { error } = await supabase
+      .from('profiles')
+      .update({ is_admin: !current })
+      .eq('id', userId)
+    if (!error) {
+      setUsers(prev => prev.map(u => u.id === userId ? { ...u, is_admin: !current } : u))
+    }
+  }
 
   function handleAuth() {
     try { localStorage.setItem('lbe_admin_auth', 'lbe_admin_2024') } catch {}
@@ -744,7 +798,7 @@ export default function AdminClient() {
       <div className="flex-1 bg-[#f8fafc] overflow-auto">
         <div className="max-w-[1100px] mx-auto px-4 md:px-6 py-6 pb-24 md:pb-6">
           {tab === 'dashboard' && <Dashboard users={users} reports={reports} reviews={reviews} />}
-          {tab === 'users'     && <UsersTab users={users} setUsers={setUsers} />}
+          {tab === 'users'     && <UsersTab users={users} setUsers={setUsers} toggleAdmin={toggleAdmin} />}
           {tab === 'locations' && <LocationsTab reports={reports} setReports={setReports} />}
           {tab === 'reviews'   && <ReviewsTab reviews={reviews} setReviews={setReviews} />}
         </div>
