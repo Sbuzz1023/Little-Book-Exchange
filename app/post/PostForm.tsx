@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 
 const GENRES = [
   { key: 'Fiction', label: '📚 Fiction' },
@@ -65,6 +65,15 @@ export default function PostForm({ city, action, error }: Props) {
   const [title, setTitle] = useState('')
   const [author, setAuthor] = useState('')
   const [condition, setCondition] = useState('Good')
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) { setPhotoPreview(null); return }
+    const url = URL.createObjectURL(file)
+    setPhotoPreview(url)
+  }
 
   return (
     <form action={action} encType="multipart/form-data">
@@ -239,25 +248,50 @@ export default function PostForm({ city, action, error }: Props) {
 
         <div
           style={{
-            border: '2.5px dashed #fed7aa',
+            border: `2.5px dashed ${photoPreview ? '#0d9488' : '#fed7aa'}`,
             borderRadius: 14,
-            padding: 28,
+            padding: photoPreview ? 0 : 28,
             textAlign: 'center',
             cursor: 'pointer',
-            background: '#fffbf0',
+            background: photoPreview ? '#000' : '#fffbf0',
             marginBottom: 16,
             position: 'relative',
+            overflow: 'hidden',
+            minHeight: photoPreview ? 180 : undefined,
           }}
+          onClick={() => fileInputRef.current?.click()}
         >
-          <div style={{ fontSize: 36, marginBottom: 8 }}>📸</div>
-          <p className="text-[14px] font-bold" style={{ color: '#aaa' }}>
-            <span style={{ color: '#f97316', fontWeight: 800 }}>Click to upload</span> a photo of your book
-          </p>
-          <p className="text-[12px] font-semibold mt-1.5" style={{ color: '#aaa' }}>JPG or PNG · Max 5MB</p>
+          {photoPreview ? (
+            <>
+              <img
+                src={photoPreview}
+                alt="Book preview"
+                style={{ width: '100%', maxHeight: 260, objectFit: 'contain', display: 'block' }}
+              />
+              <div style={{
+                position: 'absolute', bottom: 8, right: 8,
+                background: 'rgba(0,0,0,0.6)', color: '#fff',
+                padding: '4px 10px', borderRadius: 999,
+                fontSize: 11, fontWeight: 700,
+              }}>
+                📸 Change photo
+              </div>
+            </>
+          ) : (
+            <>
+              <div style={{ fontSize: 36, marginBottom: 8 }}>📸</div>
+              <p className="text-[14px] font-bold" style={{ color: '#aaa' }}>
+                <span style={{ color: '#f97316', fontWeight: 800 }}>Click to upload</span> a photo of your book
+              </p>
+              <p className="text-[12px] font-semibold mt-1.5" style={{ color: '#aaa' }}>JPG or PNG · Max 5MB</p>
+            </>
+          )}
           <input
+            ref={fileInputRef}
             name="photo"
             type="file"
             accept="image/*"
+            onChange={handlePhotoChange}
             className="absolute inset-0 opacity-0 cursor-pointer"
             style={{ width: '100%', height: '100%' }}
           />

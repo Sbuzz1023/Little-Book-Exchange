@@ -58,12 +58,12 @@ export default async function PostPage({
         city: prof?.city ?? '',
       }).select('id').single()
 
-      if (error || !listing) redir('/post?error=Failed to post listing')
+      if (error) redir(`/post?error=${encodeURIComponent(error.message || 'Failed to post listing')}`)
+      if (!listing) redir('/post?error=No+listing+returned')
       redir(`/listings/${listing!.id}`)
     } catch (err: any) {
       if (err?.digest?.startsWith('NEXT_REDIRECT')) throw err
-      // Supabase not connected — redirect to mock listing as demo success
-      redir('/listings/mock-1?demo=posted')
+      redir(`/post?error=${encodeURIComponent('Connection error. Please try again.')}`)
     }
   }
 

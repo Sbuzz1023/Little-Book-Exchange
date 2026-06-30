@@ -35,7 +35,7 @@ export default async function ListingDetailPage({ params }: { params: { id: stri
   try {
     const supabase = createClient()
     const [{ data: l }, { data: { user: u } }] = await Promise.all([
-      supabase.from('listings').select('*, profiles(id, name, city)').eq('id', params.id).single(),
+      supabase.from('listings').select('*, profiles(id, username, city)').eq('id', params.id).single(),
       supabase.auth.getUser(),
     ])
     listing = l
@@ -177,7 +177,7 @@ export default async function ListingDetailPage({ params }: { params: { id: stri
           <div style={{ borderTop: '2px dashed #e5e7eb', marginBottom: 24 }} />
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <p className="font-semibold text-[14px]" style={{ color: '#888' }}>
-              Listed by <strong style={{ color: '#1a1a1a', fontWeight: 900 }}>{listing.profiles?.name ?? 'a neighbor'}</strong>
+              Listed by <strong style={{ color: '#1a1a1a', fontWeight: 900 }}>{listing.profiles?.username ?? 'a neighbor'}</strong>
             </p>
             {isOwner ? (
               <Link
