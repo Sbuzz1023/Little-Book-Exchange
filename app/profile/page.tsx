@@ -3,6 +3,7 @@ import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import DashboardClient from './DashboardClient'
 import { MOCK_PROFILE, MOCK_LISTINGS, MOCK_USER_ID } from '@/lib/mock-data'
+import { updateProfile, updateListingStatus } from './actions'
 
 function isDemo() {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL?.startsWith('http')) return true
@@ -36,34 +37,6 @@ export default async function ProfilePage({
       profile = MOCK_PROFILE
       listings = MOCK_LISTINGS.filter(l => l.user_id === MOCK_USER_ID)
     }
-  }
-
-  async function updateProfile(formData: FormData) {
-    'use server'
-    const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) redirect('/auth/signin')
-    await supabase.from('profiles').update({
-      city:  formData.get('city')  as string,
-      state: formData.get('state') as string,
-      phone: formData.get('phone') as string,
-    }).eq('id', user!.id)
-    redirect('/profile?success=1')
-  }
-
-  async function updateListingStatus(formData: FormData) {
-    'use server'
-    const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) redirect('/auth/signin')
-    const id = formData.get('id') as string
-    const status = formData.get('status') as string
-    if (status === 'delete') {
-      await supabase.from('listings').delete().eq('id', id).eq('user_id', user!.id)
-    } else {
-      await supabase.from('listings').update({ status }).eq('id', id).eq('user_id', user!.id)
-    }
-    redirect('/profile')
   }
 
   return (
