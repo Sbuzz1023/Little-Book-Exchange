@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
+import Image from 'next/image'
 import HeartButton from '@/components/HeartButton'
 import type { Listing } from '@/lib/types'
 import { MOCK_LISTINGS } from '@/lib/mock-data'
@@ -331,7 +332,10 @@ export default async function ListingsPage({
                     className="relative flex items-center justify-center text-[46px]"
                     style={{ height: 135, background: gradient }}
                   >
-                    <span>📚</span>
+                    {l.photo_url
+                      ? <Image src={l.photo_url} alt={l.title} fill className="object-cover" />
+                      : <span>📚</span>
+                    }
                     <HeartButton />
                     {/* Price tag */}
                     <span
