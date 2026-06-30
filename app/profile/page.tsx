@@ -40,26 +40,22 @@ export default async function ProfilePage({
 
   async function updateProfile(formData: FormData) {
     'use server'
-    const { createClient: createSrv } = await import('@/lib/supabase/server')
-    const { redirect: redir } = await import('next/navigation')
-    const supabase = createSrv()
+    const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) redir('/auth/signin')
+    if (!user) redirect('/auth/signin')
     await supabase.from('profiles').update({
       city:  formData.get('city')  as string,
       state: formData.get('state') as string,
       phone: formData.get('phone') as string,
     }).eq('id', user!.id)
-    redir('/profile?success=1')
+    redirect('/profile?success=1')
   }
 
   async function updateListingStatus(formData: FormData) {
     'use server'
-    const { createClient: createSrv } = await import('@/lib/supabase/server')
-    const { redirect: redir } = await import('next/navigation')
-    const supabase = createSrv()
+    const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) redir('/auth/signin')
+    if (!user) redirect('/auth/signin')
     const id = formData.get('id') as string
     const status = formData.get('status') as string
     if (status === 'delete') {
@@ -67,7 +63,7 @@ export default async function ProfilePage({
     } else {
       await supabase.from('listings').update({ status }).eq('id', id).eq('user_id', user!.id)
     }
-    redir('/profile')
+    redirect('/profile')
   }
 
   return (

@@ -21,21 +21,13 @@ export default async function PostPage({
 
   async function createListing(formData: FormData) {
     'use server'
-    const { redirect: redir } = await import('next/navigation')
-    let step = 'init'
     try {
-      step = 'import-client'
-      const { createClient: createSrv } = await import('@/lib/supabase/server')
-      step = 'create-client'
-      const supabase = createSrv()
-      step = 'get-user'
+      const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) redir('/auth/signin')
+      if (!user) redirect('/auth/signin')
 
-      step = 'get-profile'
       const { data: prof } = await supabase.from('profiles').select('city').eq('id', user!.id).single()
 
-      step = 'photo'
       let photo_url: string | null = null
       const file = formData.get('photo') as File
       if (file && file.size > 0) {
@@ -48,7 +40,6 @@ export default async function PostPage({
         }
       }
 
-      step = 'insert'
       const priceRaw = formData.get('price') as string
       const price = priceRaw && priceRaw.trim() !== '' ? parseFloat(priceRaw) : null
 
@@ -65,14 +56,14 @@ export default async function PostPage({
         city: prof?.city ?? '',
       }).select('id').single()
 
-      if (error) redir(`/post?error=${encodeURIComponent(`[insert] ${error.message}`)}`)
-      if (!listing) redir('/post?error=No+listing+returned')
-      redir(`/listings/${listing!.id}`)
+      if (error) redirect(`/post?error=${encodeURIComponent(error.message || 'Failed to post listing')}`)
+      if (!listing) redirect('/post?error=No+listing+returned')
+      redirect(`/listings/${listing!.id}`)
     } catch (err: any) {
       if (err?.digest?.startsWith('NEXT_REDIRECT')) throw err
-      const msg = err?.message || err?.code || String(err) || 'Unknown error'
-      console.error(`createListing failed at step [${step}]:`, err)
-      redir(`/post?error=${encodeURIComponent(`[${step}] ${msg}`)}`)
+      const msg = err?.message || String(err) || 'Unknown error'
+      console.error('createListing error:', err)
+      redirect(`/post?error=${encodeURIComponent(msg)}`)
     }
   }
 
