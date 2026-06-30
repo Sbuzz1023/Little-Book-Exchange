@@ -40,7 +40,7 @@ async function getListings(params: {
     const supabase = createClient()
     let query = supabase
       .from('listings')
-      .select('*, profiles(name, city)')
+      .select('*, profiles(username, city)')
       .eq('status', 'active')
 
     if (params.city) query = query.ilike('city', `%${params.city}%`)
