@@ -16,7 +16,15 @@ type Listing = {
 }
 
 type Props = {
-  profile: { name: string; city: string } | null
+  profile: {
+    name?: string | null
+    username?: string | null
+    email?: string | null
+    city?: string | null
+    state?: string | null
+    phone?: string | null
+    created_at?: string | null
+  } | null
   listings: Listing[]
   updateAction: (formData: FormData) => Promise<void>
   updateListingStatus: (formData: FormData) => Promise<void>
@@ -29,7 +37,7 @@ const TABS = [
   { id: 'tbr' as Tab,        icon: '📚', label: 'To Be Read',   desc: 'Your wishlist',      color: '#7c3aed', bg: '#f5f3ff', border: '#ddd6fe', shadow: '#c4b5fd' },
   { id: 'saved' as Tab,      icon: '❤️',  label: 'Saved Books',  desc: 'Books you hearted',  color: '#e11d48', bg: '#fff1f2', border: '#fecdd3', shadow: '#fda4af' },
   { id: 'wallet' as Tab,     icon: '💳', label: 'Wallet',       desc: 'Credits & history',  color: '#059669', bg: '#ecfdf5', border: '#a7f3d0', shadow: '#6ee7b7' },
-  { id: 'account' as Tab,    icon: '👤', label: 'Account',      desc: 'Your profile',       color: '#2563eb', bg: '#eff6ff', border: '#bfdbfe', shadow: '#93c5fd' },
+  { id: 'account' as Tab,    icon: '👤', label: 'Profile',      desc: 'Your profile',       color: '#2563eb', bg: '#eff6ff', border: '#bfdbfe', shadow: '#93c5fd' },
 ]
 
 const COVER_GRADIENTS = [

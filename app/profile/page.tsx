@@ -46,8 +46,9 @@ export default async function ProfilePage({
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) redir('/auth/signin')
     await supabase.from('profiles').update({
-      name: formData.get('name') as string,
-      city: formData.get('city') as string,
+      city:  formData.get('city')  as string,
+      state: formData.get('state') as string,
+      phone: formData.get('phone') as string,
     }).eq('id', user!.id)
     redir('/profile?success=1')
   }
