@@ -70,26 +70,36 @@ export default async function ProfilePage({
       profile = p
       listings = l ?? []
 
-      try {
-        const { data: c } = await supabase
-          .from('conversations')
-          .select('*, listings(title, author, photo_url, city, state), buyer:profiles!conversations_buyer_id_fkey(username, city, state, phone), seller:profiles!conversations_seller_id_fkey(username, city, state, phone)')
-          .or(`buyer_id.eq.${user.id},seller_id.eq.${user.id}`)
-          .order('created_at', { ascending: false })
-        exchanges = c ?? []
-      } catch {
-        try {
-          const { data: c2 } = await supabase
-            .from('conversations').select('*')
-            .or(`buyer_id.eq.${user.id},seller_id.eq.${user.id}`)
-            .order('created_at', { ascending: false })
-          exchanges = (c2 ?? []).map((row: any) => ({
-            ...row,
-            listings: { title: 'Unknown', author: '', photo_url: null, city: null, state: null },
-            buyer:    { username: null, name: null, city: null, state: null, phone: null },
-            seller:   { username: null, name: null, city: null, state: null, phone: null },
-          }))
-        } catch { exchanges = [] }
+      // Fetch conversations + listing info (no FK hints needed — only one FK to listings)
+      const { data: c, error: cErr } = await supabase
+        .from('conversations')
+        .select('*, listings(title, author, photo_url, city, state)')
+        .or(`buyer_id.eq.${user.id},seller_id.eq.${user.id}`)
+        .order('created_at', { ascending: false })
+
+      if (!cErr && c && c.length > 0) {
+        // Fetch profiles for all unique buyer/seller IDs in one query
+        const profileIds = [...new Set(c.flatMap((row: any) => [row.buyer_id, row.seller_id]).filter(Boolean))]
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, username, city, state, phone')
+          .in('id', profileIds)
+        const pm: Record<string, any> = {}
+        for (const p of profiles ?? []) pm[p.id] = p
+
+        exchanges = c.map((row: any) => ({
+          ...row,
+          listings: row.listings ?? { title: 'Unknown', author: '', photo_url: null, city: null, state: null },
+          buyer:  pm[row.buyer_id]  ?? { username: null, city: null, state: null, phone: null },
+          seller: pm[row.seller_id] ?? { username: null, city: null, state: null, phone: null },
+        }))
+      } else {
+        exchanges = (c ?? []).map((row: any) => ({
+          ...row,
+          listings: row.listings ?? { title: 'Unknown', author: '', photo_url: null, city: null, state: null },
+          buyer:  { username: null, city: null, state: null, phone: null },
+          seller: { username: null, city: null, state: null, phone: null },
+        }))
       }
     } catch {
       profile = MOCK_PROFILE
