@@ -79,12 +79,13 @@ export default async function ListingDetailPage({ params, searchParams }: { para
       if (!u) redirect(`/auth/signin?redirect=/listings/${params.id}`)
 
       const { data: existing } = await supabase
-        .from('conversations').select('id').eq('listing_id', listing.id).eq('buyer_id', u!.id).single()
+        .from('conversations').select('id').eq('listing_id', listing.id).eq('buyer_id', u!.id).maybeSingle()
       if (existing) redirect(`/messages/${existing.id}`)
 
+      const sellerId = (listing.profiles as any)?.id ?? listing.user_id
       const { data: convo } = await supabase
         .from('conversations')
-        .insert({ listing_id: listing.id, buyer_id: u!.id, seller_id: listing.profiles.id })
+        .insert({ listing_id: listing.id, buyer_id: u!.id, seller_id: sellerId })
         .select('id').single()
 
       redirect(`/messages/${convo!.id}`)
@@ -118,16 +119,18 @@ export default async function ListingDetailPage({ params, searchParams }: { para
       // Find or create conversation (without exchange_status so it works before migration)
       let convoId: string
       const { data: existing } = await supabase
-        .from('conversations').select('id').eq('listing_id', listing.id).eq('buyer_id', u!.id).single()
+        .from('conversations').select('id').eq('listing_id', listing.id).eq('buyer_id', u!.id).maybeSingle()
 
       if (existing) {
         convoId = existing.id
       } else {
-        const { data: convo } = await supabase
+        const sellerId = (listing.profiles as any)?.id ?? listing.user_id
+        const { data: convo, error: insertErr } = await supabase
           .from('conversations')
-          .insert({ listing_id: listing.id, buyer_id: u!.id, seller_id: listing.profiles.id })
+          .insert({ listing_id: listing.id, buyer_id: u!.id, seller_id: sellerId })
           .select('id').single()
-        convoId = convo!.id
+        if (insertErr || !convo) throw new Error(insertErr?.message ?? 'insert failed')
+        convoId = convo.id
       }
 
       // Try to set exchange_status (no-op if migration hasn't been run yet)
