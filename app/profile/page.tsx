@@ -8,7 +8,7 @@ import { updateProfile, updateListingStatus, notifyPickedUp, confirmExchange } f
 export default async function ProfilePage({
   searchParams,
 }: {
-  searchParams: { success?: string; error?: string }
+  searchParams: { success?: string; error?: string; demo_pending?: string }
 }) {
   const cookieStore = cookies()
   const demo = !process.env.NEXT_PUBLIC_SUPABASE_URL?.startsWith('http') ||
@@ -22,12 +22,13 @@ export default async function ProfilePage({
     profile = MOCK_PROFILE
     listings = MOCK_LISTINGS.filter(l => l.user_id === MOCK_USER_ID)
 
-    const pendingId = cookieStore.get('lbe_demo_pending')?.value
+    // URL param takes priority, cookie is fallback
+    const pendingId = searchParams.demo_pending ?? cookieStore.get('lbe_demo_pending')?.value
     exchanges = [...MOCK_CONVERSATIONS]
 
     if (pendingId) {
       const pl = MOCK_LISTINGS.find(l => l.id === pendingId && l.user_id !== MOCK_USER_ID) as any
-      const alreadyIn = exchanges.some(c => c.listing_id === pendingId && c.buyer_id === MOCK_USER_ID)
+      const alreadyIn = exchanges.some((c: any) => c.listing_id === pendingId && c.buyer_id === MOCK_USER_ID)
       if (pl && !alreadyIn) {
         exchanges = [
           {
@@ -43,7 +44,7 @@ export default async function ProfilePage({
               city: pl.city ?? null,
               state: pl.state ?? null,
             },
-            buyer: { username: 'demouser', name: 'Demo User', city: 'Chicago', state: 'IL', phone: '(312) 555-0100' },
+            buyer:  { username: 'demouser', name: 'Demo User', city: 'Chicago', state: 'IL', phone: '(312) 555-0100' },
             seller: {
               username: pl.profiles?.username ?? pl.profiles?.name ?? 'neighbor',
               name: pl.profiles?.name ?? 'Neighbor',
@@ -70,36 +71,42 @@ export default async function ProfilePage({
       profile = p
       listings = l ?? []
 
-      // Fetch conversations + listing info (no FK hints needed — only one FK to listings)
-      const { data: c, error: cErr } = await supabase
-        .from('conversations')
-        .select('*, listings(title, author, photo_url, city, state)')
-        .or(`buyer_id.eq.${user.id},seller_id.eq.${user.id}`)
-        .order('created_at', { ascending: false })
+      // Fetch as buyer and seller separately — avoids FK hint issues and works with most RLS configs
+      const [{ data: asBuyer }, { data: asSeller }] = await Promise.all([
+        supabase
+          .from('conversations')
+          .select('*, listings(title, author, photo_url, city, state)')
+          .eq('buyer_id', user.id)
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('conversations')
+          .select('*, listings(title, author, photo_url, city, state)')
+          .eq('seller_id', user.id)
+          .order('created_at', { ascending: false }),
+      ])
 
-      if (!cErr && c && c.length > 0) {
-        // Fetch profiles for all unique buyer/seller IDs in one query
-        const profileIds = [...new Set(c.flatMap((row: any) => [row.buyer_id, row.seller_id]).filter(Boolean))]
+      // Merge and deduplicate
+      const merged: any[] = []
+      const seen = new Set<string>()
+      for (const row of [...(asBuyer ?? []), ...(asSeller ?? [])]) {
+        if (!seen.has(row.id)) { seen.add(row.id); merged.push(row) }
+      }
+
+      // Enrich with profile data in one query
+      if (merged.length > 0) {
+        const profileIds = [...new Set(merged.flatMap(r => [r.buyer_id, r.seller_id]).filter(Boolean))]
         const { data: profiles } = await supabase
-          .from('profiles')
-          .select('id, username, city, state, phone')
-          .in('id', profileIds)
+          .from('profiles').select('id, username, city, state, phone').in('id', profileIds)
         const pm: Record<string, any> = {}
         for (const p of profiles ?? []) pm[p.id] = p
-
-        exchanges = c.map((row: any) => ({
+        exchanges = merged.map(row => ({
           ...row,
           listings: row.listings ?? { title: 'Unknown', author: '', photo_url: null, city: null, state: null },
-          buyer:  pm[row.buyer_id]  ?? { username: null, city: null, state: null, phone: null },
-          seller: pm[row.seller_id] ?? { username: null, city: null, state: null, phone: null },
+          buyer:    pm[row.buyer_id]  ?? { username: null, city: null, state: null, phone: null },
+          seller:   pm[row.seller_id] ?? { username: null, city: null, state: null, phone: null },
         }))
       } else {
-        exchanges = (c ?? []).map((row: any) => ({
-          ...row,
-          listings: row.listings ?? { title: 'Unknown', author: '', photo_url: null, city: null, state: null },
-          buyer:  { username: null, city: null, state: null, phone: null },
-          seller: { username: null, city: null, state: null, phone: null },
-        }))
+        exchanges = []
       }
     } catch {
       profile = MOCK_PROFILE

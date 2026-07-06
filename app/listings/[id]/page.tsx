@@ -252,7 +252,7 @@ export default async function ListingDetailPage({ params, searchParams }: { para
                   ⏳ Pending — waiting for <strong>{listing.profiles?.username ?? 'seller'}</strong> to confirm
                 </div>
                 <Link
-                  href="/profile"
+                  href={`/profile?demo_pending=${params.id}`}
                   className="font-bold text-[12px] hover:underline"
                   style={{ color: '#aaa' }}
                 >
