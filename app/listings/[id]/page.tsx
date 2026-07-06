@@ -31,6 +31,7 @@ function conditionLabel(c: string) {
 export default async function ListingDetailPage({ params, searchParams }: { params: { id: string }, searchParams: { requested?: string } }) {
   let listing: any = null
   let user: any = null
+  let myConvoStatus: string | null = null
 
   try {
     const supabase = createClient()
@@ -40,6 +41,12 @@ export default async function ListingDetailPage({ params, searchParams }: { para
     ])
     listing = l
     user = u
+    if (u) {
+      const { data: c } = await supabase
+        .from('conversations').select('exchange_status')
+        .eq('listing_id', params.id).eq('buyer_id', u.id).maybeSingle()
+      myConvoStatus = c?.exchange_status ?? null
+    }
   } catch {
     const mock = MOCK_LISTINGS.find(l => l.id === params.id)
     if (mock) listing = { ...mock, profiles: mock.profiles }
@@ -49,6 +56,7 @@ export default async function ListingDetailPage({ params, searchParams }: { para
 
   const isOwner = user?.id === listing.user_id
   const gradient = coverGradient(listing.id)
+  const isPending = searchParams.requested === '1' || myConvoStatus === 'requested'
 
   async function startConversation(formData: FormData) {
     'use server'
@@ -138,7 +146,6 @@ export default async function ListingDetailPage({ params, searchParams }: { para
     }
   }
 
-  const requested = !!searchParams.requested
 
   return (
     <div className="max-w-[680px] mx-auto px-4 py-6 md:px-8 md:py-10">
@@ -232,12 +239,21 @@ export default async function ListingDetailPage({ params, searchParams }: { para
               >
                 Manage Listing
               </Link>
-            ) : requested ? (
-              <div
-                className="font-bold text-[15px]"
-                style={{ background: '#f0fdf4', border: '2px solid #bbf7d0', color: '#166534', padding: '14px 24px', borderRadius: 16 }}
-              >
-                ✅ Request sent to <strong>{listing.profiles?.username ?? 'the seller'}</strong>! Check your <Link href="/profile" style={{ color: '#0d9488', fontWeight: 900 }}>Exchanges tab</Link>.
+            ) : isPending ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'flex-end' }}>
+                <div
+                  className="font-extrabold text-[14px]"
+                  style={{ background: '#fffbeb', border: '2px solid #fcd34d', color: '#92400e', padding: '12px 22px', borderRadius: 16, display: 'flex', alignItems: 'center', gap: 8 }}
+                >
+                  ⏳ Pending — waiting for <strong>{listing.profiles?.username ?? 'seller'}</strong> to confirm
+                </div>
+                <Link
+                  href="/profile"
+                  className="font-bold text-[12px] hover:underline"
+                  style={{ color: '#aaa' }}
+                >
+                  View in Exchanges tab →
+                </Link>
               </div>
             ) : (
               <div className="flex items-center gap-3 flex-wrap">

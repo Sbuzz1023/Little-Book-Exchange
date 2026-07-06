@@ -252,7 +252,7 @@ export default function DashboardClient({ profile, listings, exchanges, updateAc
 
           // Status badge colours
           const statusBadge = status === 'requested'
-            ? { bg: '#fffbeb', border: '#fcd34d', color: '#92400e', label: '⏳ Pending' }
+            ? { bg: '#fffbeb', border: '#fcd34d', color: '#92400e', label: '⏳ Pending Transaction' }
             : status === 'confirmed'
             ? { bg: '#f0fdf4', border: '#86efac', color: '#166534', label: '✅ Confirmed' }
             : { bg: '#f3f4f6', border: '#e5e7eb', color: '#888', label: '💬 Chatting' }
@@ -299,7 +299,7 @@ export default function DashboardClient({ profile, listings, exchanges, updateAc
                   )}
                   {role === 'buyer' && status === 'requested' && (
                     <p className="font-bold text-[12px] mt-1" style={{ color: '#92400e' }}>
-                      ⏳ Waiting for <strong>{otherName}</strong> to confirm…
+                      ⏳ Pending Transaction — waiting for <strong>{otherName}</strong> to confirm
                     </p>
                   )}
                   {role === 'buyer' && status === 'confirmed' && location && (
