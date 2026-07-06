@@ -364,6 +364,10 @@ export default function DashboardClient({ profile, listings, exchanges, updateAc
 
         return (
           <div className="flex flex-col" style={{ gap: 16 }}>
+            {/* Temp debug */}
+            <div style={{ background: '#f3f4f6', borderRadius: 10, padding: '8px 14px', fontSize: 11, color: '#888', fontFamily: 'monospace' }}>
+              debug — user: {profile?.id ?? 'none'} | exchanges: {exchanges.length} | sold: {sold.length} | bought: {bought.length}
+            </div>
             {/* Going Out */}
             <div style={cardStyle}>
               <div className="font-extrabold text-[11px] mb-4"

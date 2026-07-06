@@ -28,7 +28,7 @@ function conditionLabel(c: string) {
   return c
 }
 
-export default async function ListingDetailPage({ params, searchParams }: { params: { id: string }, searchParams: { requested?: string } }) {
+export default async function ListingDetailPage({ params, searchParams }: { params: { id: string }, searchParams: { requested?: string; purchase_failed?: string } }) {
   let listing: any = null
   let user: any = null
   let myConvoStatus: string | null = null
@@ -146,7 +146,7 @@ export default async function ListingDetailPage({ params, searchParams }: { para
       redirect(`/listings/${params.id}?requested=1`)
     } catch (err: any) {
       if (err?.digest?.startsWith('NEXT_REDIRECT')) throw err
-      redirect(`/listings/${params.id}?requested=1`)
+      redirect(`/listings/${params.id}?purchase_failed=1`)
     }
   }
 
@@ -243,6 +243,10 @@ export default async function ListingDetailPage({ params, searchParams }: { para
               >
                 Manage Listing
               </Link>
+            ) : searchParams.purchase_failed === '1' ? (
+              <div style={{ background: '#fef2f2', border: '2px solid #fca5a5', color: '#b91c1c', padding: '12px 22px', borderRadius: 16, fontWeight: 800, fontSize: 14 }}>
+                ❌ Purchase failed — please try again or message the seller.
+              </div>
             ) : isPending ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'flex-end' }}>
                 <div
