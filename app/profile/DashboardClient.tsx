@@ -46,6 +46,7 @@ type Props = {
   notifyPickedUp: (formData: FormData) => Promise<void>
   confirmExchange: (formData: FormData) => Promise<void>
   success?: boolean
+  defaultTab?: Tab
 }
 
 const TABS = [
@@ -91,8 +92,8 @@ const MOCK_TRANSACTIONS = [
   { id: '3', type: 'earn',     desc: 'Book claimed by neighbor',  amount: '+1', date: 'Jun 22, 2026', color: '#059669' },
 ]
 
-export default function DashboardClient({ profile, listings, exchanges, updateAction, updateListingStatus, notifyPickedUp, confirmExchange, success }: Props) {
-  const [activeTab, setActiveTab] = useState<Tab>('listings')
+export default function DashboardClient({ profile, listings, exchanges, updateAction, updateListingStatus, notifyPickedUp, confirmExchange, success, defaultTab }: Props) {
+  const [activeTab, setActiveTab] = useState<Tab>(defaultTab ?? 'listings')
 
   const tab = TABS.find(t => t.id === activeTab)!
 

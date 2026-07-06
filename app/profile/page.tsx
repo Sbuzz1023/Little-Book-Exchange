@@ -125,6 +125,7 @@ export default async function ProfilePage({
       notifyPickedUp={notifyPickedUp}
       confirmExchange={confirmExchange}
       success={!!searchParams.success}
+      defaultTab={searchParams.demo_pending ? 'exchanges' : 'listings'}
     />
   )
 }
