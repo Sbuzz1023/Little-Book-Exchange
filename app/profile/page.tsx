@@ -17,6 +17,7 @@ export default async function ProfilePage({
   let profile: any = null
   let listings: any[] = []
   let exchanges: any[] = []
+  let queryError: string | null = null
 
   if (demo) {
     profile = MOCK_PROFILE
@@ -71,18 +72,11 @@ export default async function ProfilePage({
       profile = p
       listings = l ?? []
 
-      // Fetch as buyer and seller separately — avoids FK hint issues and works with most RLS configs
-      const [{ data: asBuyer }, { data: asSeller }] = await Promise.all([
-        supabase
-          .from('conversations')
-          .select('*, listings(title, author, photo_url, city, state)')
-          .eq('buyer_id', user.id)
-          .order('created_at', { ascending: false }),
-        supabase
-          .from('conversations')
-          .select('*, listings(title, author, photo_url, city, state)')
-          .eq('seller_id', user.id)
-          .order('created_at', { ascending: false }),
+      // Fetch conversations with NO joins — joins can silently fail due to RLS
+      const [{ data: asBuyer, error: buyerErr }, { data: asSeller, error: sellerErr }] =
+       await Promise.all([
+        supabase.from('conversations').select('*').eq('buyer_id', user.id).order('created_at', { ascending: false }),
+        supabase.from('conversations').select('*').eq('seller_id', user.id).order('created_at', { ascending: false }),
       ])
 
       // Merge and deduplicate
@@ -92,20 +86,30 @@ export default async function ProfilePage({
         if (!seen.has(row.id)) { seen.add(row.id); merged.push(row) }
       }
 
-      // Enrich with profile data in one query
       if (merged.length > 0) {
-        const profileIds = [...new Set(merged.flatMap(r => [r.buyer_id, r.seller_id]).filter(Boolean))]
-        const { data: profiles } = await supabase
+        // Fetch listings separately
+        const listingIds = [...new Set(merged.map((r: any) => r.listing_id).filter(Boolean))]
+        const { data: listingRows } = await supabase
+          .from('listings').select('id, title, author, photo_url, city, state').in('id', listingIds)
+        const lm: Record<string, any> = {}
+        for (const l of listingRows ?? []) lm[l.id] = l
+
+        // Fetch profiles separately
+        const profileIds = [...new Set(merged.flatMap((r: any) => [r.buyer_id, r.seller_id]).filter(Boolean))]
+        const { data: profileRows } = await supabase
           .from('profiles').select('id, username, city, state, phone').in('id', profileIds)
         const pm: Record<string, any> = {}
-        for (const p of profiles ?? []) pm[p.id] = p
-        exchanges = merged.map(row => ({
+        for (const p of profileRows ?? []) pm[p.id] = p
+
+        exchanges = merged.map((row: any) => ({
           ...row,
-          listings: row.listings ?? { title: 'Unknown', author: '', photo_url: null, city: null, state: null },
-          buyer:    pm[row.buyer_id]  ?? { username: null, city: null, state: null, phone: null },
-          seller:   pm[row.seller_id] ?? { username: null, city: null, state: null, phone: null },
+          exchange_status: row.exchange_status ?? 'none',
+          listings: lm[row.listing_id] ?? { title: 'Unknown', author: '', photo_url: null, city: null, state: null },
+          buyer:    pm[row.buyer_id]   ?? { username: null, city: null, state: null, phone: null },
+          seller:   pm[row.seller_id]  ?? { username: null, city: null, state: null, phone: null },
         }))
       } else {
+        queryError = buyerErr?.message || sellerErr?.message || null
         exchanges = []
       }
     } catch {
@@ -126,6 +130,7 @@ export default async function ProfilePage({
       confirmExchange={confirmExchange}
       success={!!searchParams.success}
       defaultTab={searchParams.demo_pending ? 'exchanges' : 'listings'}
+      queryError={queryError}
     />
   )
 }

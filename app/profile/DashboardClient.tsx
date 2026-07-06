@@ -47,6 +47,7 @@ type Props = {
   confirmExchange: (formData: FormData) => Promise<void>
   success?: boolean
   defaultTab?: Tab
+  queryError?: string | null
 }
 
 const TABS = [
@@ -92,7 +93,7 @@ const MOCK_TRANSACTIONS = [
   { id: '3', type: 'earn',     desc: 'Book claimed by neighbor',  amount: '+1', date: 'Jun 22, 2026', color: '#059669' },
 ]
 
-export default function DashboardClient({ profile, listings, exchanges, updateAction, updateListingStatus, notifyPickedUp, confirmExchange, success, defaultTab }: Props) {
+export default function DashboardClient({ profile, listings, exchanges, updateAction, updateListingStatus, notifyPickedUp, confirmExchange, success, defaultTab, queryError }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>(defaultTab ?? 'listings')
 
   const tab = TABS.find(t => t.id === activeTab)!
@@ -366,7 +367,7 @@ export default function DashboardClient({ profile, listings, exchanges, updateAc
           <div className="flex flex-col" style={{ gap: 16 }}>
             {/* Temp debug */}
             <div style={{ background: '#f3f4f6', borderRadius: 10, padding: '8px 14px', fontSize: 11, color: '#888', fontFamily: 'monospace' }}>
-              debug — user: {profile?.id ?? 'none'} | exchanges: {exchanges.length} | sold: {sold.length} | bought: {bought.length}
+              debug — user: {profile?.id ?? 'none'} | exchanges: {exchanges.length} | sold: {sold.length} | bought: {bought.length}{queryError ? ` | error: ${queryError}` : ''}
             </div>
             {/* Going Out */}
             <div style={cardStyle}>
