@@ -367,7 +367,7 @@ export default function DashboardClient({ profile, listings, exchanges, updateAc
             <div style={cardStyle}>
               <div className="font-extrabold text-[11px] mb-4"
                 style={{ textTransform: 'uppercase', letterSpacing: '0.8px', padding: '7px 12px', borderRadius: 10, background: '#fff7ed', color: '#f97316', display: 'inline-block' }}>
-                📤 Going Out ({sold.length})
+                📤 Sold ({sold.length})
               </div>
               {sold.length === 0 ? (
                 <div className="text-center py-6 font-bold text-[13px]" style={{ color: '#ccc' }}>No active sales</div>
@@ -380,7 +380,7 @@ export default function DashboardClient({ profile, listings, exchanges, updateAc
             <div style={cardStyle}>
               <div className="font-extrabold text-[11px] mb-4"
                 style={{ textTransform: 'uppercase', letterSpacing: '0.8px', padding: '7px 12px', borderRadius: 10, background: '#f0fdfa', color: '#0d9488', display: 'inline-block' }}>
-                📥 Coming In ({bought.length})
+                📥 Bought ({bought.length})
               </div>
               {bought.length === 0 ? (
                 <div className="text-center py-6 font-bold text-[13px]" style={{ color: '#ccc' }}>No books on the way</div>

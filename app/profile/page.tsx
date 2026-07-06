@@ -33,7 +33,7 @@ export default async function ProfilePage({
         supabase.from('profiles').select('*').eq('id', user.id).single(),
         supabase.from('listings').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
         supabase.from('conversations')
-          .select('*, listings(title, author, photo_url, city, state), buyer:profiles!buyer_id(username, name, city, state), seller:profiles!seller_id(username, name, city, state)')
+          .select('*, listings(title, author, photo_url, city, state), buyer:profiles!conversations_buyer_id_fkey(username, city, state, phone), seller:profiles!conversations_seller_id_fkey(username, city, state, phone)')
           .or(`buyer_id.eq.${user.id},seller_id.eq.${user.id}`)
           .order('created_at', { ascending: false }),
       ])

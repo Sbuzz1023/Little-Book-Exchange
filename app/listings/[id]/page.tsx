@@ -106,21 +106,23 @@ export default async function ListingDetailPage({ params, searchParams }: { para
       const { data: { user: u } } = await supabase.auth.getUser()
       if (!u) redirect(`/auth/signin?redirect=/listings/${params.id}`)
 
-      // Find or create conversation
+      // Find or create conversation (without exchange_status so it works before migration)
       let convoId: string
       const { data: existing } = await supabase
         .from('conversations').select('id').eq('listing_id', listing.id).eq('buyer_id', u!.id).single()
 
       if (existing) {
         convoId = existing.id
-        await supabase.from('conversations').update({ exchange_status: 'requested' }).eq('id', convoId)
       } else {
         const { data: convo } = await supabase
           .from('conversations')
-          .insert({ listing_id: listing.id, buyer_id: u!.id, seller_id: listing.profiles.id, exchange_status: 'requested' })
+          .insert({ listing_id: listing.id, buyer_id: u!.id, seller_id: listing.profiles.id })
           .select('id').single()
         convoId = convo!.id
       }
+
+      // Try to set exchange_status (no-op if migration hasn't been run yet)
+      await supabase.from('conversations').update({ exchange_status: 'requested' }).eq('id', convoId).then(() => {})
 
       // Send a purchase request message
       await supabase.from('messages').insert({
