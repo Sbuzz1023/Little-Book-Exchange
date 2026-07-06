@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import DashboardClient from './DashboardClient'
-import { MOCK_PROFILE, MOCK_LISTINGS, MOCK_USER_ID } from '@/lib/mock-data'
+import { MOCK_PROFILE, MOCK_LISTINGS, MOCK_USER_ID, MOCK_CONVERSATIONS } from '@/lib/mock-data'
 import { updateProfile, updateListingStatus, notifyPickedUp } from './actions'
 
 function isDemo() {

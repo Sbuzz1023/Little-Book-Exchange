@@ -27,8 +27,8 @@ export default async function MessagesLayout({ children }: { children: React.Rea
           .select(`
             *,
             listings(id, title, author, price),
-            buyer:profiles!conversations_buyer_id_fkey(id, name),
-            seller:profiles!conversations_seller_id_fkey(id, name),
+            buyer:profiles!conversations_buyer_id_fkey(id, username),
+            seller:profiles!conversations_seller_id_fkey(id, username),
             messages(body, created_at, sender_id)
           `)
           .or(`buyer_id.eq.${user.id},seller_id.eq.${user.id}`)

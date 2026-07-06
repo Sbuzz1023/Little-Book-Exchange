@@ -62,7 +62,7 @@ export default function ThreadPage({ params }: { params: { id: string } }) {
 
         const { data: c } = await supabase
           .from('conversations')
-          .select('*, listings(id, title, author, price), buyer:profiles!conversations_buyer_id_fkey(name), seller:profiles!conversations_seller_id_fkey(name)')
+          .select('*, listings(id, title, author, price), buyer:profiles!conversations_buyer_id_fkey(id, username), seller:profiles!conversations_seller_id_fkey(id, username)')
           .eq('id', params.id)
           .single()
         setConvo(c)
@@ -128,6 +128,7 @@ export default function ThreadPage({ params }: { params: { id: string } }) {
   }
 
   const other = convo?.buyer_id === userId ? convo?.seller : convo?.buyer
+  const otherName = other?.name || other?.username || 'Neighbor'
   const listing = convo?.listings
 
   return (
@@ -151,7 +152,7 @@ export default function ThreadPage({ params }: { params: { id: string } }) {
           <>
             <div>
               <p style={{ fontWeight: 900, fontSize: 16, color: '#1a1a1a', lineHeight: 1.2 }}>
-                {other?.name ?? 'Neighbor'}
+                {otherName}
               </p>
               {listing && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
@@ -205,7 +206,7 @@ export default function ThreadPage({ params }: { params: { id: string } }) {
             <div key={m.id}>
               {!sameSenderAbove && !isMine && (
                 <p style={{ fontSize: 11, fontWeight: 700, color: '#bbb', marginLeft: 4, marginBottom: 3, marginTop: idx === 0 ? 0 : 10 }}>
-                  {other?.name}
+                  {otherName}
                 </p>
               )}
               {!sameSenderAbove && isMine && idx > 0 && <div style={{ marginTop: 10 }} />}

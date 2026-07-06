@@ -15,15 +15,23 @@ export default function MessagesShell({
   const inThread = pathname !== '/messages'
 
   return (
-    <div style={{ position: 'fixed', top: 68, left: 0, right: 0, bottom: 0, display: 'flex', overflow: 'hidden', zIndex: 10 }}>
-      {/* Sidebar: full-screen on mobile when on /messages, hidden on mobile when in a thread */}
-      <div className={`${inThread ? 'hidden md:flex' : 'flex'} flex-col w-full md:w-[300px] md:flex-shrink-0`}>
+    <div className="flex" style={{ height: 'calc(100vh - 68px)', overflow: 'hidden', background: '#fffbf0' }}>
+
+      {/* Sidebar: full-screen on mobile at /messages, 300px column on desktop */}
+      <div
+        className={`${inThread ? 'hidden md:block' : 'block'} w-full md:w-[300px] md:shrink-0`}
+        style={{ borderRight: '2px solid #e5e7eb', overflowY: 'auto', background: '#fff' }}
+      >
         <ConversationSidebar conversations={conversations} userId={userId} />
       </div>
-      {/* Content: full-screen on mobile when in thread, hidden on mobile when on index */}
-      <div className={`${inThread ? 'flex' : 'hidden md:flex'} flex-1 flex-col overflow-hidden`}>
+
+      {/* Thread pane */}
+      <div
+        className={`${inThread ? 'flex' : 'hidden md:flex'} flex-1 flex-col overflow-hidden`}
+      >
         {children}
       </div>
+
     </div>
   )
 }

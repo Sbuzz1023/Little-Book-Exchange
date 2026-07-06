@@ -72,12 +72,13 @@ export default function ConversationSidebar({
       ) : (
         conversations.map((convo, idx) => {
           const other = convo.buyer_id === userId ? convo.seller : convo.buyer
+          const otherName = other?.name || other?.username || 'Neighbor'
           const msgs = (convo.messages ?? []).slice().sort(
             (a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
           )
           const lastMsg = msgs[0]
           const isActive = pathname === `/messages/${convo.id}`
-          const color = avatarColor(other?.name ?? String(idx))
+          const color = avatarColor(otherName)
 
           return (
             <Link
@@ -114,7 +115,7 @@ export default function ConversationSidebar({
                   fontFamily: 'inherit',
                 }}
               >
-                {initial(other?.name ?? '?')}
+                {initial(otherName)}
               </div>
 
               {/* Text */}
@@ -130,7 +131,7 @@ export default function ConversationSidebar({
                       textOverflow: 'ellipsis',
                     }}
                   >
-                    {other?.name ?? 'Neighbor'}
+                    {otherName}
                   </p>
                   {lastMsg && (
                     <span style={{ fontSize: 11, fontWeight: 700, color: '#bbb', flexShrink: 0 }}>
