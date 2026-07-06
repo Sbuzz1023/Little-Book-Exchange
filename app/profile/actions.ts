@@ -41,3 +41,38 @@ export async function notifyPickedUp(formData: FormData) {
   })
   redirect('/profile?tab=exchanges')
 }
+
+export async function confirmExchange(formData: FormData) {
+  const supabase = createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/auth/signin')
+
+  const conversationId = formData.get('conversation_id') as string
+
+  // Set exchange_status to confirmed
+  await supabase.from('conversations')
+    .update({ exchange_status: 'confirmed' })
+    .eq('id', conversationId)
+    .eq('seller_id', user.id)
+
+  // Fetch seller profile to send contact info
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('username, city, state, phone, contact_preference')
+    .eq('id', user.id)
+    .single()
+
+  if (profile) {
+    const contact = profile.phone
+      ? `📍 Exchange confirmed! Contact your seller:\n👤 ${profile.username}\n📞 ${profile.phone}\n📌 ${profile.city}${profile.state ? ', ' + profile.state : ''}`
+      : `📍 Exchange confirmed! Contact your seller:\n👤 ${profile.username}\n📌 ${profile.city}${profile.state ? ', ' + profile.state : ''}`
+
+    await supabase.from('messages').insert({
+      conversation_id: conversationId,
+      sender_id: user.id,
+      body: contact,
+    })
+  }
+
+  redirect('/profile')
+}

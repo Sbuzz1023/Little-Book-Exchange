@@ -28,7 +28,7 @@ function conditionLabel(c: string) {
   return c
 }
 
-export default async function ListingDetailPage({ params }: { params: { id: string } }) {
+export default async function ListingDetailPage({ params, searchParams }: { params: { id: string }, searchParams: { requested?: string } }) {
   let listing: any = null
   let user: any = null
 
@@ -55,7 +55,6 @@ export default async function ListingDetailPage({ params }: { params: { id: stri
     const { redirect } = await import('next/navigation')
     const { cookies } = await import('next/headers')
 
-    // Demo mode: if no real Supabase session, go straight to the mock conversation
     const isDemo = !process.env.NEXT_PUBLIC_SUPABASE_URL?.startsWith('http') ||
       !!cookies().get('lbe_demo_user')
 
@@ -72,19 +71,13 @@ export default async function ListingDetailPage({ params }: { params: { id: stri
       if (!u) redirect(`/auth/signin?redirect=/listings/${params.id}`)
 
       const { data: existing } = await supabase
-        .from('conversations')
-        .select('id')
-        .eq('listing_id', listing.id)
-        .eq('buyer_id', u!.id)
-        .single()
-
+        .from('conversations').select('id').eq('listing_id', listing.id).eq('buyer_id', u!.id).single()
       if (existing) redirect(`/messages/${existing.id}`)
 
       const { data: convo } = await supabase
         .from('conversations')
         .insert({ listing_id: listing.id, buyer_id: u!.id, seller_id: listing.profiles.id })
-        .select('id')
-        .single()
+        .select('id').single()
 
       redirect(`/messages/${convo!.id}`)
     } catch (err: any) {
@@ -94,6 +87,56 @@ export default async function ListingDetailPage({ params }: { params: { id: stri
       redirect(`/messages/${mock?.id ?? 'mock-convo-1'}`)
     }
   }
+
+  async function requestPurchase(formData: FormData) {
+    'use server'
+    const { redirect } = await import('next/navigation')
+    const { cookies } = await import('next/headers')
+
+    const isDemo = !process.env.NEXT_PUBLIC_SUPABASE_URL?.startsWith('http') ||
+      !!cookies().get('lbe_demo_user')
+
+    if (isDemo) {
+      redirect(`/listings/${params.id}?requested=1`)
+    }
+
+    try {
+      const { createClient: createSrv } = await import('@/lib/supabase/server')
+      const supabase = createSrv()
+      const { data: { user: u } } = await supabase.auth.getUser()
+      if (!u) redirect(`/auth/signin?redirect=/listings/${params.id}`)
+
+      // Find or create conversation
+      let convoId: string
+      const { data: existing } = await supabase
+        .from('conversations').select('id').eq('listing_id', listing.id).eq('buyer_id', u!.id).single()
+
+      if (existing) {
+        convoId = existing.id
+        await supabase.from('conversations').update({ exchange_status: 'requested' }).eq('id', convoId)
+      } else {
+        const { data: convo } = await supabase
+          .from('conversations')
+          .insert({ listing_id: listing.id, buyer_id: u!.id, seller_id: listing.profiles.id, exchange_status: 'requested' })
+          .select('id').single()
+        convoId = convo!.id
+      }
+
+      // Send a purchase request message
+      await supabase.from('messages').insert({
+        conversation_id: convoId,
+        sender_id: u!.id,
+        body: '🛒 I\'d like to purchase this book! Please confirm when you\'re ready.',
+      })
+
+      redirect(`/listings/${params.id}?requested=1`)
+    } catch (err: any) {
+      if (err?.digest?.startsWith('NEXT_REDIRECT')) throw err
+      redirect(`/listings/${params.id}?requested=1`)
+    }
+  }
+
+  const requested = !!searchParams.requested
 
   return (
     <div className="max-w-[680px] mx-auto px-4 py-6 md:px-8 md:py-10">
@@ -187,32 +230,30 @@ export default async function ListingDetailPage({ params }: { params: { id: stri
               >
                 Manage Listing
               </Link>
+            ) : requested ? (
+              <div
+                className="font-bold text-[15px]"
+                style={{ background: '#f0fdf4', border: '2px solid #bbf7d0', color: '#166534', padding: '14px 24px', borderRadius: 16 }}
+              >
+                ✅ Request sent to <strong>{listing.profiles?.username ?? 'the seller'}</strong>! Check your <Link href="/profile" style={{ color: '#0d9488', fontWeight: 900 }}>Exchanges tab</Link>.
+              </div>
             ) : (
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 flex-wrap">
                 <SaveButton listingId={listing.id} />
-                <button
-                    className="font-extrabold text-base text-white shadow-[0_4px_0_#0f766e]"
-                    style={{
-                      background: '#0d9488',
-                      padding: '14px 32px',
-                      borderRadius: 999,
-                      border: 'none',
-                      cursor: 'pointer',
-                    }}
+                <form action={requestPurchase}>
+                  <button
+                    type="submit"
+                    className="font-extrabold text-base text-white shadow-[0_4px_0_#0f766e] hover:shadow-[0_2px_0_#0f766e] hover:translate-y-0.5 transition-all"
+                    style={{ background: '#0d9488', padding: '14px 32px', borderRadius: 999, border: 'none', cursor: 'pointer' }}
                   >
-                    🪙 Use 1 Credit
+                    🪙 Purchase with 1 Credit
                   </button>
+                </form>
                 <form action={startConversation}>
                   <button
                     type="submit"
                     className="font-extrabold text-base text-white shadow-[0_4px_0_#c2410c] hover:shadow-[0_2px_0_#c2410c] hover:translate-y-0.5 transition-all"
-                    style={{
-                      background: '#f97316',
-                      padding: '14px 32px',
-                      borderRadius: 999,
-                      border: 'none',
-                      cursor: 'pointer',
-                    }}
+                    style={{ background: '#f97316', padding: '14px 32px', borderRadius: 999, border: 'none', cursor: 'pointer' }}
                   >
                     💬 Message Seller
                   </button>

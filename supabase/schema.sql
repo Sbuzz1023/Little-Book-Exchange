@@ -69,9 +69,13 @@ create table if not exists conversations (
   listing_id uuid references listings(id) on delete cascade not null,
   buyer_id uuid references profiles(id) on delete cascade not null,
   seller_id uuid references profiles(id) on delete cascade not null,
+  exchange_status text not null default 'none' check (exchange_status in ('none', 'requested', 'confirmed')),
   created_at timestamptz default now(),
   unique(listing_id, buyer_id)
 );
+
+-- Migration (run if table already exists):
+-- ALTER TABLE conversations ADD COLUMN IF NOT EXISTS exchange_status text NOT NULL DEFAULT 'none' CHECK (exchange_status IN ('none', 'requested', 'confirmed'));
 
 alter table conversations enable row level security;
 create policy "Participants can view conversations" on conversations

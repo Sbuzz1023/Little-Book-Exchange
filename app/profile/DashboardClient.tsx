@@ -22,9 +22,10 @@ type Exchange = {
   listing_id: string
   buyer_id: string
   seller_id: string
+  exchange_status: 'none' | 'requested' | 'confirmed'
   listings: { title: string; author: string; photo_url?: string | null; city?: string | null; state?: string | null }
-  buyer: { username?: string | null; name?: string | null; city?: string | null; state?: string | null }
-  seller: { username?: string | null; name?: string | null; city?: string | null; state?: string | null }
+  buyer: { username?: string | null; name?: string | null; city?: string | null; state?: string | null; phone?: string | null }
+  seller: { username?: string | null; name?: string | null; city?: string | null; state?: string | null; phone?: string | null }
 }
 
 type Props = {
@@ -43,6 +44,7 @@ type Props = {
   updateAction: (formData: FormData) => Promise<void>
   updateListingStatus: (formData: FormData) => Promise<void>
   notifyPickedUp: (formData: FormData) => Promise<void>
+  confirmExchange: (formData: FormData) => Promise<void>
   success?: boolean
 }
 
@@ -89,7 +91,7 @@ const MOCK_TRANSACTIONS = [
   { id: '3', type: 'earn',     desc: 'Book claimed by neighbor',  amount: '+1', date: 'Jun 22, 2026', color: '#059669' },
 ]
 
-export default function DashboardClient({ profile, listings, exchanges, updateAction, updateListingStatus, notifyPickedUp, success }: Props) {
+export default function DashboardClient({ profile, listings, exchanges, updateAction, updateListingStatus, notifyPickedUp, confirmExchange, success }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>('listings')
 
   const tab = TABS.find(t => t.id === activeTab)!
@@ -241,59 +243,119 @@ export default function DashboardClient({ profile, listings, exchanges, updateAc
         const bought = exchanges.filter(e => e.buyer_id  === userId)
 
         const ExchangeRow = ({ ex, role }: { ex: Exchange; role: 'seller' | 'buyer' }) => {
-          const other = role === 'seller' ? ex.buyer : ex.seller
+          const other     = role === 'seller' ? ex.buyer : ex.seller
           const otherName = other.name || other.username || 'Neighbor'
+          const status    = ex.exchange_status ?? 'none'
           const location  = ex.listings.city
             ? `${ex.listings.city}${ex.listings.state ? ', ' + ex.listings.state : ''}`
             : null
 
+          // Status badge colours
+          const statusBadge = status === 'requested'
+            ? { bg: '#fffbeb', border: '#fcd34d', color: '#92400e', label: '⏳ Pending' }
+            : status === 'confirmed'
+            ? { bg: '#f0fdf4', border: '#86efac', color: '#166534', label: '✅ Confirmed' }
+            : { bg: '#f3f4f6', border: '#e5e7eb', color: '#888', label: '💬 Chatting' }
+
           return (
-            <div className="flex gap-3 items-start" style={{ padding: '14px 0', borderBottom: '2px solid #f3f4f6' }}>
-              {/* Book thumbnail */}
-              <div className="relative shrink-0 overflow-hidden"
-                style={{ width: 46, height: 58, borderRadius: 8, background: coverGradient(ex.listing_id) }}>
-                {ex.listings.photo_url ? (
-                  <Image src={ex.listings.photo_url} alt={ex.listings.title} fill className="object-cover" />
-                ) : (
-                  <span className="flex items-center justify-center w-full h-full text-[22px]">📚</span>
-                )}
-              </div>
+            <div style={{ padding: '16px 0', borderBottom: '2px solid #f3f4f6' }}>
+              <div className="flex gap-3 items-start">
+                {/* Book thumbnail */}
+                <div className="relative shrink-0 overflow-hidden"
+                  style={{ width: 46, height: 58, borderRadius: 8, background: coverGradient(ex.listing_id) }}>
+                  {ex.listings.photo_url ? (
+                    <Image src={ex.listings.photo_url} alt={ex.listings.title} fill className="object-cover" />
+                  ) : (
+                    <span className="flex items-center justify-center w-full h-full text-[22px]">📚</span>
+                  )}
+                </div>
 
-              {/* Info */}
-              <div className="flex-1 min-w-0">
-                <p className="font-black text-[13px] truncate">{ex.listings.title}</p>
-                <p className="font-semibold text-[11px] mb-1" style={{ color: '#aaa' }}>{ex.listings.author}</p>
-                {role === 'seller' && (
-                  <p className="font-bold text-[12px]" style={{ color: '#555' }}>
-                    Buyer: <span style={{ color: '#f97316' }}>{otherName}</span>
-                  </p>
-                )}
-                {role === 'buyer' && location && (
-                  <p className="font-bold text-[12px]" style={{ color: '#555' }}>
-                    📍 Pick up in <span style={{ color: '#0d9488' }}>{location}</span>
-                    {' '}· from <span style={{ color: '#0d9488' }}>{otherName}</span>
-                  </p>
-                )}
-              </div>
+                {/* Info */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                    <p className="font-black text-[13px] truncate">{ex.listings.title}</p>
+                    <span className="font-extrabold text-[10px] whitespace-nowrap shrink-0"
+                      style={{ padding: '2px 8px', borderRadius: 999, background: statusBadge.bg, border: `1.5px solid ${statusBadge.border}`, color: statusBadge.color }}>
+                      {statusBadge.label}
+                    </span>
+                  </div>
+                  <p className="font-semibold text-[11px]" style={{ color: '#aaa' }}>{ex.listings.author}</p>
 
-              {/* Actions */}
-              <div className="flex flex-col gap-2 shrink-0 items-end">
-                <Link
-                  href={`/messages/${ex.id}`}
-                  className="font-extrabold text-[11px] text-white whitespace-nowrap"
-                  style={{ background: '#0d9488', padding: '5px 12px', borderRadius: 999, boxShadow: '0 2px 0 #0f766e' }}
-                >
+                  {/* Status-specific context line */}
+                  {role === 'seller' && status === 'requested' && (
+                    <p className="font-bold text-[12px] mt-1" style={{ color: '#92400e' }}>
+                      🔔 <strong>{otherName}</strong> wants to purchase this book!
+                    </p>
+                  )}
+                  {role === 'seller' && status === 'confirmed' && (
+                    <p className="font-bold text-[12px] mt-1" style={{ color: '#166534' }}>
+                      Your contact info was sent to <strong>{otherName}</strong>.
+                    </p>
+                  )}
+                  {role === 'seller' && status === 'none' && (
+                    <p className="font-semibold text-[12px] mt-1" style={{ color: '#aaa' }}>
+                      Messaging with <strong style={{ color: '#555' }}>{otherName}</strong>
+                    </p>
+                  )}
+                  {role === 'buyer' && status === 'requested' && (
+                    <p className="font-bold text-[12px] mt-1" style={{ color: '#92400e' }}>
+                      ⏳ Waiting for <strong>{otherName}</strong> to confirm…
+                    </p>
+                  )}
+                  {role === 'buyer' && status === 'confirmed' && location && (
+                    <p className="font-bold text-[12px] mt-1" style={{ color: '#166534' }}>
+                      📍 Pick up from <strong>{otherName}</strong> in {location}
+                    </p>
+                  )}
+                  {role === 'buyer' && status === 'none' && (
+                    <p className="font-semibold text-[12px] mt-1" style={{ color: '#aaa' }}>
+                      from <strong style={{ color: '#555' }}>{otherName}</strong>{location ? ` · ${location}` : ''}
+                    </p>
+                  )}
+                </div>
+
+                {/* Message button always visible */}
+                <Link href={`/messages/${ex.id}`}
+                  className="font-extrabold text-[11px] text-white whitespace-nowrap shrink-0"
+                  style={{ background: '#0d9488', padding: '6px 12px', borderRadius: 999, boxShadow: '0 2px 0 #0f766e' }}>
                   💬 Message
                 </Link>
-                <form action={notifyPickedUp}>
-                  <input type="hidden" name="conversation_id" value={ex.id} />
-                  <button
-                    className="font-extrabold text-[11px] whitespace-nowrap hover:opacity-80"
-                    style={{ background: '#fff7ed', border: '1.5px solid #fed7aa', color: '#f97316', padding: '5px 12px', borderRadius: 999, cursor: 'pointer', fontFamily: 'inherit' }}
-                  >
-                    ✅ {role === 'seller' ? 'Mark Picked Up' : 'I Got It!'}
-                  </button>
-                </form>
+              </div>
+
+              {/* Action row below — status-driven */}
+              <div className="flex gap-2 mt-3 flex-wrap" style={{ paddingLeft: 58 }}>
+                {/* Seller: confirm a purchase request */}
+                {role === 'seller' && status === 'requested' && (
+                  <form action={confirmExchange}>
+                    <input type="hidden" name="conversation_id" value={ex.id} />
+                    <button className="font-extrabold text-[12px] text-white hover:opacity-90"
+                      style={{ background: '#0d9488', border: 'none', padding: '7px 18px', borderRadius: 999, cursor: 'pointer', fontFamily: 'inherit', boxShadow: '0 2px 0 #0f766e' }}>
+                      ✅ Confirm — Send My Contact Info
+                    </button>
+                  </form>
+                )}
+
+                {/* Seller: mark picked up after confirmed */}
+                {role === 'seller' && status === 'confirmed' && (
+                  <form action={notifyPickedUp}>
+                    <input type="hidden" name="conversation_id" value={ex.id} />
+                    <button className="font-extrabold text-[12px] hover:opacity-80"
+                      style={{ background: '#fff7ed', border: '1.5px solid #fed7aa', color: '#f97316', padding: '7px 18px', borderRadius: 999, cursor: 'pointer', fontFamily: 'inherit' }}>
+                      📦 Mark Picked Up
+                    </button>
+                  </form>
+                )}
+
+                {/* Buyer: "I got it" after confirmed */}
+                {role === 'buyer' && status === 'confirmed' && (
+                  <form action={notifyPickedUp}>
+                    <input type="hidden" name="conversation_id" value={ex.id} />
+                    <button className="font-extrabold text-[12px] hover:opacity-80"
+                      style={{ background: '#f0fdf4', border: '1.5px solid #bbf7d0', color: '#166534', padding: '7px 18px', borderRadius: 999, cursor: 'pointer', fontFamily: 'inherit' }}>
+                      📚 I Got It!
+                    </button>
+                  </form>
+                )}
               </div>
             </div>
           )

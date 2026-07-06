@@ -3,7 +3,7 @@ import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import DashboardClient from './DashboardClient'
 import { MOCK_PROFILE, MOCK_LISTINGS, MOCK_USER_ID, MOCK_CONVERSATIONS } from '@/lib/mock-data'
-import { updateProfile, updateListingStatus, notifyPickedUp } from './actions'
+import { updateProfile, updateListingStatus, notifyPickedUp, confirmExchange } from './actions'
 
 function isDemo() {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL?.startsWith('http')) return true
@@ -55,6 +55,7 @@ export default async function ProfilePage({
       updateAction={updateProfile}
       updateListingStatus={updateListingStatus}
       notifyPickedUp={notifyPickedUp}
+      confirmExchange={confirmExchange}
       success={!!searchParams.success}
     />
   )
