@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import ProfileCard from './ProfileCard'
 
 type Tab = 'listings' | 'exchanges' | 'tbr' | 'saved' | 'wallet' | 'account'
@@ -13,10 +14,22 @@ type Listing = {
   price?: number | null
   condition: string
   status: string
+  photo_url?: string | null
+}
+
+type Exchange = {
+  id: string
+  listing_id: string
+  buyer_id: string
+  seller_id: string
+  listings: { title: string; author: string; photo_url?: string | null; city?: string | null; state?: string | null }
+  buyer: { username?: string | null; name?: string | null; city?: string | null; state?: string | null }
+  seller: { username?: string | null; name?: string | null; city?: string | null; state?: string | null }
 }
 
 type Props = {
   profile: {
+    id?: string | null
     name?: string | null
     username?: string | null
     email?: string | null
@@ -26,8 +39,10 @@ type Props = {
     created_at?: string | null
   } | null
   listings: Listing[]
+  exchanges: Exchange[]
   updateAction: (formData: FormData) => Promise<void>
   updateListingStatus: (formData: FormData) => Promise<void>
+  notifyPickedUp: (formData: FormData) => Promise<void>
   success?: boolean
 }
 
@@ -74,7 +89,7 @@ const MOCK_TRANSACTIONS = [
   { id: '3', type: 'earn',     desc: 'Book claimed by neighbor',  amount: '+1', date: 'Jun 22, 2026', color: '#059669' },
 ]
 
-export default function DashboardClient({ profile, listings, updateAction, updateListingStatus, success }: Props) {
+export default function DashboardClient({ profile, listings, exchanges, updateAction, updateListingStatus, notifyPickedUp, success }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>('listings')
 
   const tab = TABS.find(t => t.id === activeTab)!
@@ -171,9 +186,13 @@ export default function DashboardClient({ profile, listings, updateAction, updat
             <div>
               {listings.map(l => (
                 <div key={l.id} className="flex items-center gap-3" style={{ padding: '12px 0', borderBottom: '2px solid #f3f4f6' }}>
-                  <div className="flex items-center justify-center text-[20px] shrink-0"
+                  <div className="relative shrink-0 overflow-hidden"
                     style={{ width: 42, height: 42, borderRadius: 10, background: coverGradient(l.id) }}>
-                    📚
+                    {l.photo_url ? (
+                      <Image src={l.photo_url} alt={l.title} fill className="object-cover" />
+                    ) : (
+                      <span className="flex items-center justify-center w-full h-full text-[20px]">📚</span>
+                    )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <Link href={`/listings/${l.id}`} className="font-black text-[14px] truncate block hover:text-bk-orange transition-colors">
@@ -190,18 +209,11 @@ export default function DashboardClient({ profile, listings, updateAction, updat
                   <form action={updateListingStatus} className="flex gap-2 shrink-0">
                     <input type="hidden" name="id" value={l.id} />
                     {l.status === 'active' ? (
-                      <>
-                        <button name="status" value="sold"
-                          className="font-extrabold text-[11px] hover:opacity-80"
-                          style={{ background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', padding: 0 }}>
-                          Mark Sold
-                        </button>
-                        <button name="status" value="given"
-                          className="font-extrabold text-[11px] hover:opacity-80"
-                          style={{ background: 'none', border: 'none', color: '#a78bfa', cursor: 'pointer', padding: 0 }}>
-                          Mark Given
-                        </button>
-                      </>
+                      <button name="status" value="sold"
+                        className="font-extrabold text-[11px] hover:opacity-80"
+                        style={{ background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', padding: 0 }}>
+                        Mark Sold
+                      </button>
                     ) : (
                       <button name="status" value="active"
                         className="font-extrabold text-[11px] hover:opacity-80"
@@ -223,29 +235,100 @@ export default function DashboardClient({ profile, listings, updateAction, updat
       )}
 
       {/* ── EXCHANGES ── */}
-      {activeTab === 'exchanges' && (
-        <div style={cardStyle}>
-          <p className="font-bold text-[13px] mb-5" style={{ color: '#aaa' }}>
-            Books you've sold that need to be handed off, and books you're waiting to receive.
-          </p>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-            <div>
-              <div className="font-extrabold text-[11px]"
-                style={{ textTransform: 'uppercase', letterSpacing: '0.8px', padding: '7px 12px', borderRadius: 10, marginBottom: 10, background: '#fff7ed', color: '#f97316' }}>
-                📤 Sold (0)
+      {activeTab === 'exchanges' && (() => {
+        const userId = profile?.id ?? ''
+        const sold   = exchanges.filter(e => e.seller_id === userId)
+        const bought = exchanges.filter(e => e.buyer_id  === userId)
+
+        const ExchangeRow = ({ ex, role }: { ex: Exchange; role: 'seller' | 'buyer' }) => {
+          const other = role === 'seller' ? ex.buyer : ex.seller
+          const otherName = other.name || other.username || 'Neighbor'
+          const location  = ex.listings.city
+            ? `${ex.listings.city}${ex.listings.state ? ', ' + ex.listings.state : ''}`
+            : null
+
+          return (
+            <div className="flex gap-3 items-start" style={{ padding: '14px 0', borderBottom: '2px solid #f3f4f6' }}>
+              {/* Book thumbnail */}
+              <div className="relative shrink-0 overflow-hidden"
+                style={{ width: 46, height: 58, borderRadius: 8, background: coverGradient(ex.listing_id) }}>
+                {ex.listings.photo_url ? (
+                  <Image src={ex.listings.photo_url} alt={ex.listings.title} fill className="object-cover" />
+                ) : (
+                  <span className="flex items-center justify-center w-full h-full text-[22px]">📚</span>
+                )}
               </div>
-              <div className="text-center py-8 font-bold text-[13px]" style={{ color: '#ccc' }}>Nothing sold yet</div>
+
+              {/* Info */}
+              <div className="flex-1 min-w-0">
+                <p className="font-black text-[13px] truncate">{ex.listings.title}</p>
+                <p className="font-semibold text-[11px] mb-1" style={{ color: '#aaa' }}>{ex.listings.author}</p>
+                {role === 'seller' && (
+                  <p className="font-bold text-[12px]" style={{ color: '#555' }}>
+                    Buyer: <span style={{ color: '#f97316' }}>{otherName}</span>
+                  </p>
+                )}
+                {role === 'buyer' && location && (
+                  <p className="font-bold text-[12px]" style={{ color: '#555' }}>
+                    📍 Pick up in <span style={{ color: '#0d9488' }}>{location}</span>
+                    {' '}· from <span style={{ color: '#0d9488' }}>{otherName}</span>
+                  </p>
+                )}
+              </div>
+
+              {/* Actions */}
+              <div className="flex flex-col gap-2 shrink-0 items-end">
+                <Link
+                  href={`/messages/${ex.id}`}
+                  className="font-extrabold text-[11px] text-white whitespace-nowrap"
+                  style={{ background: '#0d9488', padding: '5px 12px', borderRadius: 999, boxShadow: '0 2px 0 #0f766e' }}
+                >
+                  💬 Message
+                </Link>
+                <form action={notifyPickedUp}>
+                  <input type="hidden" name="conversation_id" value={ex.id} />
+                  <button
+                    className="font-extrabold text-[11px] whitespace-nowrap hover:opacity-80"
+                    style={{ background: '#fff7ed', border: '1.5px solid #fed7aa', color: '#f97316', padding: '5px 12px', borderRadius: 999, cursor: 'pointer', fontFamily: 'inherit' }}
+                  >
+                    ✅ {role === 'seller' ? 'Mark Picked Up' : 'I Got It!'}
+                  </button>
+                </form>
+              </div>
             </div>
-            <div>
-              <div className="font-extrabold text-[11px]"
-                style={{ textTransform: 'uppercase', letterSpacing: '0.8px', padding: '7px 12px', borderRadius: 10, marginBottom: 10, background: '#f0fdf4', color: '#0d9488' }}>
-                📥 Bought (0)
+          )
+        }
+
+        return (
+          <div className="flex flex-col" style={{ gap: 16 }}>
+            {/* Going Out */}
+            <div style={cardStyle}>
+              <div className="font-extrabold text-[11px] mb-4"
+                style={{ textTransform: 'uppercase', letterSpacing: '0.8px', padding: '7px 12px', borderRadius: 10, background: '#fff7ed', color: '#f97316', display: 'inline-block' }}>
+                📤 Going Out ({sold.length})
               </div>
-              <div className="text-center py-8 font-bold text-[13px]" style={{ color: '#ccc' }}>Nothing bought yet</div>
+              {sold.length === 0 ? (
+                <div className="text-center py-6 font-bold text-[13px]" style={{ color: '#ccc' }}>No active sales</div>
+              ) : (
+                sold.map(ex => <ExchangeRow key={ex.id} ex={ex} role="seller" />)
+              )}
+            </div>
+
+            {/* Coming In */}
+            <div style={cardStyle}>
+              <div className="font-extrabold text-[11px] mb-4"
+                style={{ textTransform: 'uppercase', letterSpacing: '0.8px', padding: '7px 12px', borderRadius: 10, background: '#f0fdfa', color: '#0d9488', display: 'inline-block' }}>
+                📥 Coming In ({bought.length})
+              </div>
+              {bought.length === 0 ? (
+                <div className="text-center py-6 font-bold text-[13px]" style={{ color: '#ccc' }}>No books on the way</div>
+              ) : (
+                bought.map(ex => <ExchangeRow key={ex.id} ex={ex} role="buyer" />)
+              )}
             </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
 
       {/* ── TO BE READ ── */}
       {activeTab === 'tbr' && (

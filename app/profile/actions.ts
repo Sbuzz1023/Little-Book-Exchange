@@ -28,3 +28,16 @@ export async function updateListingStatus(formData: FormData) {
   }
   redirect('/profile')
 }
+
+export async function notifyPickedUp(formData: FormData) {
+  const supabase = createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/auth/signin')
+  const conversationId = formData.get('conversation_id') as string
+  await supabase.from('messages').insert({
+    conversation_id: conversationId,
+    sender_id: user.id,
+    body: '📚 Book picked up! Thanks so much!',
+  })
+  redirect('/profile?tab=exchanges')
+}
