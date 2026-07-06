@@ -4,7 +4,7 @@ import Link from 'next/link'
 export default function SignInPage({
   searchParams,
 }: {
-  searchParams: { redirect?: string; error?: string }
+  searchParams: { redirect?: string; error?: string; info?: string }
 }) {
   async function signIn(formData: FormData) {
     'use server'
@@ -48,6 +48,12 @@ export default function SignInPage({
       <div className="bg-white rounded-[28px] p-6 md:p-10 w-full max-w-[440px] border-2 border-gray-100 shadow-[0_8px_0_#e5e7eb]">
         <h1 className="font-display text-[28px] text-bk-orange text-center mb-1.5">Welcome Back</h1>
         <p className="text-[14px] font-bold text-center mb-7" style={{ color: '#aaa' }}>Sign in to browse and message neighbors.</p>
+
+        {searchParams.info === 'already_registered' && (
+          <div className="bg-teal-50 border-2 border-teal-200 rounded-xl px-4 py-3 text-teal-700 font-bold text-sm mb-4">
+            Looks like you already have an account! Sign in below.
+          </div>
+        )}
 
         {searchParams.error && (
           <div className="bg-red-50 border-2 border-red-200 rounded-xl px-4 py-3 text-red-700 font-bold text-sm mb-4">

@@ -25,7 +25,13 @@ export default function SignUpPage({
           },
         },
       })
-      if (error) redirect(`/auth/signup?error=${encodeURIComponent(error.message || error.code || String(error) || 'Signup failed')}`)
+      if (error) {
+        const msg = error.message || error.code || ''
+        if (msg.toLowerCase().includes('already registered') || msg.toLowerCase().includes('already exists') || (error as any).code === 'user_already_exists') {
+          redirect('/auth/signin?info=already_registered')
+        }
+        redirect(`/auth/signup?error=${encodeURIComponent(msg || 'Signup failed')}`)
+      }
       redirect('/')
     } catch (err: any) {
       if (err?.digest?.startsWith('NEXT_REDIRECT')) throw err
