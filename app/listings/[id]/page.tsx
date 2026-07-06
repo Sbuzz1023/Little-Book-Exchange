@@ -105,6 +105,7 @@ export default async function ListingDetailPage({ params, searchParams }: { para
       !!cookies().get('lbe_demo_user')
 
     if (isDemo) {
+      cookies().set('lbe_demo_pending', params.id, { maxAge: 86400, path: '/', sameSite: 'lax' })
       redirect(`/listings/${params.id}?requested=1`)
     }
 
