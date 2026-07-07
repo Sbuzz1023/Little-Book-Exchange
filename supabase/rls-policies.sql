@@ -17,6 +17,13 @@ CREATE POLICY "update own conversations" ON public.conversations
 FOR UPDATE TO authenticated
 USING (auth.uid() = buyer_id OR auth.uid() = seller_id);
 
+-- Allow buyer to cancel (delete) a conversation before seller confirms
+DROP POLICY IF EXISTS "buyer can cancel conversations" ON public.conversations;
+
+CREATE POLICY "buyer can cancel conversations" ON public.conversations
+FOR DELETE TO authenticated
+USING (auth.uid() = buyer_id AND exchange_status IN ('requested', 'none'));
+
 -- ── MESSAGES ───────────────────────────────────────────────────────────────
 DROP POLICY IF EXISTS "participants can read messages" ON public.messages;
 DROP POLICY IF EXISTS "participants can send messages" ON public.messages;

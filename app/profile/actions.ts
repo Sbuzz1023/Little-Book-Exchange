@@ -42,6 +42,24 @@ export async function notifyPickedUp(formData: FormData) {
   redirect('/profile?tab=exchanges')
 }
 
+export async function cancelPurchase(formData: FormData) {
+  const supabase = createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/auth/signin')
+
+  const conversationId = formData.get('conversation_id') as string
+
+  // Only allowed while still pending — not after seller confirms
+  await supabase
+    .from('conversations')
+    .delete()
+    .eq('id', conversationId)
+    .eq('buyer_id', user.id)
+    .in('exchange_status', ['requested', 'none'])
+
+  redirect('/profile')
+}
+
 export async function confirmExchange(formData: FormData) {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()

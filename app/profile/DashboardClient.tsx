@@ -45,6 +45,7 @@ type Props = {
   updateListingStatus: (formData: FormData) => Promise<void>
   notifyPickedUp: (formData: FormData) => Promise<void>
   confirmExchange: (formData: FormData) => Promise<void>
+  cancelPurchase: (formData: FormData) => Promise<void>
   success?: boolean
   defaultTab?: Tab
   queryError?: string | null
@@ -93,7 +94,7 @@ const MOCK_TRANSACTIONS = [
   { id: '3', type: 'earn',     desc: 'Book claimed by neighbor',  amount: '+1', date: 'Jun 22, 2026', color: '#059669' },
 ]
 
-export default function DashboardClient({ profile, listings, exchanges, updateAction, updateListingStatus, notifyPickedUp, confirmExchange, success, defaultTab, queryError }: Props) {
+export default function DashboardClient({ profile, listings, exchanges, updateAction, updateListingStatus, notifyPickedUp, confirmExchange, cancelPurchase, success, defaultTab, queryError }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>(defaultTab ?? 'listings')
 
   const tab = TABS.find(t => t.id === activeTab)!
@@ -252,11 +253,14 @@ export default function DashboardClient({ profile, listings, exchanges, updateAc
             ? `${ex.listings.city}${ex.listings.state ? ', ' + ex.listings.state : ''}`
             : null
 
-          // Status badge colours
-          const statusBadge = status === 'requested'
-            ? { bg: '#fffbeb', border: '#fcd34d', color: '#92400e', label: '⏳ Pending Transaction' }
+          // Status badge — role-aware
+          const statusBadge =
+            status === 'requested' && role === 'buyer'
+              ? { bg: '#fffbeb', border: '#fcd34d', color: '#92400e', label: '⏳ Pending Seller' }
+            : status === 'requested' && role === 'seller'
+              ? { bg: '#fff7ed', border: '#fdba74', color: '#c2410c', label: '🔔 Needs Your OK' }
             : status === 'confirmed'
-            ? { bg: '#f0fdf4', border: '#86efac', color: '#166534', label: '✅ Confirmed' }
+              ? { bg: '#f0fdf4', border: '#86efac', color: '#166534', label: '✅ Ready for Pick Up' }
             : { bg: '#f3f4f6', border: '#e5e7eb', color: '#888', label: '💬 Chatting' }
 
           return (
@@ -301,13 +305,16 @@ export default function DashboardClient({ profile, listings, exchanges, updateAc
                   )}
                   {role === 'buyer' && status === 'requested' && (
                     <p className="font-bold text-[12px] mt-1" style={{ color: '#92400e' }}>
-                      ⏳ Pending Transaction — waiting for <strong>{otherName}</strong> to confirm
+                      Waiting for <strong>{otherName}</strong> to approve your request
                     </p>
                   )}
-                  {role === 'buyer' && status === 'confirmed' && location && (
-                    <p className="font-bold text-[12px] mt-1" style={{ color: '#166534' }}>
-                      📍 Pick up from <strong>{otherName}</strong> in {location}
-                    </p>
+                  {role === 'buyer' && status === 'confirmed' && (
+                    <div className="mt-2 rounded-[10px] px-3 py-2" style={{ background: '#f0fdf4', border: '1.5px solid #bbf7d0' }}>
+                      <p className="font-extrabold text-[12px]" style={{ color: '#166534' }}>📍 Ready for Pick Up!</p>
+                      {location && <p className="font-semibold text-[11px] mt-0.5" style={{ color: '#166534' }}>📌 {location}</p>}
+                      {ex.seller?.phone && <p className="font-semibold text-[11px]" style={{ color: '#166534' }}>📞 {ex.seller.phone}</p>}
+                      <p className="font-semibold text-[11px]" style={{ color: '#166534' }}>Contact: <strong>{otherName}</strong></p>
+                    </div>
                   )}
                   {role === 'buyer' && status === 'none' && (
                     <p className="font-semibold text-[12px] mt-1" style={{ color: '#aaa' }}>
@@ -344,6 +351,17 @@ export default function DashboardClient({ profile, listings, exchanges, updateAc
                     <button className="font-extrabold text-[12px] hover:opacity-80"
                       style={{ background: '#fff7ed', border: '1.5px solid #fed7aa', color: '#f97316', padding: '7px 18px', borderRadius: 999, cursor: 'pointer', fontFamily: 'inherit' }}>
                       📦 Mark Picked Up
+                    </button>
+                  </form>
+                )}
+
+                {/* Buyer: cancel before seller confirms */}
+                {role === 'buyer' && status === 'requested' && (
+                  <form action={cancelPurchase}>
+                    <input type="hidden" name="conversation_id" value={ex.id} />
+                    <button className="font-extrabold text-[12px] hover:opacity-80"
+                      style={{ background: '#fff1f2', border: '1.5px solid #fca5a5', color: '#dc2626', padding: '7px 18px', borderRadius: 999, cursor: 'pointer', fontFamily: 'inherit' }}>
+                      ✕ Cancel Request
                     </button>
                   </form>
                 )}

@@ -3,7 +3,7 @@ import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import DashboardClient from './DashboardClient'
 import { MOCK_PROFILE, MOCK_LISTINGS, MOCK_USER_ID, MOCK_CONVERSATIONS } from '@/lib/mock-data'
-import { updateProfile, updateListingStatus, notifyPickedUp, confirmExchange } from './actions'
+import { updateProfile, updateListingStatus, notifyPickedUp, confirmExchange, cancelPurchase } from './actions'
 
 export default async function ProfilePage({
   searchParams,
@@ -128,6 +128,7 @@ export default async function ProfilePage({
       updateListingStatus={updateListingStatus}
       notifyPickedUp={notifyPickedUp}
       confirmExchange={confirmExchange}
+      cancelPurchase={cancelPurchase}
       success={!!searchParams.success}
       defaultTab={searchParams.demo_pending ? 'exchanges' : 'listings'}
       queryError={queryError}
