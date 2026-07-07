@@ -357,7 +357,7 @@ export default function DashboardClient({ profile, listings, exchanges, updateAc
 
                 {/* Buyer: cancel before seller confirms */}
                 {role === 'buyer' && status === 'requested' && (
-                  <form action={cancelPurchase}>
+                  <form action={cancelPurchase} onSubmit={e => { if (!confirm('Cancel this purchase request?')) e.preventDefault() }}>
                     <input type="hidden" name="conversation_id" value={ex.id} />
                     <button className="font-extrabold text-[12px] hover:opacity-80"
                       style={{ background: '#fff1f2', border: '1.5px solid #fca5a5', color: '#dc2626', padding: '7px 18px', borderRadius: 999, cursor: 'pointer', fontFamily: 'inherit' }}>
