@@ -23,9 +23,33 @@ type Exchange = {
   buyer_id: string
   seller_id: string
   exchange_status: 'none' | 'requested' | 'confirmed'
-  listings: { title: string; author: string; photo_url?: string | null; city?: string | null; state?: string | null }
-  buyer: { username?: string | null; name?: string | null; city?: string | null; state?: string | null; phone?: string | null }
-  seller: { username?: string | null; name?: string | null; city?: string | null; state?: string | null; phone?: string | null }
+  listings: {
+    title: string
+    author: string
+    photo_url?: string | null
+    city?: string | null
+    state?: string | null
+    pickup_description?: string | null
+  }
+  buyer: {
+    username?: string | null
+    name?: string | null
+    city?: string | null
+    state?: string | null
+    phone?: string | null
+  }
+  seller: {
+    username?: string | null
+    name?: string | null
+    city?: string | null
+    state?: string | null
+    phone?: string | null
+    address?: string | null
+    address_unit?: string | null
+    share_address?: boolean | null
+    pickup_description?: string | null
+    share_pickup?: boolean | null
+  }
 }
 
 type Props = {
@@ -37,6 +61,11 @@ type Props = {
     city?: string | null
     state?: string | null
     phone?: string | null
+    address?: string | null
+    address_unit?: string | null
+    share_address?: boolean | null
+    pickup_description?: string | null
+    share_pickup?: boolean | null
     created_at?: string | null
   } | null
   listings: Listing[]
@@ -314,7 +343,20 @@ export default function DashboardClient({ profile, listings, exchanges, updateAc
                     <div className="mt-2 rounded-[10px] px-3 py-2" style={{ background: '#f0fdf4', border: '1.5px solid #bbf7d0' }}>
                       <p className="font-extrabold text-[12px]" style={{ color: '#166534' }}>📍 Ready for Pick Up!</p>
                       {location && <p className="font-semibold text-[11px] mt-0.5" style={{ color: '#166534' }}>📌 {location}</p>}
-                      {ex.seller?.phone && <p className="font-semibold text-[11px]" style={{ color: '#166534' }}>📞 {ex.seller.phone}</p>}
+                      {ex.seller?.phone && (
+                        <p className="font-semibold text-[11px]" style={{ color: '#166534' }}>📞 {ex.seller.phone}</p>
+                      )}
+                      {ex.seller?.share_address && (ex.seller?.address || ex.seller?.address_unit) && (
+                        <p className="font-semibold text-[11px]" style={{ color: '#166534' }}>
+                          🏠 {[ex.seller.address, ex.seller.address_unit].filter(Boolean).join(' ')}
+                        </p>
+                      )}
+                      {ex.seller?.share_pickup && (() => {
+                        const pickup = ex.listings?.pickup_description || ex.seller?.pickup_description
+                        return pickup
+                          ? <p className="font-semibold text-[11px]" style={{ color: '#166534' }}>📦 Pickup: {pickup}</p>
+                          : null
+                      })()}
                       <p className="font-semibold text-[11px]" style={{ color: '#166534' }}>Contact: <strong>{otherName}</strong></p>
                     </div>
                   )}

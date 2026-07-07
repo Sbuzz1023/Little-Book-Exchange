@@ -11,6 +11,11 @@ export const MOCK_PROFILE = {
   state: 'IL',
   phone: '(312) 555-0100',
   contact_preference: 'email',
+  address: '742 Evergreen Terrace',
+  address_unit: '',
+  share_address: true,
+  pickup_description: 'front porch',
+  share_pickup: true,
 }
 
 export const MOCK_LISTINGS = [
@@ -198,7 +203,7 @@ export const MOCK_CONVERSATIONS = [
     created_at: new Date(Date.now() - 7200000).toISOString(),
     listings: MOCK_LISTINGS[3],
     buyer:  { id: MOCK_USER_ID,  username: 'demouser', name: 'Demo User', city: 'Chicago', state: 'IL', phone: '(312) 555-0100' },
-    seller: { id: 'mock-user-5', username: 'jamesr', name: 'James R.', city: 'Oak Park', state: 'IL', phone: '(708) 555-0105' },
+    seller: { id: 'mock-user-5', username: 'jamesr', name: 'James R.', city: 'Oak Park', state: 'IL', phone: '(708) 555-0105', address: '555 Oak Ave', address_unit: 'Unit 3', share_address: true, pickup_description: 'back porch, ring doorbell', share_pickup: true },
     messages: [],
   },
 ]

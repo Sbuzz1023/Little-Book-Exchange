@@ -90,14 +90,14 @@ export default async function ProfilePage({
         // Fetch listings separately
         const listingIds = [...new Set(merged.map((r: any) => r.listing_id).filter(Boolean))]
         const { data: listingRows } = await supabase
-          .from('listings').select('id, title, author, photo_url, city, state').in('id', listingIds)
+          .from('listings').select('id, title, author, photo_url, city, state, pickup_description').in('id', listingIds)
         const lm: Record<string, any> = {}
         for (const l of listingRows ?? []) lm[l.id] = l
 
         // Fetch profiles separately
         const profileIds = [...new Set(merged.flatMap((r: any) => [r.buyer_id, r.seller_id]).filter(Boolean))]
         const { data: profileRows } = await supabase
-          .from('profiles').select('id, username, city, state, phone').in('id', profileIds)
+          .from('profiles').select('id, username, city, state, phone, address, address_unit, share_address, pickup_description, share_pickup').in('id', profileIds)
         const pm: Record<string, any> = {}
         for (const p of profileRows ?? []) pm[p.id] = p
 
