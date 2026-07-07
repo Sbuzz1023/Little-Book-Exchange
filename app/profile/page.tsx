@@ -101,13 +101,22 @@ export default async function ProfilePage({
         const pm: Record<string, any> = {}
         for (const p of profileRows ?? []) pm[p.id] = p
 
-        exchanges = merged.map((row: any) => ({
-          ...row,
-          exchange_status: row.exchange_status ?? 'none',
-          listings: lm[row.listing_id] ?? { title: 'Unknown', author: '', photo_url: null, city: null, state: null },
-          buyer:    pm[row.buyer_id]   ?? { username: null, city: null, state: null, phone: null },
-          seller:   pm[row.seller_id]  ?? { username: null, city: null, state: null, phone: null },
-        }))
+        exchanges = merged.map((row: any) => {
+          const sellerData = pm[row.seller_id] ?? { username: null, city: null, state: null, phone: null }
+          const isConfirmed = (row.exchange_status ?? 'none') === 'confirmed'
+          return {
+            ...row,
+            exchange_status: row.exchange_status ?? 'none',
+            listings: lm[row.listing_id] ?? { title: 'Unknown', author: '', photo_url: null, city: null, state: null },
+            buyer:    pm[row.buyer_id]   ?? { username: null, city: null, state: null, phone: null },
+            seller: {
+              ...sellerData,
+              address:            isConfirmed ? sellerData.address            : null,
+              address_unit:       isConfirmed ? sellerData.address_unit       : null,
+              pickup_description: isConfirmed ? sellerData.pickup_description : null,
+            },
+          }
+        })
       } else {
         queryError = buyerErr?.message || sellerErr?.message || null
         exchanges = []
