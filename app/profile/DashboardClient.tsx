@@ -71,7 +71,8 @@ const COVER_GRADIENTS = [
   'linear-gradient(145deg, #ddd6fe, #fca5a5)',
 ]
 
-function coverGradient(id: string) {
+function coverGradient(id: string | null | undefined) {
+  if (!id) return COVER_GRADIENTS[0]
   const sum = id.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0)
   return COVER_GRADIENTS[sum % COVER_GRADIENTS.length]
 }
@@ -246,10 +247,10 @@ export default function DashboardClient({ profile, listings, exchanges, updateAc
         const bought = exchanges.filter(e => e.buyer_id  === userId)
 
         const ExchangeRow = ({ ex, role }: { ex: Exchange; role: 'seller' | 'buyer' }) => {
-          const other     = role === 'seller' ? ex.buyer : ex.seller
-          const otherName = other.name || other.username || 'Neighbor'
+          const other     = role === 'seller' ? (ex.buyer ?? {}) : (ex.seller ?? {})
+          const otherName = (other as any).name || (other as any).username || 'Neighbor'
           const status    = ex.exchange_status ?? 'none'
-          const location  = ex.listings.city
+          const location  = ex.listings?.city
             ? `${ex.listings.city}${ex.listings.state ? ', ' + ex.listings.state : ''}`
             : null
 
@@ -269,8 +270,9 @@ export default function DashboardClient({ profile, listings, exchanges, updateAc
                 {/* Book thumbnail */}
                 <div className="relative shrink-0 overflow-hidden"
                   style={{ width: 46, height: 58, borderRadius: 8, background: coverGradient(ex.listing_id) }}>
-                  {ex.listings.photo_url ? (
-                    <Image src={ex.listings.photo_url} alt={ex.listings.title} fill className="object-cover" />
+                  {ex.listings?.photo_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={ex.listings.photo_url} alt={ex.listings.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   ) : (
                     <span className="flex items-center justify-center w-full h-full text-[22px]">📚</span>
                   )}
@@ -279,13 +281,13 @@ export default function DashboardClient({ profile, listings, exchanges, updateAc
                 {/* Info */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-                    <p className="font-black text-[13px] truncate">{ex.listings.title}</p>
+                    <p className="font-black text-[13px] truncate">{ex.listings?.title ?? 'Unknown'}</p>
                     <span className="font-extrabold text-[10px] whitespace-nowrap shrink-0"
                       style={{ padding: '2px 8px', borderRadius: 999, background: statusBadge.bg, border: `1.5px solid ${statusBadge.border}`, color: statusBadge.color }}>
                       {statusBadge.label}
                     </span>
                   </div>
-                  <p className="font-semibold text-[11px]" style={{ color: '#aaa' }}>{ex.listings.author}</p>
+                  <p className="font-semibold text-[11px]" style={{ color: '#aaa' }}>{ex.listings?.author ?? ''}</p>
 
                   {/* Status-specific context line */}
                   {role === 'seller' && status === 'requested' && (
