@@ -22,7 +22,7 @@ DROP POLICY IF EXISTS "buyer can cancel conversations" ON public.conversations;
 
 CREATE POLICY "buyer can cancel conversations" ON public.conversations
 FOR DELETE TO authenticated
-USING (auth.uid() = buyer_id AND exchange_status IN ('requested', 'none'));
+USING (auth.uid() = buyer_id);
 
 -- ── MESSAGES ───────────────────────────────────────────────────────────────
 DROP POLICY IF EXISTS "participants can read messages" ON public.messages;
