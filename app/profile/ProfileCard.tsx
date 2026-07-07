@@ -1,15 +1,22 @@
 'use client'
 
 import { useState } from 'react'
+import ShareToggle from '@/components/ShareToggle'
 
 type Props = {
   profile: {
+    id?: string | null
     name?: string | null
     username?: string | null
     email?: string | null
     city?: string | null
     state?: string | null
     phone?: string | null
+    address?: string | null
+    address_unit?: string | null
+    share_address?: boolean | null
+    pickup_description?: string | null
+    share_pickup?: boolean | null
     created_at?: string | null
   } | null
   updateAction: (formData: FormData) => Promise<void>
@@ -98,6 +105,54 @@ export default function ProfileCard({ profile, updateAction, success }: Props) {
               <input name="phone" defaultValue={profile?.phone ?? ''} type="tel"
                 className={inputClass} style={{ padding: '12px 16px' }} />
             </div>
+
+            {/* Address section */}
+            <div style={{ borderTop: '2px dashed #fed7aa', paddingTop: 16, marginTop: 4 }}>
+              <p style={{ fontSize: 11, fontWeight: 900, color: '#f97316', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 12 }}>
+                📍 Private Address
+              </p>
+              <div className="flex flex-col gap-4">
+                <div>
+                  <EditLabel>Street Address</EditLabel>
+                  <input name="address" defaultValue={profile?.address ?? ''}
+                    placeholder="e.g. 123 Main St"
+                    className={inputClass} style={{ padding: '12px 16px' }} />
+                </div>
+                <div>
+                  <EditLabel>Apt / Unit #</EditLabel>
+                  <input name="address_unit" defaultValue={profile?.address_unit ?? ''}
+                    placeholder="e.g. Apt 2B"
+                    className={inputClass} style={{ padding: '12px 16px' }} />
+                </div>
+                <ShareToggle
+                  name="share_address"
+                  defaultValue={profile?.share_address ?? true}
+                  label="Share address after approval"
+                  hint="🏠 Your street address is only revealed to a buyer after you approve their purchase request."
+                />
+              </div>
+            </div>
+
+            {/* Pickup section */}
+            <div style={{ borderTop: '2px dashed #fed7aa', paddingTop: 16, marginTop: 4 }}>
+              <p style={{ fontSize: 11, fontWeight: 900, color: '#f97316', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 12 }}>
+                📦 Pickup Spot
+              </p>
+              <div className="flex flex-col gap-4">
+                <div>
+                  <EditLabel>Default Pickup Description</EditLabel>
+                  <input name="pickup_description" defaultValue={profile?.pickup_description ?? ''}
+                    placeholder="e.g. front porch, behind the garden gnome"
+                    className={inputClass} style={{ padding: '12px 16px' }} />
+                </div>
+                <ShareToggle
+                  name="share_pickup"
+                  defaultValue={profile?.share_pickup ?? true}
+                  label="Share pickup spot after approval"
+                  hint="📦 Only revealed to a buyer after you approve their purchase."
+                />
+              </div>
+            </div>
           </div>
           <div className="flex gap-2.5 mt-5">
             <button
@@ -125,6 +180,12 @@ export default function ProfileCard({ profile, updateAction, success }: Props) {
           <Field label="State" value={profile?.state} />
           <Field label="Phone" value={profile?.phone} />
           <Field label="Member Since" value={formatDate(profile?.created_at)} />
+          {profile?.address && (
+            <Field label="Address" value={[profile.address, profile.address_unit].filter(Boolean).join(' ')} />
+          )}
+          {profile?.pickup_description && (
+            <Field label="Pickup Spot" value={profile.pickup_description} />
+          )}
         </div>
       )}
     </div>

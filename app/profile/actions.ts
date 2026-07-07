@@ -9,9 +9,14 @@ export async function updateProfile(formData: FormData) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/auth/signin')
   await supabase.from('profiles').update({
-    city:  formData.get('city')  as string,
-    state: formData.get('state') as string,
-    phone: formData.get('phone') as string,
+    city:               formData.get('city')                as string,
+    state:              formData.get('state')               as string,
+    phone:              formData.get('phone')               as string,
+    address:            (formData.get('address')            as string) || '',
+    address_unit:       (formData.get('address_unit')       as string) || '',
+    share_address:      formData.get('share_address')       === 'true',
+    pickup_description: (formData.get('pickup_description') as string) || '',
+    share_pickup:       formData.get('share_pickup')        === 'true',
   }).eq('id', user!.id)
   redirect('/profile?success=1')
 }
