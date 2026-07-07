@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import { buildConfirmationMessage } from '@/lib/buildConfirmationMessage'
 
 export async function updateProfile(formData: FormData) {
   const supabase = createClient()
@@ -67,28 +68,49 @@ export async function confirmExchange(formData: FormData) {
 
   const conversationId = formData.get('conversation_id') as string
 
-  // Set exchange_status to confirmed
   await supabase.from('conversations')
     .update({ exchange_status: 'confirmed' })
     .eq('id', conversationId)
     .eq('seller_id', user.id)
 
-  // Fetch seller profile to send contact info
   const { data: profile } = await supabase
     .from('profiles')
-    .select('username, city, state, phone, contact_preference')
+    .select('username, city, state, phone, address, address_unit, share_address, pickup_description, share_pickup')
     .eq('id', user.id)
     .single()
 
-  if (profile) {
-    const contact = profile.phone
-      ? `📍 Exchange confirmed! Contact your seller:\n👤 ${profile.username}\n📞 ${profile.phone}\n📌 ${profile.city}${profile.state ? ', ' + profile.state : ''}`
-      : `📍 Exchange confirmed! Contact your seller:\n👤 ${profile.username}\n📌 ${profile.city}${profile.state ? ', ' + profile.state : ''}`
+  let listingPickup: string | null = null
+  const { data: convo } = await supabase
+    .from('conversations')
+    .select('listing_id')
+    .eq('id', conversationId)
+    .single()
+  if (convo?.listing_id) {
+    const { data: listing } = await supabase
+      .from('listings')
+      .select('pickup_description')
+      .eq('id', convo.listing_id)
+      .single()
+    listingPickup = listing?.pickup_description ?? null
+  }
 
+  if (profile) {
+    const body = buildConfirmationMessage({
+      username:       profile.username,
+      city:           profile.city,
+      state:          profile.state,
+      phone:          profile.phone,
+      address:        profile.address,
+      address_unit:   profile.address_unit,
+      share_address:  profile.share_address,
+      listing_pickup: listingPickup,
+      profile_pickup: profile.pickup_description,
+      share_pickup:   profile.share_pickup,
+    })
     await supabase.from('messages').insert({
       conversation_id: conversationId,
       sender_id: user.id,
-      body: contact,
+      body,
     })
   }
 
