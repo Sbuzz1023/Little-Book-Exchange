@@ -10,6 +10,11 @@ create table if not exists profiles (
   state text not null default '',
   phone text not null default '',
   contact_preference text not null default 'email' check (contact_preference in ('email', 'phone')),
+  address text not null default '',
+  address_unit text not null default '',
+  share_address boolean not null default true,
+  pickup_description text not null default '',
+  share_pickup boolean not null default true,
   created_at timestamptz default now()
 );
 
@@ -21,7 +26,7 @@ create policy "Users can update own profile" on profiles for update using (auth.
 create or replace function handle_new_user()
 returns trigger as $$
 begin
-  insert into profiles (id, email, username, city, state, phone, contact_preference)
+  insert into profiles (id, email, username, city, state, phone, contact_preference, address, address_unit, share_address, pickup_description, share_pickup)
   values (
     new.id,
     new.email,
@@ -29,7 +34,12 @@ begin
     coalesce(new.raw_user_meta_data->>'city', ''),
     coalesce(new.raw_user_meta_data->>'state', ''),
     coalesce(new.raw_user_meta_data->>'phone', ''),
-    coalesce(new.raw_user_meta_data->>'contact_preference', 'email')
+    coalesce(new.raw_user_meta_data->>'contact_preference', 'email'),
+    coalesce(new.raw_user_meta_data->>'address', ''),
+    coalesce(new.raw_user_meta_data->>'address_unit', ''),
+    coalesce((new.raw_user_meta_data->>'share_address')::boolean, true),
+    coalesce(new.raw_user_meta_data->>'pickup_description', ''),
+    coalesce((new.raw_user_meta_data->>'share_pickup')::boolean, true)
   );
   return new;
 end;
@@ -54,6 +64,7 @@ create table if not exists listings (
   genre text,
   format text,
   status text not null default 'active' check (status in ('active', 'sold', 'given')),
+  pickup_description text,
   created_at timestamptz default now()
 );
 
@@ -125,3 +136,16 @@ create policy "Authenticated users can upload photos" on storage.objects
   for insert with check (bucket_id = 'book-photos' and auth.role() = 'authenticated');
 create policy "Users can delete own photos" on storage.objects
   for delete using (bucket_id = 'book-photos' and auth.uid()::text = (storage.foldername(name))[1]);
+
+-- ── Migration: address privacy toggles ────────────────────────────────────────
+-- Run this block in Supabase SQL Editor if the tables already exist:
+ALTER TABLE profiles
+  ADD COLUMN IF NOT EXISTS address text NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS address_unit text NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS share_address boolean NOT NULL DEFAULT true,
+  ADD COLUMN IF NOT EXISTS pickup_description text NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS share_pickup boolean NOT NULL DEFAULT true;
+
+ALTER TABLE listings
+  ADD COLUMN IF NOT EXISTS pickup_description text;
+-- ──────────────────────────────────────────────────────────────────────────────
