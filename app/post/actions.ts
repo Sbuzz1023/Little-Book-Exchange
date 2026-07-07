@@ -39,6 +39,7 @@ export async function createListing(formData: FormData) {
       format:      (formData.get('format')      as string) || null,
       photo_url,
       city: prof?.city ?? '',
+      pickup_description: (formData.get('pickup_description') as string) || null,
     }).select('id').single()
 
     if (error) redirect(`/post?error=${encodeURIComponent(error.message || 'Failed to post listing')}`)

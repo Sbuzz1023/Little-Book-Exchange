@@ -225,6 +225,19 @@ export default function PostForm({ city, action, error }: Props) {
           />
         </div>
 
+        <div style={{ marginBottom: 18 }}>
+          <FieldLabel optional>Pickup Spot for This Book</FieldLabel>
+          <input
+            name="pickup_description"
+            type="text"
+            placeholder="e.g. front porch, side gate — overrides your profile default"
+            style={inputStyle}
+          />
+          <p style={{ fontSize: 11, color: '#bbb', fontWeight: 600, marginTop: 5 }}>
+            🏠 Shared with the buyer after you approve their purchase. Overrides your profile pickup spot for this book only.
+          </p>
+        </div>
+
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 4 }}>
           <div>
             <FieldLabel optional>ISBN</FieldLabel>
