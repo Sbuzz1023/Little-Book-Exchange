@@ -78,6 +78,18 @@ async function getIsLoggedIn(): Promise<boolean> {
   }
 }
 
+async function getSavedListingIds(): Promise<Set<string>> {
+  try {
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return new Set()
+    const { data } = await supabase.from('saved_listings').select('listing_id').eq('user_id', user.id)
+    return new Set((data ?? []).map(r => r.listing_id))
+  } catch {
+    return new Set()
+  }
+}
+
 const filterInputStyle = {
   width: '100%',
   border: '2px solid #fed7aa',
@@ -112,9 +124,10 @@ export default async function ListingsPage({
   const condition = searchParams.condition ?? 'any'
   const sort = searchParams.sort ?? 'newest'
 
-  const [listings, isLoggedIn] = await Promise.all([
+  const [listings, isLoggedIn, savedIds] = await Promise.all([
     getListings({ city, title, author, type, genre, condition, sort }),
     getIsLoggedIn(),
+    getSavedListingIds(),
   ])
 
   const activeFilters = [
@@ -351,7 +364,7 @@ export default async function ListingsPage({
                       ? <Image src={l.photo_url} alt={l.title} fill className="object-cover" />
                       : <span>📚</span>
                     }
-                    <HeartButton isLoggedIn={isLoggedIn} />
+                    <HeartButton listingId={l.id} isLoggedIn={isLoggedIn} initialSaved={savedIds.has(l.id)} />
                     {/* Price tag */}
                     <span
                       className="absolute text-white font-black"
