@@ -595,6 +595,7 @@ export default function AdminClient() {
   const [pendingLocationReports, setPendingLocationReports] = useState(0)
   const [reviews, setReviews] = useState(MOCK_REVIEWS)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const hasTabCount = useRef(false)
 
   useEffect(() => {
     try {
@@ -639,9 +640,14 @@ export default function AdminClient() {
       .select('id', { count: 'exact', head: true })
       .eq('status', 'pending')
       .then(({ count }) => {
-        if (count !== null) setPendingLocationReports(count)
+        if (count !== null && !hasTabCount.current) setPendingLocationReports(count)
       })
   }, [authed])
+
+  function handleTabPendingCountChange(count: number) {
+    hasTabCount.current = true
+    setPendingLocationReports(count)
+  }
 
   async function toggleAdmin(userId: string, current: boolean) {
     const supabase = createClient()
@@ -724,7 +730,7 @@ export default function AdminClient() {
         <div className="max-w-[1100px] mx-auto px-4 md:px-6 py-6 pb-24 md:pb-6">
           {tab === 'dashboard' && <Dashboard users={users} pendingLocationReports={pendingLocationReports} reviews={reviews} />}
           {tab === 'users'     && <UsersTab users={users} setUsers={setUsers} toggleAdmin={toggleAdmin} />}
-          {tab === 'locations' && <LocationsAdminTab onPendingCountChange={setPendingLocationReports} />}
+          {tab === 'locations' && <LocationsAdminTab onPendingCountChange={handleTabPendingCountChange} />}
           {tab === 'reviews'   && <ReviewsTab reviews={reviews} setReviews={setReviews} />}
         </div>
       </div>
