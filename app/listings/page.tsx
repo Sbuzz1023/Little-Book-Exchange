@@ -67,26 +67,16 @@ async function getListings(params: {
   }
 }
 
-async function getIsLoggedIn(): Promise<boolean> {
-  if (cookies().get('lbe_demo_user')?.value) return true
+async function getUserSaveContext(): Promise<{ isLoggedIn: boolean; userId: string | null; savedIds: Set<string> }> {
+  const hasDemoCookie = !!cookies().get('lbe_demo_user')?.value
   try {
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
-    return !!user
-  } catch {
-    return false
-  }
-}
-
-async function getSavedListingIds(): Promise<Set<string>> {
-  try {
-    const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return new Set()
+    if (!user) return { isLoggedIn: hasDemoCookie, userId: null, savedIds: new Set() }
     const { data } = await supabase.from('saved_listings').select('listing_id').eq('user_id', user.id)
-    return new Set((data ?? []).map(r => r.listing_id))
+    return { isLoggedIn: true, userId: user.id, savedIds: new Set((data ?? []).map(r => r.listing_id)) }
   } catch {
-    return new Set()
+    return { isLoggedIn: hasDemoCookie, userId: null, savedIds: new Set() }
   }
 }
 
@@ -124,10 +114,9 @@ export default async function ListingsPage({
   const condition = searchParams.condition ?? 'any'
   const sort = searchParams.sort ?? 'newest'
 
-  const [listings, isLoggedIn, savedIds] = await Promise.all([
+  const [listings, { isLoggedIn, userId, savedIds }] = await Promise.all([
     getListings({ city, title, author, type, genre, condition, sort }),
-    getIsLoggedIn(),
-    getSavedListingIds(),
+    getUserSaveContext(),
   ])
 
   const activeFilters = [
@@ -364,7 +353,9 @@ export default async function ListingsPage({
                       ? <Image src={l.photo_url} alt={l.title} fill className="object-cover" />
                       : <span>📚</span>
                     }
-                    <HeartButton listingId={l.id} isLoggedIn={isLoggedIn} initialSaved={savedIds.has(l.id)} />
+                    {l.user_id !== userId && (
+                      <HeartButton listingId={l.id} isLoggedIn={isLoggedIn} initialSaved={savedIds.has(l.id)} />
+                    )}
                     {/* Price tag */}
                     <span
                       className="absolute text-white font-black"
