@@ -171,3 +171,28 @@ create policy "Users can save listings" on saved_listings
 create policy "Users can unsave own listings" on saved_listings
   for delete to authenticated using (auth.uid() = user_id);
 -- ──────────────────────────────────────────────────────────────────────────────
+
+-- ── Migration: TBR (to be read) list ──────────────────────────────────────────
+-- Run this block in Supabase SQL Editor:
+create table if not exists tbr_entries (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references profiles(id) on delete cascade not null,
+  title text not null default '',
+  author text not null default '',
+  city text not null default '',
+  state text not null default '',
+  created_at timestamptz default now(),
+  constraint tbr_title_or_author check (title <> '' or author <> '')
+);
+
+alter table tbr_entries enable row level security;
+
+create policy "Users can view own tbr entries" on tbr_entries
+  for select to authenticated using (auth.uid() = user_id);
+
+create policy "Users can add tbr entries" on tbr_entries
+  for insert to authenticated with check (auth.uid() = user_id);
+
+create policy "Users can delete own tbr entries" on tbr_entries
+  for delete to authenticated using (auth.uid() = user_id);
+-- ──────────────────────────────────────────────────────────────────────────────
