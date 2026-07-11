@@ -27,7 +27,7 @@ function clearDemoUser() {
   try { localStorage.removeItem('lbe_demo_user') } catch {}
 }
 
-export default function Nav({ userName: serverUserName }: { userName?: string | null }) {
+export default function Nav({ userName: serverUserName, isAdmin }: { userName?: string | null; isAdmin?: boolean }) {
   const pathname = usePathname()
   const isHome = pathname === '/'
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -106,7 +106,9 @@ export default function Nav({ userName: serverUserName }: { userName?: string | 
                   zIndex: 99999,
                 }}>
                   <div className="px-4 py-3 font-black text-[13px] border-b-2 border-gray-100" style={{ color: '#aaa' }}>{userName}</div>
-                  <Link href="/admin" className="flex items-center gap-2.5 px-4 py-3 font-bold text-[14px] text-[#2d2d2d] hover:bg-[#fff7ed] hover:text-bk-orange transition-colors">🔐 Admin Panel</Link>
+                  {isAdmin && (
+                    <Link href="/admin" className="flex items-center gap-2.5 px-4 py-3 font-bold text-[14px] text-[#2d2d2d] hover:bg-[#fff7ed] hover:text-bk-orange transition-colors">🔐 Admin Panel</Link>
+                  )}
                   <div style={{ borderTop: '2px solid #f3f4f6' }}>
                     <a href="/auth/signout" onClick={clearDemoUser} className="flex items-center gap-2.5 px-4 py-3 font-bold text-[14px] text-[#888] hover:bg-red-50 hover:text-red-500 transition-colors">🚪 Sign Out</a>
                   </div>
