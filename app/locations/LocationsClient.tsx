@@ -21,14 +21,22 @@ function haversine(lat1: number, lon1: number, lat2: number, lon2: number) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
 }
 
-async function geocode(query: string): Promise<[number, number] | null> {
+type GeocodeResult = { coords: [number, number]; street: string; city: string }
+
+async function geocode(query: string): Promise<GeocodeResult | null> {
   try {
     const res = await fetch(
-      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`,
+      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1&addressdetails=1`,
       { headers: { 'Accept-Language': 'en' } }
     )
     const data = await res.json()
-    if (data?.[0]) return [parseFloat(data[0].lat), parseFloat(data[0].lon)]
+    const hit = data?.[0]
+    if (!hit) return null
+    const a = hit.address ?? {}
+    const street = [a.house_number, a.road].filter(Boolean).join(' ')
+    const cityName = a.city || a.town || a.village || a.hamlet || a.county || ''
+    const city = [cityName, a.state].filter(Boolean).join(', ')
+    return { coords: [parseFloat(hit.lat), parseFloat(hit.lon)], street, city }
   } catch {}
   return null
 }
@@ -135,9 +143,9 @@ export default function LocationsClient({ initialLocations, isLoggedIn }: {
     e.preventDefault()
     if (!search.trim()) return
     setSearching(true)
-    const coords = await geocode(search)
+    const result = await geocode(search)
     setSearching(false)
-    if (coords) applyLocation(coords, search.trim())
+    if (result) applyLocation(result.coords, search.trim())
     else alert('Location not found. Try a city name or full address.')
   }
 
@@ -158,10 +166,11 @@ export default function LocationsClient({ initialLocations, isLoggedIn }: {
     e.preventDefault()
     if (!addressQuery.trim()) return
     setAddressSearching(true)
-    const coords = await geocode(addressQuery)
+    const result = await geocode(addressQuery)
     setAddressSearching(false)
-    if (coords) {
-      setPendingPin(coords)
+    if (result) {
+      setPendingPin(result.coords)
+      setForm(f => ({ ...f, street: result.street || f.street, city: result.city || f.city }))
       setShowAddForm(true)
       setAddressQuery('')
     } else {
