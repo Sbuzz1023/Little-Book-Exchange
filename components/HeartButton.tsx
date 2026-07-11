@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 
-export default function HeartButton() {
+export default function HeartButton({ isLoggedIn }: { isLoggedIn: boolean }) {
   const [saved, setSaved] = useState(false)
 
   return (
@@ -10,6 +10,10 @@ export default function HeartButton() {
       onClick={e => {
         e.preventDefault()
         e.stopPropagation()
+        if (!isLoggedIn) {
+          window.location.href = '/auth/signin?redirect=' + window.location.pathname
+          return
+        }
         setSaved(s => !s)
       }}
       className="absolute flex items-center justify-center transition-transform hover:scale-110"
