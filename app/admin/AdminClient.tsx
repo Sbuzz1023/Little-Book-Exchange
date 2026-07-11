@@ -1,13 +1,7 @@
 'use client'
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
-
-const MOCK_REPORTS = [
-  { id:'rp1', locationName:'Hawthorne LFL',       city:'Portland, OR',  type:'lfl',     reason:'This library was removed last month — the host moved away.',        reporter:'sarah@example.com', date:'2024-06-20', status:'pending' },
-  { id:'rp2', locationName:'Harold Washington Library', city:'Chicago, IL', type:'library', reason:'Address listed is incorrect. The entrance is on State St not Wabash.', reporter:'priya@example.com', date:'2024-06-21', status:'pending' },
-  { id:'rp3', locationName:'Park Slope LFL',       city:'Brooklyn, NY',  type:'lfl',     reason:'The little library was damaged by a car and is being repaired.',    reporter:'maria@example.com', date:'2024-06-22', status:'pending' },
-  { id:'rp4', locationName:'Capitol Hill LFL',     city:'Seattle, WA',   type:'lfl',     reason:'Moved two blocks east — new location is on Summit Ave.',            reporter:'james@example.com', date:'2024-06-23', status:'pending' },
-]
+import LocationsAdminTab from './LocationsAdminTab'
 
 const MOCK_REVIEWS = [
   { id:'rv1', reviewer:'Sarah M.',  book:'The Great Gatsby',       rating:5, text:'Beautiful prose, timeless story. The copy I got was in great shape!',     date:'2024-06-15', flagged:false },
@@ -61,7 +55,6 @@ type User = {
   reviews: number
   is_admin: boolean
 }
-type Report = typeof MOCK_REPORTS[0]
 type Review = typeof MOCK_REVIEWS[0]
 
 // ─── Simple SVG bar chart ────────────────────────────────────────────────────
@@ -234,11 +227,11 @@ function UserLocationsChart({ users }: { users: User[] }) {
 
 // ─── Dashboard tab ───────────────────────────────────────────────────────────
 
-function Dashboard({ users, reports, reviews }: { users: User[]; reports: Report[]; reviews: Review[] }) {
+function Dashboard({ users, pendingLocationReports, reviews }: { users: User[]; pendingLocationReports: number; reviews: Review[] }) {
   const totalCredits = users.reduce((s, u) => s + u.credits, 0)
   const totalBooks   = users.reduce((s, u) => s + u.booksPosted, 0)
   const totalTrades  = users.reduce((s, u) => s + u.booksSold, 0)
-  const pendingReports = reports.filter(r => r.status === 'pending').length
+  const pendingReports = pendingLocationReports
   const flaggedReviews = reviews.filter(r => r.flagged).length
 
   const activityIcon: Record<string, string> = { signup:'👤', post:'📚', trade:'🔄', report:'📍', review:'⭐' }
@@ -471,85 +464,6 @@ function UsersTab({ users, setUsers, toggleAdmin }: { users: User[]; setUsers: R
   )
 }
 
-// ─── Location reports tab ────────────────────────────────────────────────────
-
-function LocationsTab({ reports, setReports }: { reports: Report[]; setReports: React.Dispatch<React.SetStateAction<Report[]>> }) {
-  const [done, setDone] = useState<string[]>([])
-
-  function resolve(id: string, action: 'approved' | 'dismissed') {
-    setReports(prev => prev.map(r => r.id === id ? { ...r, status: action } : r))
-    setDone(d => [...d, id])
-  }
-
-  const pending   = reports.filter(r => r.status === 'pending')
-  const resolved  = reports.filter(r => r.status !== 'pending')
-
-  return (
-    <div>
-      <h2 className="font-display text-[22px] text-[#1e293b] mb-4">
-        Location Reports <span className="text-[#94a3b8] font-bold text-[16px] ml-1">({pending.length} pending)</span>
-      </h2>
-
-      {pending.length === 0 && (
-        <div className="bg-white rounded-2xl border border-[#f1f5f9] p-12 text-center">
-          <div className="text-4xl mb-3">✅</div>
-          <p className="font-black text-[16px] text-[#1e293b]">All reports resolved</p>
-          <p className="font-semibold text-[13px] text-[#94a3b8] mt-1">No pending location reports.</p>
-        </div>
-      )}
-
-      <div className="space-y-4">
-        {pending.map(r => (
-          <div key={r.id} className="bg-white rounded-2xl border border-[#f1f5f9] shadow-sm overflow-hidden">
-            <div className={`px-5 py-3 flex items-center gap-3 border-b border-[#f1f5f9] ${r.type === 'lfl' ? 'bg-[#fff7ed]' : 'bg-[#ecfdf5]'}`}>
-              <span className="text-xl">{r.type === 'lfl' ? '📚' : '🏛️'}</span>
-              <div className="flex-1 min-w-0">
-                <div className="font-black text-[14px] text-[#1e293b]">{r.locationName}</div>
-                <div className="text-[12px] font-semibold text-[#64748b]">{r.city} · {r.type === 'lfl' ? 'Little Free Library' : 'Public Library'}</div>
-              </div>
-              <span className="text-[11px] font-bold text-[#94a3b8] shrink-0">{r.date}</span>
-            </div>
-            <div className="px-5 py-4">
-              <div className="text-[12px] font-extrabold text-[#94a3b8] uppercase tracking-wide mb-1">Report from {r.reporter}</div>
-              <p className="font-semibold text-[14px] text-[#334155] leading-relaxed mb-4">"{r.reason}"</p>
-              <div className="flex gap-3">
-                <button onClick={() => resolve(r.id, 'approved')}
-                  className="flex-1 bg-[#fef2f2] text-[#dc2626] border-2 border-[#fecaca] rounded-xl py-2.5 font-extrabold text-[13px] hover:bg-red-100 transition-colors">
-                  🗑️ Remove Location
-                </button>
-                <button onClick={() => resolve(r.id, 'dismissed')}
-                  className="flex-1 bg-[#f0fdf4] text-[#059669] border-2 border-[#bbf7d0] rounded-xl py-2.5 font-extrabold text-[13px] hover:bg-green-100 transition-colors">
-                  ✓ Dismiss Report
-                </button>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {resolved.length > 0 && (
-        <div className="mt-8">
-          <h3 className="font-black text-[14px] text-[#94a3b8] uppercase tracking-wide mb-3">Resolved</h3>
-          <div className="space-y-2">
-            {resolved.map(r => (
-              <div key={r.id} className="bg-white rounded-xl border border-[#f1f5f9] px-4 py-3 flex items-center gap-3">
-                <span className="text-[17px]">{r.type === 'lfl' ? '📚' : '🏛️'}</span>
-                <div className="flex-1">
-                  <span className="font-bold text-[13px] text-[#334155]">{r.locationName}</span>
-                  <span className="text-[12px] text-[#94a3b8] font-semibold ml-2">{r.city}</span>
-                </div>
-                <span className={`text-[11px] font-extrabold px-2.5 py-1 rounded-full ${r.status === 'approved' ? 'bg-[#fef2f2] text-[#dc2626]' : 'bg-[#f0fdf4] text-[#059669]'}`}>
-                  {r.status === 'approved' ? 'Removed' : 'Dismissed'}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
 // ─── Reviews tab ─────────────────────────────────────────────────────────────
 
 function ReviewsTab({ reviews, setReviews }: { reviews: Review[]; setReviews: React.Dispatch<React.SetStateAction<Review[]>> }) {
@@ -678,9 +592,10 @@ export default function AdminClient() {
   const [authed, setAuthed] = useState<'loading' | 'yes' | 'no'>('loading')
   const [tab, setTab] = useState<Tab>('dashboard')
   const [users, setUsers] = useState<User[]>([])
-  const [reports, setReports] = useState(MOCK_REPORTS)
+  const [pendingLocationReports, setPendingLocationReports] = useState(0)
   const [reviews, setReviews] = useState(MOCK_REVIEWS)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const hasTabCount = useRef(false)
 
   useEffect(() => {
     try {
@@ -717,6 +632,23 @@ export default function AdminClient() {
       })
   }, [authed])
 
+  useEffect(() => {
+    if (authed !== 'yes') return
+    const supabase = createClient()
+    supabase
+      .from('location_reports')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'pending')
+      .then(({ count }) => {
+        if (count !== null && !hasTabCount.current) setPendingLocationReports(count)
+      })
+  }, [authed])
+
+  function handleTabPendingCountChange(count: number) {
+    hasTabCount.current = true
+    setPendingLocationReports(count)
+  }
+
   async function toggleAdmin(userId: string, current: boolean) {
     const supabase = createClient()
     const { error } = await supabase
@@ -741,11 +673,10 @@ export default function AdminClient() {
   if (authed === 'loading') return <LoginGate onAuth={handleAuth} />
   if (authed === 'no') return <LoginGate onAuth={handleAuth} />
 
-  const pendingReports = reports.filter(r => r.status === 'pending').length
   const flaggedReviews = reviews.filter(r => r.flagged).length
 
   function badge(id: Tab) {
-    if (id === 'locations') return pendingReports
+    if (id === 'locations') return pendingLocationReports
     if (id === 'reviews') return flaggedReviews
     return 0
   }
@@ -797,9 +728,9 @@ export default function AdminClient() {
       {/* Main content */}
       <div className="flex-1 bg-[#f8fafc] overflow-auto">
         <div className="max-w-[1100px] mx-auto px-4 md:px-6 py-6 pb-24 md:pb-6">
-          {tab === 'dashboard' && <Dashboard users={users} reports={reports} reviews={reviews} />}
+          {tab === 'dashboard' && <Dashboard users={users} pendingLocationReports={pendingLocationReports} reviews={reviews} />}
           {tab === 'users'     && <UsersTab users={users} setUsers={setUsers} toggleAdmin={toggleAdmin} />}
-          {tab === 'locations' && <LocationsTab reports={reports} setReports={setReports} />}
+          {tab === 'locations' && <LocationsAdminTab onPendingCountChange={handleTabPendingCountChange} />}
           {tab === 'reviews'   && <ReviewsTab reviews={reviews} setReviews={setReviews} />}
         </div>
       </div>
