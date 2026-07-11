@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
+import { cookies } from 'next/headers'
 import Image from 'next/image'
 import Link from 'next/link'
 import SaveButton from '@/components/SaveButton'
@@ -55,6 +56,7 @@ export default async function ListingDetailPage({ params, searchParams }: { para
   if (!listing) notFound()
 
   const isOwner = user?.id === listing.user_id
+  const isLoggedIn = !!user || !!cookies().get('lbe_demo_user')?.value
   const gradient = coverGradient(listing.id)
   const isPending = searchParams.requested === '1' || myConvoStatus === 'requested'
 
@@ -265,7 +267,7 @@ export default async function ListingDetailPage({ params, searchParams }: { para
               </div>
             ) : (
               <div className="flex items-center gap-3 flex-wrap">
-                <SaveButton listingId={listing.id} />
+                <SaveButton listingId={listing.id} isLoggedIn={isLoggedIn} />
                 <form action={requestPurchase}>
                   <button
                     type="submit"
