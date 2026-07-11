@@ -1,9 +1,18 @@
 'use client'
 
 import { useState } from 'react'
+import { saveListing, unsaveListing } from '@/lib/actions/savedListings'
 
-export default function HeartButton({ isLoggedIn }: { isLoggedIn: boolean }) {
-  const [saved, setSaved] = useState(false)
+export default function HeartButton({
+  listingId,
+  isLoggedIn,
+  initialSaved,
+}: {
+  listingId: string
+  isLoggedIn: boolean
+  initialSaved: boolean
+}) {
+  const [saved, setSaved] = useState(initialSaved)
 
   return (
     <button
@@ -14,7 +23,12 @@ export default function HeartButton({ isLoggedIn }: { isLoggedIn: boolean }) {
           window.location.href = '/auth/signin?redirect=' + window.location.pathname
           return
         }
-        setSaved(s => !s)
+        const next = !saved
+        setSaved(next)
+        const action = next
+          ? saveListing(listingId, window.location.pathname)
+          : unsaveListing(listingId, window.location.pathname)
+        action.catch(() => setSaved(!next))
       }}
       className="absolute flex items-center justify-center transition-transform hover:scale-110"
       style={{
