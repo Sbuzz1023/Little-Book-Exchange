@@ -13,6 +13,7 @@ describe('HeartButton', () => {
   })
 
   afterEach(() => {
+    // @ts-expect-error - restoring the real Location object after the test stand-in
     window.location = originalLocation
   })
 

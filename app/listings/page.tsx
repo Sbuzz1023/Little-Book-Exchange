@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { cookies } from 'next/headers'
 import Link from 'next/link'
 import Image from 'next/image'
 import HeartButton from '@/components/HeartButton'
@@ -66,6 +67,17 @@ async function getListings(params: {
   }
 }
 
+async function getIsLoggedIn(): Promise<boolean> {
+  if (cookies().get('lbe_demo_user')?.value) return true
+  try {
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    return !!user
+  } catch {
+    return false
+  }
+}
+
 const filterInputStyle = {
   width: '100%',
   border: '2px solid #fed7aa',
@@ -100,7 +112,10 @@ export default async function ListingsPage({
   const condition = searchParams.condition ?? 'any'
   const sort = searchParams.sort ?? 'newest'
 
-  const listings = await getListings({ city, title, author, type, genre, condition, sort })
+  const [listings, isLoggedIn] = await Promise.all([
+    getListings({ city, title, author, type, genre, condition, sort }),
+    getIsLoggedIn(),
+  ])
 
   const activeFilters = [
     city && { label: `📍 ${city}`, key: 'city' },
@@ -336,7 +351,7 @@ export default async function ListingsPage({
                       ? <Image src={l.photo_url} alt={l.title} fill className="object-cover" />
                       : <span>📚</span>
                     }
-                    <HeartButton />
+                    <HeartButton isLoggedIn={isLoggedIn} />
                     {/* Price tag */}
                     <span
                       className="absolute text-white font-black"
