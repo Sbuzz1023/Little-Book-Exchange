@@ -228,3 +228,59 @@ create policy "Authenticated users can add locations" on library_locations
 create policy "Anyone can clean up expired fairs" on library_locations
   for delete using (type = 'fair' and end_date < current_date);
 -- ──────────────────────────────────────────────────────────────────────────────
+
+-- ── Migration: admin location editing + location reports ─────────────────────
+-- Run this block in Supabase SQL Editor:
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS is_admin boolean NOT NULL DEFAULT false;
+
+-- Without this, any signed-in user could set their own is_admin to true, since
+-- the existing "Users can update own profile" policy allows self-updates to
+-- any column. This trigger keeps is_admin unchanged unless the actor making
+-- the update is already an admin. auth.uid() is null for direct SQL editor
+-- updates (no PostgREST session), so the very first admin grant still works
+-- by running an update directly here.
+create or replace function prevent_is_admin_self_grant()
+returns trigger as $$
+begin
+  if new.is_admin = true and old.is_admin = false and auth.uid() is not null then
+    if not exists (select 1 from profiles p where p.id = auth.uid() and p.is_admin = true) then
+      new.is_admin := false;
+    end if;
+  end if;
+  return new;
+end;
+$$ language plpgsql security definer;
+
+drop trigger if exists guard_is_admin_grant on profiles;
+create trigger guard_is_admin_grant before update on profiles
+  for each row execute procedure prevent_is_admin_self_grant();
+
+create table if not exists location_reports (
+  id uuid default gen_random_uuid() primary key,
+  location_id uuid references library_locations(id) on delete cascade not null,
+  reporter_id uuid references profiles(id) on delete cascade not null,
+  reason text not null,
+  status text not null default 'pending' check (status in ('pending', 'resolved')),
+  resolution text check (resolution in ('edited', 'removed', 'dismissed')),
+  resolved_by uuid references profiles(id),
+  resolved_at timestamptz,
+  created_at timestamptz default now()
+);
+
+alter table location_reports enable row level security;
+
+create policy "Authenticated users can file reports" on location_reports
+  for insert to authenticated with check (auth.uid() = reporter_id);
+
+create policy "Admins can view all reports" on location_reports
+  for select using (exists (select 1 from profiles p where p.id = auth.uid() and p.is_admin = true));
+
+create policy "Admins can resolve reports" on location_reports
+  for update using (exists (select 1 from profiles p where p.id = auth.uid() and p.is_admin = true));
+
+create policy "Admins can update any location" on library_locations
+  for update using (exists (select 1 from profiles p where p.id = auth.uid() and p.is_admin = true));
+
+create policy "Admins can delete any location" on library_locations
+  for delete using (exists (select 1 from profiles p where p.id = auth.uid() and p.is_admin = true));
+-- ──────────────────────────────────────────────────────────────────────────────
