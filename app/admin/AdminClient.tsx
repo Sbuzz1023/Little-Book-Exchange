@@ -34,8 +34,6 @@ const RECENT_ACTIVITY = [
   { id:8, type:'signup',  text:'Devon H. joined',                          time:'1d ago' },
 ]
 
-const ADMIN_PASSCODE = '123890'
-
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 type Tab = 'dashboard' | 'users' | 'locations' | 'reviews'
@@ -112,45 +110,6 @@ function StatCard({ icon, label, value, sub, color }: { icon: string; label: str
         <div className="text-[11px] font-bold text-[#94a3b8] uppercase tracking-wider mb-0.5">{label}</div>
         <div className="text-[26px] font-black text-[#1e293b] leading-none">{value}</div>
         {sub && <div className="text-[11px] font-semibold text-[#94a3b8] mt-1">{sub}</div>}
-      </div>
-    </div>
-  )
-}
-
-// ─── Admin login ─────────────────────────────────────────────────────────────
-
-function LoginGate({ onAuth }: { onAuth: () => void }) {
-  const [err, setErr] = useState(false)
-  const inputRef = useRef<HTMLInputElement>(null)
-  function submit(e: React.FormEvent) {
-    e.preventDefault()
-    const val = inputRef.current?.value ?? ''
-    if (val === ADMIN_PASSCODE) { onAuth() }
-    else { setErr(true); if (inputRef.current) inputRef.current.value = '' }
-  }
-  return (
-    <div className="min-h-[80vh] flex items-center justify-center px-4">
-      <div className="bg-white rounded-3xl p-8 shadow-xl border border-[#f1f5f9] w-full max-w-[380px]">
-        <div className="text-center mb-6">
-          <div className="text-4xl mb-3">🔐</div>
-          <h1 className="font-display text-[26px] text-[#1e293b]">Admin Access</h1>
-          <p className="text-[13px] font-semibold text-[#94a3b8] mt-1">Enter your admin passcode to continue</p>
-        </div>
-        <form onSubmit={submit} className="space-y-4">
-          <input
-            ref={inputRef}
-            type="text"
-            autoComplete="off"
-            onChange={() => setErr(false)}
-            placeholder="Admin passcode"
-            className="w-full border-2 border-[#e2e8f0] rounded-xl px-4 py-3 font-bold text-[15px] focus:outline-none focus:border-bk-orange text-center tracking-widest"
-            autoFocus
-          />
-          {err && <p className="text-red-500 font-bold text-[13px] text-center">Incorrect passcode</p>}
-          <button type="submit" className="w-full bg-bk-orange text-white font-extrabold text-[15px] rounded-xl py-3 shadow-[0_3px_0_#c2410c]">
-            Enter Admin Panel
-          </button>
-        </form>
       </div>
     </div>
   )
@@ -589,7 +548,6 @@ const TABS: { id: Tab; label: string; icon: string }[] = [
 ]
 
 export default function AdminClient() {
-  const [authed, setAuthed] = useState<'loading' | 'yes' | 'no'>('loading')
   const [tab, setTab] = useState<Tab>('dashboard')
   const [users, setUsers] = useState<User[]>([])
   const [pendingLocationReports, setPendingLocationReports] = useState(0)
@@ -598,14 +556,6 @@ export default function AdminClient() {
   const hasTabCount = useRef(false)
 
   useEffect(() => {
-    try {
-      const k = localStorage.getItem('lbe_admin_auth')
-      setAuthed(k === 'lbe_admin_2024' ? 'yes' : 'no')
-    } catch { setAuthed('no') }
-  }, [])
-
-  useEffect(() => {
-    if (authed !== 'yes') return
     const supabase = createClient()
     supabase
       .from('profiles')
@@ -630,10 +580,9 @@ export default function AdminClient() {
           is_admin: p.is_admin || false,
         })))
       })
-  }, [authed])
+  }, [])
 
   useEffect(() => {
-    if (authed !== 'yes') return
     const supabase = createClient()
     supabase
       .from('location_reports')
@@ -642,7 +591,7 @@ export default function AdminClient() {
       .then(({ count }) => {
         if (count !== null && !hasTabCount.current) setPendingLocationReports(count)
       })
-  }, [authed])
+  }, [])
 
   function handleTabPendingCountChange(count: number) {
     hasTabCount.current = true
@@ -659,19 +608,6 @@ export default function AdminClient() {
       setUsers(prev => prev.map(u => u.id === userId ? { ...u, is_admin: !current } : u))
     }
   }
-
-  function handleAuth() {
-    try { localStorage.setItem('lbe_admin_auth', 'lbe_admin_2024') } catch {}
-    setAuthed('yes')
-  }
-
-  function handleSignOut() {
-    try { localStorage.removeItem('lbe_admin_auth') } catch {}
-    setAuthed('no')
-  }
-
-  if (authed === 'loading') return <LoginGate onAuth={handleAuth} />
-  if (authed === 'no') return <LoginGate onAuth={handleAuth} />
 
   const flaggedReviews = reviews.filter(r => r.flagged).length
 
@@ -704,9 +640,9 @@ export default function AdminClient() {
           })}
         </nav>
         <div className="px-5 py-4 border-t border-white/10">
-          <button onClick={handleSignOut} className="text-[12px] font-bold text-white/40 hover:text-white/70 transition-colors">
+          <a href="/auth/signout" className="text-[12px] font-bold text-white/40 hover:text-white/70 transition-colors">
             🚪 Sign Out
-          </button>
+          </a>
         </div>
       </aside>
 
