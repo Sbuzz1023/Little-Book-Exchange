@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import DashboardClient from './DashboardClient'
 import { MOCK_PROFILE, MOCK_LISTINGS, MOCK_USER_ID, MOCK_CONVERSATIONS } from '@/lib/mock-data'
 import { updateProfile, updateListingStatus, notifyPickedUp, confirmExchange, cancelPurchase } from './actions'
+import { removeSavedListing } from '@/lib/actions/savedListings'
 
 export default async function ProfilePage({
   searchParams,
@@ -17,6 +18,7 @@ export default async function ProfilePage({
   let profile: any = null
   let listings: any[] = []
   let exchanges: any[] = []
+  let savedListings: any[] = []
   let queryError: string | null = null
 
   if (demo) {
@@ -71,6 +73,15 @@ export default async function ProfilePage({
       ])
       profile = p
       listings = l ?? []
+
+      const { data: savedRows } = await supabase
+        .from('saved_listings').select('listing_id').eq('user_id', user.id)
+      const savedIds = (savedRows ?? []).map((r: any) => r.listing_id)
+      if (savedIds.length > 0) {
+        const { data: sl } = await supabase
+          .from('listings').select('id, title, author, photo_url, condition, price, status').in('id', savedIds)
+        savedListings = sl ?? []
+      }
 
       // Fetch conversations with NO joins — joins can silently fail due to RLS
       const [{ data: asBuyer, error: buyerErr }, { data: asSeller, error: sellerErr }] =
@@ -133,11 +144,13 @@ export default async function ProfilePage({
       profile={profile}
       listings={listings}
       exchanges={exchanges}
+      savedListings={savedListings}
       updateAction={updateProfile}
       updateListingStatus={updateListingStatus}
       notifyPickedUp={notifyPickedUp}
       confirmExchange={confirmExchange}
       cancelPurchase={cancelPurchase}
+      removeSavedListing={removeSavedListing}
       success={!!searchParams.success}
       defaultTab={searchParams.demo_pending ? 'exchanges' : 'listings'}
       queryError={queryError}

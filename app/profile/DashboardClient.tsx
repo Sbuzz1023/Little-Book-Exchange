@@ -17,6 +17,16 @@ type Listing = {
   photo_url?: string | null
 }
 
+type SavedListing = {
+  id: string
+  title: string
+  author: string
+  photo_url?: string | null
+  condition: string
+  price?: number | null
+  status: string
+}
+
 type Exchange = {
   id: string
   listing_id: string
@@ -70,11 +80,13 @@ type Props = {
   } | null
   listings: Listing[]
   exchanges: Exchange[]
+  savedListings: SavedListing[]
   updateAction: (formData: FormData) => Promise<void>
   updateListingStatus: (formData: FormData) => Promise<void>
   notifyPickedUp: (formData: FormData) => Promise<void>
   confirmExchange: (formData: FormData) => Promise<void>
   cancelPurchase: (formData: FormData) => Promise<void>
+  removeSavedListing: (formData: FormData) => Promise<void>
   success?: boolean
   defaultTab?: Tab
   queryError?: string | null
@@ -124,7 +136,7 @@ const MOCK_TRANSACTIONS = [
   { id: '3', type: 'earn',     desc: 'Book claimed by neighbor',  amount: '+1', date: 'Jun 22, 2026', color: '#059669' },
 ]
 
-export default function DashboardClient({ profile, listings, exchanges, updateAction, updateListingStatus, notifyPickedUp, confirmExchange, cancelPurchase, success, defaultTab, queryError }: Props) {
+export default function DashboardClient({ profile, listings, exchanges, savedListings, updateAction, updateListingStatus, notifyPickedUp, confirmExchange, cancelPurchase, removeSavedListing, success, defaultTab, queryError }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>(defaultTab ?? 'listings')
 
   const tab = TABS.find(t => t.id === activeTab)!
@@ -483,11 +495,43 @@ export default function DashboardClient({ profile, listings, exchanges, updateAc
       {/* ── SAVED BOOKS ── */}
       {activeTab === 'saved' && (
         <div style={cardStyle}>
-          <div className="text-center py-8 font-bold text-[14px]" style={{ color: '#aaa' }}>
-            No saved books yet.{' '}
-            <Link href="/listings" className="font-extrabold hover:underline" style={{ color: '#e11d48' }}>Browse listings</Link>
-            {' '}and tap the ♡ to save!
-          </div>
+          {savedListings.length === 0 ? (
+            <div className="text-center py-8 font-bold text-[14px]" style={{ color: '#aaa' }}>
+              No saved books yet.{' '}
+              <Link href="/listings" className="font-extrabold hover:underline" style={{ color: '#e11d48' }}>Browse listings</Link>
+              {' '}and tap the ♡ to save!
+            </div>
+          ) : (
+            <div>
+              {savedListings.map(l => (
+                <div key={l.id} className="flex items-center gap-3" style={{ padding: '12px 0', borderBottom: '2px solid #f3f4f6' }}>
+                  <div className="relative shrink-0 overflow-hidden"
+                    style={{ width: 42, height: 42, borderRadius: 10, background: coverGradient(l.id) }}>
+                    {l.photo_url ? (
+                      <Image src={l.photo_url} alt={l.title} fill className="object-cover" />
+                    ) : (
+                      <span className="flex items-center justify-center w-full h-full text-[20px]">📚</span>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <Link href={`/listings/${l.id}`} className="font-black text-[14px] truncate block hover:text-bk-orange transition-colors">
+                      {l.title}
+                    </Link>
+                    <p className="font-semibold text-[12px]" style={{ color: '#aaa' }}>
+                      {l.author} · {l.condition}
+                    </p>
+                  </div>
+                  <form action={removeSavedListing} className="shrink-0">
+                    <input type="hidden" name="listing_id" value={l.id} />
+                    <button className="font-extrabold text-[11px] hover:opacity-80"
+                      style={{ background: 'none', border: 'none', color: '#e11d48', cursor: 'pointer', padding: 0 }}>
+                      💔 Unsave
+                    </button>
+                  </form>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
