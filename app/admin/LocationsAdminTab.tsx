@@ -126,7 +126,7 @@ export default function LocationsAdminTab({ onPendingCountChange }: { onPendingC
 
     supabase
       .from('location_reports')
-      .select('id, location_id, reason, status, resolution, created_at, library_locations(name, type, street, city), profiles(username, email)')
+      .select('id, location_id, reason, status, resolution, created_at, library_locations(name, type, street, city), profiles!reporter_id(username, email)')
       .order('created_at', { ascending: false })
       .then(({ data }) => {
         if (!data) return
@@ -212,12 +212,15 @@ export default function LocationsAdminTab({ onPendingCountChange }: { onPendingC
     setLocations(prev => prev.map(l => l.id === updated.id ? updated : l))
 
     if (editReportId) {
-      await resolveLocationReport(editReportId, 'edited')
-      setReports(prev => {
-        const next = prev.map(r => r.id === editReportId ? { ...r, status: 'resolved' as const, resolution: 'edited' as const } : r)
-        pendingCountRef.current(next.filter(r => r.status === 'pending').length)
-        return next
-      })
+      const resolveResult = await resolveLocationReport(editReportId, 'edited')
+      if (!resolveResult.ok) { alert(resolveResult.error) }
+      else {
+        setReports(prev => {
+          const next = prev.map(r => r.id === editReportId ? { ...r, status: 'resolved' as const, resolution: 'edited' as const } : r)
+          pendingCountRef.current(next.filter(r => r.status === 'pending').length)
+          return next
+        })
+      }
     }
 
     closeEdit()
