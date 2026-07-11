@@ -1,29 +1,42 @@
 'use client'
 import 'leaflet/dist/leaflet.css'
-import { MapContainer, TileLayer, Marker, Popup, Circle, useMap, useMapEvents } from 'react-leaflet'
+import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from 'react-leaflet'
 import L from 'leaflet'
 import { useEffect, useRef } from 'react'
 
 export type LibraryLocation = {
   id: string
   name: string
-  type: 'lfl' | 'library'
+  type: 'lfl' | 'library' | 'bookstore' | 'fair'
   lat: number
   lng: number
   street: string
   city: string
   description?: string
-  isUserAdded?: boolean
+  startDate?: string
+  endDate?: string
 }
 
 export type Bounds = [[number, number], [number, number]]
 
-function pinIcon(type: 'lfl' | 'library' | 'pending') {
-  const c = {
-    lfl:     { emoji: '📚', bg: '#f97316', ring: '#c2410c' },
-    library: { emoji: '🏛️', bg: '#0d9488', ring: '#0f766e' },
-    pending: { emoji: '📌', bg: '#22c55e', ring: '#15803d' },
-  }[type]
+const TYPE_META: Record<'lfl' | 'library' | 'bookstore' | 'fair', {
+  emoji: string
+  label: string
+  bg: string
+  ring: string
+  badgeBg: string
+  badgeColor: string
+}> = {
+  lfl:       { emoji: '📚', label: 'Little Free Library', bg: '#f97316', ring: '#c2410c', badgeBg: '#fff7ed', badgeColor: '#f97316' },
+  library:   { emoji: '🏛️', label: 'Public Library',      bg: '#0d9488', ring: '#0f766e', badgeBg: '#ecfdf5', badgeColor: '#0d9488' },
+  bookstore: { emoji: '📖', label: 'Book Store',           bg: '#2563eb', ring: '#1d4ed8', badgeBg: '#eff6ff', badgeColor: '#2563eb' },
+  fair:      { emoji: '🎪', label: 'Library Fair',         bg: '#db2777', ring: '#be185d', badgeBg: '#fdf2f8', badgeColor: '#db2777' },
+}
+
+function pinIcon(type: 'lfl' | 'library' | 'bookstore' | 'fair' | 'pending') {
+  const c = type === 'pending'
+    ? { emoji: '📌', bg: '#22c55e', ring: '#15803d' }
+    : TYPE_META[type]
   return L.divIcon({
     className: '',
     html: `<div style="
@@ -37,20 +50,6 @@ function pinIcon(type: 'lfl' | 'library' | 'pending') {
     iconSize: [40, 40],
     iconAnchor: [20, 40],
     popupAnchor: [0, -44],
-  })
-}
-
-function centerIcon() {
-  return L.divIcon({
-    className: '',
-    html: `<div style="
-      width:18px;height:18px;border-radius:50%;
-      background:#f97316;border:3px solid white;
-      outline:2px solid #c2410c;
-      box-shadow:0 2px 8px rgba(0,0,0,0.4);
-    "></div>`,
-    iconSize: [18, 18],
-    iconAnchor: [9, 9],
   })
 }
 
@@ -79,18 +78,21 @@ function BoundsTracker({ onBoundsChange }: { onBoundsChange: (b: Bounds) => void
   return null
 }
 
-function ClickHandler({ addMode, onMapClick, onSetCenter }: {
+function ClickHandler({ addMode, onMapClick }: {
   addMode: boolean
   onMapClick: (lat: number, lng: number) => void
-  onSetCenter: (lat: number, lng: number) => void
 }) {
   useMapEvents({
     click(e) {
       if (addMode) onMapClick(e.latlng.lat, e.latlng.lng)
-      else onSetCenter(e.latlng.lat, e.latlng.lng)
     },
   })
   return null
+}
+
+function formatDate(iso: string) {
+  const [y, m, d] = iso.split('-').map(Number)
+  return new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
 interface Props {
@@ -100,41 +102,26 @@ interface Props {
   addMode: boolean
   onMapClick: (lat: number, lng: number) => void
   onReport: (loc: LibraryLocation) => void
-  radiusCenter: [number, number] | null
-  radiusMiles: number
   onBoundsChange: (b: Bounds) => void
-  onSetCenter: (lat: number, lng: number) => void
 }
 
 export default function MapView({
   locations, pendingPin, flyTo, addMode,
-  onMapClick, onReport, radiusCenter, radiusMiles,
-  onBoundsChange, onSetCenter,
+  onMapClick, onReport, onBoundsChange,
 }: Props) {
   return (
     <MapContainer
       center={[39.5, -98.35]}
       zoom={4}
-      style={{ width: '100%', height: '100%', cursor: addMode ? 'crosshair' : 'crosshair' }}
+      style={{ width: '100%', height: '100%', cursor: 'crosshair' }}
     >
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
       <BoundsTracker onBoundsChange={onBoundsChange} />
-      <ClickHandler addMode={addMode} onMapClick={onMapClick} onSetCenter={onSetCenter} />
+      <ClickHandler addMode={addMode} onMapClick={onMapClick} />
       {flyTo && <MapFly key={flyTo.nonce} center={flyTo.center} zoom={flyTo.zoom} />}
-
-      {radiusCenter && radiusMiles > 0 && (
-        <>
-          <Circle
-            center={radiusCenter}
-            radius={radiusMiles * 1609.344}
-            pathOptions={{ color: '#f97316', fillColor: '#f97316', fillOpacity: 0.07, weight: 2, dashArray: '6 4' }}
-          />
-          <Marker position={radiusCenter} icon={centerIcon()} interactive={false} />
-        </>
-      )}
 
       {locations.map(loc => (
         <Marker key={loc.id} position={[loc.lat, loc.lng]} icon={pinIcon(loc.type)}>
@@ -143,14 +130,22 @@ export default function MapView({
               <div style={{ fontWeight: 900, fontSize: 15, marginBottom: 3 }}>{loc.name}</div>
               <span style={{
                 display: 'inline-block',
-                background: loc.type === 'lfl' ? '#fff7ed' : '#ecfdf5',
-                color: loc.type === 'lfl' ? '#f97316' : '#0d9488',
+                background: TYPE_META[loc.type].badgeBg,
+                color: TYPE_META[loc.type].badgeColor,
                 borderRadius: 8, padding: '2px 8px', fontSize: 12, fontWeight: 800, marginBottom: 8,
               }}>
-                {loc.type === 'lfl' ? '📚 Little Free Library' : '🏛️ City Library'}
+                {TYPE_META[loc.type].emoji} {TYPE_META[loc.type].label}
               </span>
               <div style={{ fontSize: 13, color: '#555', marginBottom: 2 }}>{loc.street}</div>
-              <div style={{ fontSize: 13, color: '#555', marginBottom: loc.description ? 6 : 10 }}>{loc.city}</div>
+              <div style={{
+                fontSize: 13, color: '#555',
+                marginBottom: (loc.description || (loc.type === 'fair' && loc.startDate && loc.endDate)) ? 6 : 10,
+              }}>{loc.city}</div>
+              {loc.type === 'fair' && loc.startDate && loc.endDate && (
+                <div style={{ fontSize: 13, color: '#db2777', fontWeight: 700, marginBottom: loc.description ? 6 : 10 }}>
+                  🗓️ {formatDate(loc.startDate)} – {formatDate(loc.endDate)}
+                </div>
+              )}
               {loc.description && (
                 <div style={{ fontSize: 13, color: '#888', fontStyle: 'italic', marginBottom: 10 }}>{loc.description}</div>
               )}
