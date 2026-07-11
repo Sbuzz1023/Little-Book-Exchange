@@ -518,36 +518,74 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
               No books on your TBR yet.
             </div>
           ) : (
-            <div>
-              {tbrEntries.map(entry => (
-                <div key={entry.id} className="flex items-center gap-3 flex-wrap"
-                  style={{ padding: '12px 0', borderBottom: '2px solid #f3f4f6' }}>
-                  <div className="flex-1 min-w-0">
+            <>
+              {/* Desktop: table with column headers */}
+              <div className="hidden md:block">
+                <div className="grid gap-3 px-1 pb-2" style={{ gridTemplateColumns: '2fr 1.5fr 1fr 70px 150px', borderBottom: '2px solid #f3f4f6' }}>
+                  {['Title', 'Author', 'City', 'State', ''].map(h => (
+                    <span key={h} className="font-black text-[11px]" style={{ textTransform: 'uppercase', letterSpacing: '0.6px', color: '#aaa' }}>
+                      {h}
+                    </span>
+                  ))}
+                </div>
+                {tbrEntries.map(entry => (
+                  <div key={entry.id} className="grid gap-3 items-center px-1"
+                    style={{ gridTemplateColumns: '2fr 1.5fr 1fr 70px 150px', padding: '12px 4px', borderBottom: '2px solid #f3f4f6' }}>
+                    <span className="font-black text-[14px] truncate">{entry.title || '—'}</span>
+                    <span className="font-semibold text-[13px] truncate" style={{ color: entry.author ? '#555' : '#ccc' }}>{entry.author || '—'}</span>
+                    <span className="font-semibold text-[13px] truncate" style={{ color: entry.city ? '#555' : '#ccc' }}>{entry.city || '—'}</span>
+                    <span className="font-semibold text-[13px]" style={{ color: entry.state ? '#555' : '#ccc' }}>{entry.state || '—'}</span>
+                    <div className="flex items-center justify-end gap-3">
+                      {entry.match && (
+                        <Link href={`/listings/${entry.match.id}`}
+                          className="font-extrabold text-[11px] text-white whitespace-nowrap"
+                          style={{ background: '#7c3aed', padding: '5px 10px', borderRadius: 999, boxShadow: '0 2px 0 #5b21b6' }}>
+                          📖 Avail
+                        </Link>
+                      )}
+                      <form action={removeTbrEntry}>
+                        <input type="hidden" name="id" value={entry.id} />
+                        <button className="font-extrabold text-[15px] hover:opacity-70" aria-label="Delete"
+                          style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', padding: 0 }}>
+                          ✕
+                        </button>
+                      </form>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Mobile: stacked cards */}
+              <div className="md:hidden">
+                {tbrEntries.map(entry => (
+                  <div key={entry.id} style={{ padding: '12px 0', borderBottom: '2px solid #f3f4f6' }}>
                     <p className="font-black text-[14px] truncate">
                       {entry.title || `by ${entry.author}`}
                     </p>
-                    <p className="font-semibold text-[12px]" style={{ color: '#aaa' }}>
+                    <p className="font-semibold text-[12px] mb-2" style={{ color: '#aaa' }}>
                       {[entry.title && entry.author ? `by ${entry.author}` : null, entry.city, entry.state]
                         .filter(Boolean).join(' · ')}
                     </p>
+                    <div className="flex items-center gap-3 flex-wrap">
+                      {entry.match && (
+                        <Link href={`/listings/${entry.match.id}`}
+                          className="font-extrabold text-[12px] text-white whitespace-nowrap"
+                          style={{ background: '#7c3aed', padding: '6px 14px', borderRadius: 999, boxShadow: '0 2px 0 #5b21b6' }}>
+                          📖 Available!
+                        </Link>
+                      )}
+                      <form action={removeTbrEntry}>
+                        <input type="hidden" name="id" value={entry.id} />
+                        <button className="font-extrabold text-[11px] hover:opacity-80"
+                          style={{ background: 'none', border: 'none', color: '#aaa', cursor: 'pointer', padding: 0 }}>
+                          ✕ Delete
+                        </button>
+                      </form>
+                    </div>
                   </div>
-                  {entry.match && (
-                    <Link href={`/listings/${entry.match.id}`}
-                      className="font-extrabold text-[12px] text-white whitespace-nowrap"
-                      style={{ background: '#7c3aed', padding: '6px 14px', borderRadius: 999, boxShadow: '0 2px 0 #5b21b6' }}>
-                      📖 Available!
-                    </Link>
-                  )}
-                  <form action={removeTbrEntry}>
-                    <input type="hidden" name="id" value={entry.id} />
-                    <button className="font-extrabold text-[11px] hover:opacity-80"
-                      style={{ background: 'none', border: 'none', color: '#aaa', cursor: 'pointer', padding: 0 }}>
-                      ✕ Delete
-                    </button>
-                  </form>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            </>
           )}
         </div>
       )}
