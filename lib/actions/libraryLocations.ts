@@ -3,7 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import type { LibraryLocation } from '@/app/locations/MapView'
 
-type AddLocationInput = {
+export type AddLocationInput = {
   name: string
   type: 'lfl' | 'library' | 'bookstore' | 'fair'
   lat: number
@@ -15,38 +15,42 @@ type AddLocationInput = {
   endDate?: string
 }
 
-type AddLocationResult =
+export type AddLocationResult =
   | { ok: true; location: LibraryLocation }
   | { ok: false; error: string }
+
+export function validateLocationInput(data: AddLocationInput): string | null {
+  if (!data.name.trim())   return 'Library name is required.'
+  if (!data.street.trim()) return 'Street is required.'
+  if (!data.city.trim())   return 'City is required.'
+
+  if (data.type === 'fair') {
+    if (!data.startDate) return 'Start date is required for a fair.'
+    if (!data.endDate)   return 'End date is required for a fair.'
+    if (data.endDate < data.startDate) return 'End date must be on or after the start date.'
+  }
+
+  return null
+}
 
 export async function addLibraryLocation(data: AddLocationInput): Promise<AddLocationResult> {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { ok: false, error: 'Please sign in to add a location.' }
 
-  const name = data.name.trim()
-  const street = data.street.trim()
-  const city = data.city.trim()
-  if (!name)   return { ok: false, error: 'Library name is required.' }
-  if (!street) return { ok: false, error: 'Street is required.' }
-  if (!city)   return { ok: false, error: 'City is required.' }
-
-  if (data.type === 'fair') {
-    if (!data.startDate) return { ok: false, error: 'Start date is required for a fair.' }
-    if (!data.endDate)   return { ok: false, error: 'End date is required for a fair.' }
-    if (data.endDate < data.startDate) return { ok: false, error: 'End date must be on or after the start date.' }
-  }
+  const validationError = validateLocationInput(data)
+  if (validationError) return { ok: false, error: validationError }
 
   const { data: inserted, error } = await supabase
     .from('library_locations')
     .insert({
       created_by: user.id,
-      name,
+      name: data.name.trim(),
       type: data.type,
       lat: data.lat,
       lng: data.lng,
-      street,
-      city,
+      street: data.street.trim(),
+      city: data.city.trim(),
       description: data.description.trim(),
       start_date: data.type === 'fair' ? data.startDate : null,
       end_date: data.type === 'fair' ? data.endDate : null,
