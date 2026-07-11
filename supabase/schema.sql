@@ -196,3 +196,35 @@ create policy "Users can add tbr entries" on tbr_entries
 create policy "Users can delete own tbr entries" on tbr_entries
   for delete to authenticated using (auth.uid() = user_id);
 -- ──────────────────────────────────────────────────────────────────────────────
+
+-- ── Migration: library locations ──────────────────────────────────────────────
+-- Run this block in Supabase SQL Editor:
+create table if not exists library_locations (
+  id uuid default gen_random_uuid() primary key,
+  created_by uuid references profiles(id) on delete cascade not null,
+  name text not null,
+  type text not null check (type in ('lfl', 'library', 'bookstore', 'fair')),
+  lat double precision not null,
+  lng double precision not null,
+  street text not null default '',
+  city text not null default '',
+  description text not null default '',
+  start_date date,
+  end_date date,
+  created_at timestamptz default now(),
+  constraint fair_requires_dates check (
+    type <> 'fair' or (start_date is not null and end_date is not null and end_date >= start_date)
+  )
+);
+
+alter table library_locations enable row level security;
+
+create policy "Locations are viewable by everyone" on library_locations
+  for select using (true);
+
+create policy "Authenticated users can add locations" on library_locations
+  for insert to authenticated with check (auth.uid() = created_by);
+
+create policy "Anyone can clean up expired fairs" on library_locations
+  for delete using (type = 'fair' and end_date < current_date);
+-- ──────────────────────────────────────────────────────────────────────────────
