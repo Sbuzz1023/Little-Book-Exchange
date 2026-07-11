@@ -27,6 +27,15 @@ type SavedListing = {
   status: string
 }
 
+type TbrEntry = {
+  id: string
+  title: string
+  author: string
+  city: string
+  state: string
+  match: { id: string; title: string } | null
+}
+
 type Exchange = {
   id: string
   listing_id: string
@@ -81,15 +90,19 @@ type Props = {
   listings: Listing[]
   exchanges: Exchange[]
   savedListings: SavedListing[]
+  tbrEntries: TbrEntry[]
   updateAction: (formData: FormData) => Promise<void>
   updateListingStatus: (formData: FormData) => Promise<void>
   notifyPickedUp: (formData: FormData) => Promise<void>
   confirmExchange: (formData: FormData) => Promise<void>
   cancelPurchase: (formData: FormData) => Promise<void>
   removeSavedListing: (formData: FormData) => Promise<void>
+  addTbrEntry: (formData: FormData) => Promise<void>
+  removeTbrEntry: (formData: FormData) => Promise<void>
   success?: boolean
   defaultTab?: Tab
   queryError?: string | null
+  tbrError?: string | null
 }
 
 const TABS = [
@@ -136,7 +149,7 @@ const MOCK_TRANSACTIONS = [
   { id: '3', type: 'earn',     desc: 'Book claimed by neighbor',  amount: '+1', date: 'Jun 22, 2026', color: '#059669' },
 ]
 
-export default function DashboardClient({ profile, listings, exchanges, savedListings, updateAction, updateListingStatus, notifyPickedUp, confirmExchange, cancelPurchase, removeSavedListing, success, defaultTab, queryError }: Props) {
+export default function DashboardClient({ profile, listings, exchanges, savedListings, tbrEntries, updateAction, updateListingStatus, notifyPickedUp, confirmExchange, cancelPurchase, removeSavedListing, addTbrEntry, removeTbrEntry, success, defaultTab, queryError, tbrError }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>(defaultTab ?? 'listings')
 
   const tab = TABS.find(t => t.id === activeTab)!
@@ -472,23 +485,70 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
       {activeTab === 'tbr' && (
         <div style={cardStyle}>
           <p className="font-bold text-[13px] mb-5" style={{ color: '#aaa' }}>
-            Add books you want to read — we'll alert you when one is listed nearby.
+            Add books you want to read — we'll show you when one is listed nearby.
           </p>
-          <div className="flex gap-2 mb-4 flex-wrap">
-            <input placeholder="Book title..." disabled
+
+          {tbrError && (
+            <div className="bg-red-50 border-2 border-red-200 rounded-xl px-4 py-3 text-red-700 font-bold text-sm mb-4">
+              {tbrError}
+            </div>
+          )}
+
+          <form action={addTbrEntry} className="flex gap-2 mb-4 flex-wrap">
+            <input name="title" placeholder="Book title..."
               className="flex-1 border-2 border-[#ddd6fe] rounded-[12px] font-bold text-[13px] bg-[#f5f3ff]"
               style={{ padding: '9px 12px', minWidth: 120 }} />
-            <input placeholder="Author (optional)..." disabled
+            <input name="author" placeholder="Author (optional)..."
               className="flex-1 border-2 border-[#ddd6fe] rounded-[12px] font-bold text-[13px] bg-[#f5f3ff]"
               style={{ padding: '9px 12px', minWidth: 120 }} />
-            <button disabled className="text-white font-extrabold text-[13px] opacity-50"
-              style={{ background: '#7c3aed', padding: '9px 18px', borderRadius: 12, border: 'none', cursor: 'not-allowed', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>
+            <input name="city" placeholder="City (optional)..."
+              className="flex-1 border-2 border-[#ddd6fe] rounded-[12px] font-bold text-[13px] bg-[#f5f3ff]"
+              style={{ padding: '9px 12px', minWidth: 100 }} />
+            <input name="state" placeholder="State (optional)..."
+              className="flex-1 border-2 border-[#ddd6fe] rounded-[12px] font-bold text-[13px] bg-[#f5f3ff]"
+              style={{ padding: '9px 12px', minWidth: 100 }} />
+            <button type="submit" className="text-white font-extrabold text-[13px]"
+              style={{ background: '#7c3aed', padding: '9px 18px', borderRadius: 12, border: 'none', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>
               + Add
             </button>
-          </div>
-          <div className="text-center py-8 font-bold text-[14px]" style={{ color: '#aaa' }}>
-            No books on your TBR yet.
-          </div>
+          </form>
+
+          {tbrEntries.length === 0 ? (
+            <div className="text-center py-8 font-bold text-[14px]" style={{ color: '#aaa' }}>
+              No books on your TBR yet.
+            </div>
+          ) : (
+            <div>
+              {tbrEntries.map(entry => (
+                <div key={entry.id} className="flex items-center gap-3 flex-wrap"
+                  style={{ padding: '12px 0', borderBottom: '2px solid #f3f4f6' }}>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-black text-[14px] truncate">
+                      {entry.title || `by ${entry.author}`}
+                    </p>
+                    <p className="font-semibold text-[12px]" style={{ color: '#aaa' }}>
+                      {[entry.title && entry.author ? `by ${entry.author}` : null, entry.city, entry.state]
+                        .filter(Boolean).join(' · ')}
+                    </p>
+                  </div>
+                  {entry.match && (
+                    <Link href={`/listings/${entry.match.id}`}
+                      className="font-extrabold text-[12px] text-white whitespace-nowrap"
+                      style={{ background: '#7c3aed', padding: '6px 14px', borderRadius: 999, boxShadow: '0 2px 0 #5b21b6' }}>
+                      📖 Available!
+                    </Link>
+                  )}
+                  <form action={removeTbrEntry}>
+                    <input type="hidden" name="id" value={entry.id} />
+                    <button className="font-extrabold text-[11px] hover:opacity-80"
+                      style={{ background: 'none', border: 'none', color: '#aaa', cursor: 'pointer', padding: 0 }}>
+                      ✕ Delete
+                    </button>
+                  </form>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
