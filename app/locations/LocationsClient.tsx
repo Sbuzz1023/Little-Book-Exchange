@@ -77,6 +77,8 @@ export default function LocationsClient({ initialLocations, isLoggedIn }: {
   const [showAddForm, setShowAddForm] = useState(false)
   const [form, setForm] = useState({ name: '', type: 'lfl' as LocType, street: '', city: '', description: '', startDate: '', endDate: '' })
   const [formError, setFormError] = useState('')
+  const [addressQuery, setAddressQuery] = useState('')
+  const [addressSearching, setAddressSearching] = useState(false)
 
   // Report state
   const [reportTarget, setReportTarget] = useState<LibraryLocation | null>(null)
@@ -152,10 +154,30 @@ export default function LocationsClient({ initialLocations, isLoggedIn }: {
     setShowAddForm(true)
   }
 
+  async function locateByAddress(e: React.FormEvent) {
+    e.preventDefault()
+    if (!addressQuery.trim()) return
+    setAddressSearching(true)
+    const coords = await geocode(addressQuery)
+    setAddressSearching(false)
+    if (coords) {
+      setPendingPin(coords)
+      setShowAddForm(true)
+      setAddressQuery('')
+    } else {
+      alert('Address not found. Try a more specific address or click the map instead.')
+    }
+  }
+
+  function selectLocation(loc: LibraryLocation) {
+    setFlyTo({ center: [loc.lat, loc.lng], zoom: 16, nonce: Date.now() })
+  }
+
   function cancelAdd() {
     setAddMode(false); setPendingPin(null); setShowAddForm(false)
     setForm({ name: '', type: 'lfl', street: '', city: '', description: '', startDate: '', endDate: '' })
     setFormError('')
+    setAddressQuery('')
   }
 
   async function saveLocation() {
@@ -262,8 +284,21 @@ export default function LocationsClient({ initialLocations, isLoggedIn }: {
 
         {/* Add mode hint */}
         {addMode && !pendingPin && (
-          <div className="flex-shrink-0 bg-[#ecfdf5] border-b-2 border-bk-teal px-4 py-2 text-bk-teal font-bold text-[13px] text-center">
-            Click anywhere on the map to drop your pin 📌
+          <div className="flex-shrink-0 bg-[#ecfdf5] border-b-2 border-bk-teal px-4 py-2.5 flex flex-col sm:flex-row items-center justify-center gap-2">
+            <span className="text-bk-teal font-bold text-[13px]">Click anywhere on the map to drop your pin 📌</span>
+            <span className="text-bk-teal font-bold text-[12px]">or</span>
+            <form onSubmit={locateByAddress} className="flex items-center gap-1.5">
+              <input
+                value={addressQuery}
+                onChange={e => setAddressQuery(e.target.value)}
+                placeholder="Enter an address…"
+                className="border-2 border-bk-teal/40 rounded-lg px-2.5 py-1 font-bold text-[12px] focus:outline-none focus:border-bk-teal w-[180px] bg-white"
+              />
+              <button type="submit" disabled={addressSearching}
+                className="bg-bk-teal text-white font-extrabold text-[12px] px-2.5 py-1 rounded-lg disabled:opacity-60">
+                {addressSearching ? '…' : 'Locate'}
+              </button>
+            </form>
           </div>
         )}
 
@@ -299,7 +334,7 @@ export default function LocationsClient({ initialLocations, isLoggedIn }: {
               ) : (
                 <div>
                   {filteredLocations.map(loc => (
-                    <LocationCard key={loc.id} loc={loc} userCoords={userCoords} onReport={setReportTarget} />
+                    <LocationCard key={loc.id} loc={loc} userCoords={userCoords} onReport={setReportTarget} onSelect={selectLocation} />
                   ))}
                 </div>
               )}
@@ -445,16 +480,17 @@ function FormField({ label, hint, children }: { label: string; hint?: string; ch
   )
 }
 
-function LocationCard({ loc, userCoords, onReport }: {
+function LocationCard({ loc, userCoords, onReport, onSelect }: {
   loc: LibraryLocation
   userCoords: [number, number] | null
   onReport: (loc: LibraryLocation) => void
+  onSelect: (loc: LibraryLocation) => void
 }) {
   const dist = userCoords ? haversine(userCoords[0], userCoords[1], loc.lat, loc.lng) : null
   const meta = TYPE_META[loc.type]
 
   return (
-    <div className="flex border-l-4 hover:bg-[#fafafa] transition-colors" style={{ borderLeftColor: meta.color }}>
+    <div onClick={() => onSelect(loc)} className="flex border-l-4 hover:bg-[#fafafa] transition-colors cursor-pointer" style={{ borderLeftColor: meta.color }}>
       {/* Color swatch column */}
       <div className="w-10 flex-shrink-0 flex flex-col items-center justify-start pt-3.5 pb-3 gap-1" style={{ background: meta.bg }}>
         <span className="text-[18px]">{meta.emoji}</span>
@@ -485,11 +521,11 @@ function LocationCard({ loc, userCoords, onReport }: {
           </div>
           <div className="flex flex-col items-end gap-1.5 shrink-0">
             <a href={`https://www.google.com/maps/dir/?api=1&destination=${loc.lat},${loc.lng}`}
-              target="_blank" rel="noopener noreferrer"
+              target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
               className="text-[11px] font-bold text-bk-orange hover:underline whitespace-nowrap">
               Directions ↗
             </a>
-            <button onClick={() => onReport(loc)}
+            <button onClick={e => { e.stopPropagation(); onReport(loc) }}
               className="text-[11px] font-bold text-[#ccc] hover:text-[#888] transition-colors">
               📩 Report
             </button>
