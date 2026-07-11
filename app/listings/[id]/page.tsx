@@ -57,6 +57,17 @@ export default async function ListingDetailPage({ params, searchParams }: { para
 
   const isOwner = user?.id === listing.user_id
   const isLoggedIn = !!user || !!cookies().get('lbe_demo_user')?.value
+
+  let initialSaved = false
+  if (user) {
+    try {
+      const supabase = createClient()
+      const { data: saved } = await supabase
+        .from('saved_listings').select('id').eq('user_id', user.id).eq('listing_id', params.id).maybeSingle()
+      initialSaved = !!saved
+    } catch {}
+  }
+
   const gradient = coverGradient(listing.id)
   const isPending = searchParams.requested === '1' || myConvoStatus === 'requested'
 
@@ -267,7 +278,7 @@ export default async function ListingDetailPage({ params, searchParams }: { para
               </div>
             ) : (
               <div className="flex items-center gap-3 flex-wrap">
-                <SaveButton listingId={listing.id} isLoggedIn={isLoggedIn} />
+                <SaveButton listingId={listing.id} isLoggedIn={isLoggedIn} initialSaved={initialSaved} />
                 <form action={requestPurchase}>
                   <button
                     type="submit"
