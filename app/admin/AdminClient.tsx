@@ -631,6 +631,18 @@ export default function AdminClient() {
       })
   }, [authed])
 
+  useEffect(() => {
+    if (authed !== 'yes') return
+    const supabase = createClient()
+    supabase
+      .from('location_reports')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'pending')
+      .then(({ count }) => {
+        if (count !== null) setPendingLocationReports(count)
+      })
+  }, [authed])
+
   async function toggleAdmin(userId: string, current: boolean) {
     const supabase = createClient()
     const { error } = await supabase
