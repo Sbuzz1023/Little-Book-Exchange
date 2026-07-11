@@ -3,6 +3,7 @@ import { useState, useMemo } from 'react'
 import dynamic from 'next/dynamic'
 import type { LibraryLocation, Bounds } from './MapView'
 import { addLibraryLocation } from '@/lib/actions/libraryLocations'
+import { submitLocationReport } from '@/lib/actions/locationReports'
 
 const MapView = dynamic(() => import('./MapView'), {
   ssr: false,
@@ -92,6 +93,8 @@ export default function LocationsClient({ initialLocations, isLoggedIn }: {
   const [reportTarget, setReportTarget] = useState<LibraryLocation | null>(null)
   const [reportReason, setReportReason] = useState('')
   const [reportSent, setReportSent] = useState(false)
+  const [reportSending, setReportSending] = useState(false)
+  const [reportError, setReportError] = useState('')
 
   const filteredLocations = useMemo(() => {
     let result = locations
@@ -218,7 +221,21 @@ export default function LocationsClient({ initialLocations, isLoggedIn }: {
     cancelAdd()
   }
 
-  function sendReport() {
+  function openReport(loc: LibraryLocation) {
+    if (!isLoggedIn) {
+      window.location.href = '/auth/signin?redirect=/locations'
+      return
+    }
+    setReportError('')
+    setReportTarget(loc)
+  }
+
+  async function sendReport() {
+    if (!reportTarget) return
+    setReportSending(true)
+    const result = await submitLocationReport(reportTarget.id, reportReason)
+    setReportSending(false)
+    if (!result.ok) { setReportError(result.error); return }
     setReportSent(true)
     setTimeout(() => { setReportTarget(null); setReportReason(''); setReportSent(false) }, 2200)
   }
@@ -343,7 +360,7 @@ export default function LocationsClient({ initialLocations, isLoggedIn }: {
               ) : (
                 <div>
                   {filteredLocations.map(loc => (
-                    <LocationCard key={loc.id} loc={loc} userCoords={userCoords} onReport={setReportTarget} onSelect={selectLocation} />
+                    <LocationCard key={loc.id} loc={loc} userCoords={userCoords} onReport={openReport} onSelect={selectLocation} />
                   ))}
                 </div>
               )}
@@ -358,7 +375,7 @@ export default function LocationsClient({ initialLocations, isLoggedIn }: {
               flyTo={flyTo}
               addMode={addMode}
               onMapClick={handleMapClick}
-              onReport={setReportTarget}
+              onReport={openReport}
               onBoundsChange={setMapBounds}
             />
           </div>
@@ -461,12 +478,13 @@ export default function LocationsClient({ initialLocations, isLoggedIn }: {
                   className="w-full border-2 border-[#e5e7eb] rounded-xl px-3 py-2.5 font-semibold text-[14px] focus:outline-none focus:border-bk-orange resize-none mb-3"
                 />
                 <p className="text-[#bbb] text-[12px] font-semibold mb-4">📬 Our team reviews requests within 1–3 business days.</p>
+                {reportError && <p className="text-red-500 font-bold text-[13px] mb-3">⚠️ {reportError}</p>}
                 <div className="flex gap-3">
-                  <button onClick={() => { setReportTarget(null); setReportReason('') }}
+                  <button onClick={() => { setReportTarget(null); setReportReason(''); setReportError('') }}
                     className="flex-1 border-2 border-[#e5e7eb] rounded-xl py-3 font-extrabold text-[14px] text-[#888]">Cancel</button>
-                  <button onClick={sendReport} disabled={!reportReason.trim()}
+                  <button onClick={sendReport} disabled={!reportReason.trim() || reportSending}
                     className="flex-1 bg-bk-orange text-white rounded-xl py-3 font-extrabold text-[14px] shadow-[0_3px_0_#c2410c] disabled:opacity-50 disabled:shadow-none">
-                    Send Request
+                    {reportSending ? 'Sending…' : 'Send Request'}
                   </button>
                 </div>
               </>
