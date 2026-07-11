@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation'
 import { cookies } from 'next/headers'
 import Image from 'next/image'
 import Link from 'next/link'
-import SaveButton from '@/components/SaveButton'
+import HeartButton from '@/components/HeartButton'
 import { MOCK_LISTINGS, MOCK_CONVERSATIONS, MOCK_USER_ID } from '@/lib/mock-data'
 
 const COVER_GRADIENTS = [
@@ -184,6 +184,9 @@ export default async function ListingDetailPage({ params, searchParams }: { para
           ) : (
             <span>📚</span>
           )}
+          {!isOwner && (
+            <HeartButton listingId={listing.id} isLoggedIn={isLoggedIn} initialSaved={initialSaved} />
+          )}
           <span
             className="absolute top-5 right-5 px-5 py-2 rounded-full text-base font-black"
             style={{
@@ -278,7 +281,6 @@ export default async function ListingDetailPage({ params, searchParams }: { para
               </div>
             ) : (
               <div className="flex items-center gap-3 flex-wrap">
-                <SaveButton listingId={listing.id} isLoggedIn={isLoggedIn} initialSaved={initialSaved} />
                 <form action={requestPurchase}>
                   <button
                     type="submit"
