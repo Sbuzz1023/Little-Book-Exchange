@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { validateLocationInput } from './libraryLocations'
+import { validateLocationInput } from './validateLocationInput'
 
 const base = {
   name: 'Corner Street LFL',
