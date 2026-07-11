@@ -1,15 +1,29 @@
 'use client'
 import { useState } from 'react'
+import { saveListing, unsaveListing } from '@/lib/actions/savedListings'
 
-export default function SaveButton({ listingId, isLoggedIn }: { listingId: string; isLoggedIn: boolean }) {
-  const [saved, setSaved] = useState(false)
+export default function SaveButton({
+  listingId,
+  isLoggedIn,
+  initialSaved,
+}: {
+  listingId: string
+  isLoggedIn: boolean
+  initialSaved: boolean
+}) {
+  const [saved, setSaved] = useState(initialSaved)
 
   function toggle() {
     if (!isLoggedIn) {
       window.location.href = '/auth/signin?redirect=' + window.location.pathname
       return
     }
-    setSaved(s => !s)
+    const next = !saved
+    setSaved(next)
+    const action = next
+      ? saveListing(listingId, window.location.pathname)
+      : unsaveListing(listingId, window.location.pathname)
+    action.catch(() => setSaved(!next))
   }
 
   return (
