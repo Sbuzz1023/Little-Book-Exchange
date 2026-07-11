@@ -5,11 +5,12 @@ import DashboardClient from './DashboardClient'
 import { MOCK_PROFILE, MOCK_LISTINGS, MOCK_USER_ID, MOCK_CONVERSATIONS } from '@/lib/mock-data'
 import { updateProfile, updateListingStatus, notifyPickedUp, confirmExchange, cancelPurchase } from './actions'
 import { removeSavedListing } from '@/lib/actions/savedListings'
+import { addTbrEntry, removeTbrEntry } from '@/lib/actions/tbrEntries'
 
 export default async function ProfilePage({
   searchParams,
 }: {
-  searchParams: { success?: string; error?: string; demo_pending?: string }
+  searchParams: { success?: string; error?: string; demo_pending?: string; tbr_error?: string }
 }) {
   const cookieStore = cookies()
   const demo = !process.env.NEXT_PUBLIC_SUPABASE_URL?.startsWith('http') ||
@@ -19,6 +20,7 @@ export default async function ProfilePage({
   let listings: any[] = []
   let exchanges: any[] = []
   let savedListings: any[] = []
+  let tbrEntries: any[] = []
   let queryError: string | null = null
 
   if (demo) {
@@ -83,6 +85,22 @@ export default async function ProfilePage({
         savedListings = sl ?? []
       }
 
+      const { data: tbr } = await supabase
+        .from('tbr_entries').select('*').eq('user_id', user.id).order('created_at', { ascending: false })
+      tbrEntries = await Promise.all((tbr ?? []).map(async (entry: any) => {
+        let query = supabase
+          .from('listings')
+          .select('id, title, author, city, profiles!inner(state)')
+          .eq('status', 'active')
+          .neq('user_id', user.id)
+        if (entry.title)  query = query.ilike('title', `%${entry.title}%`)
+        if (entry.author) query = query.ilike('author', `%${entry.author}%`)
+        if (entry.city)   query = query.ilike('city', `%${entry.city}%`)
+        if (entry.state)  query = query.eq('profiles.state', entry.state)
+        const { data: match } = await query.limit(1).maybeSingle()
+        return { ...entry, match: match ? { id: match.id, title: match.title } : null }
+      }))
+
       // Fetch conversations with NO joins — joins can silently fail due to RLS
       const [{ data: asBuyer, error: buyerErr }, { data: asSeller, error: sellerErr }] =
        await Promise.all([
@@ -145,15 +163,19 @@ export default async function ProfilePage({
       listings={listings}
       exchanges={exchanges}
       savedListings={savedListings}
+      tbrEntries={tbrEntries}
       updateAction={updateProfile}
       updateListingStatus={updateListingStatus}
       notifyPickedUp={notifyPickedUp}
       confirmExchange={confirmExchange}
       cancelPurchase={cancelPurchase}
       removeSavedListing={removeSavedListing}
+      addTbrEntry={addTbrEntry}
+      removeTbrEntry={removeTbrEntry}
       success={!!searchParams.success}
       defaultTab={searchParams.demo_pending ? 'exchanges' : 'listings'}
       queryError={queryError}
+      tbrError={searchParams.tbr_error ?? null}
     />
   )
 }
