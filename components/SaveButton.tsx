@@ -1,10 +1,14 @@
 'use client'
 import { useState } from 'react'
 
-export default function SaveButton({ listingId }: { listingId: string }) {
+export default function SaveButton({ listingId, isLoggedIn }: { listingId: string; isLoggedIn: boolean }) {
   const [saved, setSaved] = useState(false)
 
   function toggle() {
+    if (!isLoggedIn) {
+      window.location.href = '/auth/signin?redirect=' + window.location.pathname
+      return
+    }
     setSaved(s => !s)
   }
 
