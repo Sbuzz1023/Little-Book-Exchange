@@ -272,6 +272,11 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
                     style={{ padding: '3px 10px', borderRadius: 999, ...statusStyle(l.status) }}>
                     {statusLabel(l.status)}
                   </span>
+                  <Link href={`/listings/${l.id}/edit`}
+                    className="font-extrabold text-[11px] hover:opacity-80 shrink-0"
+                    style={{ color: '#888' }}>
+                    Edit
+                  </Link>
                   <form action={updateListingStatus} className="flex gap-2 shrink-0">
                     <input type="hidden" name="id" value={l.id} />
                     {l.status === 'active' ? (
