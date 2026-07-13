@@ -2,8 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-
-const DESCRIPTION_MAX_LENGTH = 500
+import { parseListingForm } from '@/lib/parseListingForm'
 
 async function uploadPhoto(
   supabase: ReturnType<typeof createClient>,
@@ -37,23 +36,15 @@ export async function createListing(formData: FormData) {
       uploadPhoto(supabase, user!.id, formData, 'photo_3', 3),
     ])
 
-    const priceRaw = formData.get('price') as string
-    const price = priceRaw && priceRaw.trim() !== '' ? parseFloat(priceRaw) : null
+    const fields = parseListingForm(formData)
 
     const { data: listing, error } = await supabase.from('listings').insert({
       user_id: user!.id,
-      title:       formData.get('title')       as string,
-      author:      formData.get('author')      as string,
-      condition:   formData.get('condition')   as string,
-      price,
-      description: ((formData.get('description') as string) || '').slice(0, DESCRIPTION_MAX_LENGTH) || null,
-      genre:       (formData.get('genre')       as string) || null,
-      format:      (formData.get('format')      as string) || null,
+      ...fields,
       photo_url,
       photo_url_2,
       photo_url_3,
       city: prof?.city ?? '',
-      pickup_description: (formData.get('pickup_description') as string) || null,
     }).select('id').single()
 
     if (error) redirect(`/post?error=${encodeURIComponent(error.message || 'Failed to post listing')}`)
