@@ -2,6 +2,8 @@
 
 import { useState, useRef } from 'react'
 
+const DESCRIPTION_MAX_LENGTH = 500
+
 const GENRES = [
   { key: 'Fiction', label: '📚 Fiction' },
   { key: 'Non-Fiction', label: '🌍 Non-Fiction' },
@@ -65,6 +67,7 @@ export default function PostForm({ city, action, error }: Props) {
   const [title, setTitle] = useState('')
   const [author, setAuthor] = useState('')
   const [condition, setCondition] = useState('Good')
+  const [description, setDescription] = useState('')
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -220,9 +223,15 @@ export default function PostForm({ city, action, error }: Props) {
           <textarea
             name="description"
             rows={3}
+            maxLength={DESCRIPTION_MAX_LENGTH}
+            value={description}
+            onChange={e => setDescription(e.target.value)}
             placeholder="Any notes — edition, highlighting, pickup preferences..."
             style={{ ...inputStyle, resize: 'none' }}
           />
+          <p style={{ fontSize: 11, fontWeight: 700, color: '#bbb', textAlign: 'right', marginTop: 4 }}>
+            {description.length}/{DESCRIPTION_MAX_LENGTH}
+          </p>
         </div>
 
         <div style={{ marginBottom: 18 }}>

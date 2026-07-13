@@ -3,6 +3,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 
+const DESCRIPTION_MAX_LENGTH = 500
+
 export async function createListing(formData: FormData) {
   try {
     const supabase = createClient()
@@ -34,7 +36,7 @@ export async function createListing(formData: FormData) {
       author:      formData.get('author')      as string,
       condition:   formData.get('condition')   as string,
       price,
-      description: (formData.get('description') as string) || null,
+      description: ((formData.get('description') as string) || '').slice(0, DESCRIPTION_MAX_LENGTH) || null,
       genre:       (formData.get('genre')       as string) || null,
       format:      (formData.get('format')      as string) || null,
       photo_url,

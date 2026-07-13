@@ -247,7 +247,7 @@ export default async function ListingDetailPage({ params, searchParams }: { para
           </div>
 
           {listing.description && (
-            <p className="font-semibold leading-[1.7] mb-7 text-[15px]" style={{ color: '#666' }}>
+            <p className="font-semibold leading-[1.7] mb-7 text-[15px] break-words" style={{ color: '#666' }}>
               {listing.description}
             </p>
           )}
