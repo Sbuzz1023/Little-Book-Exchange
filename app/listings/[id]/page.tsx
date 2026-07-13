@@ -1,9 +1,9 @@
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import { cookies } from 'next/headers'
-import Image from 'next/image'
 import Link from 'next/link'
 import HeartButton from '@/components/HeartButton'
+import PhotoGallery from './PhotoGallery'
 import { MOCK_LISTINGS, MOCK_CONVERSATIONS, MOCK_USER_ID } from '@/lib/mock-data'
 
 const COVER_GRADIENTS = [
@@ -182,15 +182,11 @@ export default async function ListingDetailPage({ params, searchParams }: { para
 
       <div className="bg-white rounded-[28px] overflow-hidden border-2 border-gray-100 shadow-[0_8px_0_#e5e7eb]">
         {/* Cover */}
-        <div
-          className="relative flex items-center justify-center text-[100px]"
-          style={{ height: 280, background: gradient }}
+        <PhotoGallery
+          photos={[listing.photo_url, listing.photo_url_2, listing.photo_url_3].filter(Boolean)}
+          alt={listing.title}
+          gradient={gradient}
         >
-          {listing.photo_url ? (
-            <Image src={listing.photo_url} alt={listing.title} fill className="object-contain" />
-          ) : (
-            <span>📚</span>
-          )}
           {!isOwner && (
             <HeartButton listingId={listing.id} isLoggedIn={isLoggedIn} initialSaved={initialSaved} />
           )}
@@ -203,7 +199,7 @@ export default async function ListingDetailPage({ params, searchParams }: { para
           >
             1 credit
           </span>
-        </div>
+        </PhotoGallery>
 
         {/* Body */}
         <div className="p-5 md:p-8">
