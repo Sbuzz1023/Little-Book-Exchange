@@ -187,7 +187,7 @@ export default async function ListingDetailPage({ params, searchParams }: { para
           style={{ height: 280, background: gradient }}
         >
           {listing.photo_url ? (
-            <Image src={listing.photo_url} alt={listing.title} fill className="object-cover" />
+            <Image src={listing.photo_url} alt={listing.title} fill className="object-contain" />
           ) : (
             <span>📚</span>
           )}
