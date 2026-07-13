@@ -150,6 +150,13 @@ ALTER TABLE listings
   ADD COLUMN IF NOT EXISTS pickup_description text;
 -- ──────────────────────────────────────────────────────────────────────────────
 
+-- ── Migration: multi-photo listings ───────────────────────────────────────────
+-- Run this block in Supabase SQL Editor:
+ALTER TABLE listings
+  ADD COLUMN IF NOT EXISTS photo_url_2 text,
+  ADD COLUMN IF NOT EXISTS photo_url_3 text;
+-- ──────────────────────────────────────────────────────────────────────────────
+
 -- ── Migration: saved listings ─────────────────────────────────────────────────
 -- Run this block in Supabase SQL Editor:
 create table if not exists saved_listings (

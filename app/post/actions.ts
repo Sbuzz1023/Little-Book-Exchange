@@ -5,6 +5,24 @@ import { redirect } from 'next/navigation'
 
 const DESCRIPTION_MAX_LENGTH = 500
 
+async function uploadPhoto(
+  supabase: ReturnType<typeof createClient>,
+  userId: string,
+  formData: FormData,
+  fieldName: string,
+  slot: number,
+): Promise<string | null> {
+  const file = formData.get(fieldName) as File
+  if (!file || file.size === 0) return null
+  const ext = file.name.split('.').pop()
+  const path = `${userId}/${Date.now()}-${slot}.${ext}`
+  const { data: upload, error: uploadError } = await supabase.storage.from('book-photos').upload(path, file)
+  if (uploadError) { console.error(`Upload error (${fieldName}):`, uploadError); return null }
+  if (!upload) return null
+  const { data: { publicUrl } } = supabase.storage.from('book-photos').getPublicUrl(path)
+  return publicUrl
+}
+
 export async function createListing(formData: FormData) {
   try {
     const supabase = createClient()
@@ -13,19 +31,11 @@ export async function createListing(formData: FormData) {
 
     const { data: prof } = await supabase.from('profiles').select('city').eq('id', user!.id).single()
 
-    let photo_url: string | null = null
-    const file = formData.get('photo') as File
-    console.log('Photo file:', file?.name, 'size:', file?.size, 'type:', file?.type)
-    if (file && file.size > 0) {
-      const ext = file.name.split('.').pop()
-      const path = `${user!.id}/${Date.now()}.${ext}`
-      const { data: upload, error: uploadError } = await supabase.storage.from('book-photos').upload(path, file)
-      console.log('Upload result:', upload, 'error:', uploadError)
-      if (upload) {
-        const { data: { publicUrl } } = supabase.storage.from('book-photos').getPublicUrl(path)
-        photo_url = publicUrl
-      }
-    }
+    const [photo_url, photo_url_2, photo_url_3] = await Promise.all([
+      uploadPhoto(supabase, user!.id, formData, 'photo', 1),
+      uploadPhoto(supabase, user!.id, formData, 'photo_2', 2),
+      uploadPhoto(supabase, user!.id, formData, 'photo_3', 3),
+    ])
 
     const priceRaw = formData.get('price') as string
     const price = priceRaw && priceRaw.trim() !== '' ? parseFloat(priceRaw) : null
@@ -40,6 +50,8 @@ export async function createListing(formData: FormData) {
       genre:       (formData.get('genre')       as string) || null,
       format:      (formData.get('format')      as string) || null,
       photo_url,
+      photo_url_2,
+      photo_url_3,
       city: prof?.city ?? '',
       pickup_description: (formData.get('pickup_description') as string) || null,
     }).select('id').single()
