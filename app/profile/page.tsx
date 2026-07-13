@@ -118,23 +118,26 @@ export default async function ProfilePage({
       if (merged.length > 0) {
         // Fetch listings separately
         const listingIds = [...new Set(merged.map((r: any) => r.listing_id).filter(Boolean))]
-        const { data: listingRows } = await supabase
-          .from('listings').select('id, title, author, photo_url, city, state, pickup_description').in('id', listingIds)
+        const { data: listingRows, error: listingsErr } = await supabase
+          .from('listings').select('id, title, author, photo_url, city, pickup_description').in('id', listingIds)
+        if (listingsErr) console.error('profile page: listings lookup failed', listingsErr)
         const lm: Record<string, any> = {}
         for (const l of listingRows ?? []) lm[l.id] = l
 
         // Fetch profiles separately
         const profileIds = [...new Set(merged.flatMap((r: any) => [r.buyer_id, r.seller_id]).filter(Boolean))]
-        const { data: profileRows } = await supabase
+        const { data: profileRows, error: profilesErr } = await supabase
           .from('profiles').select('id, username, city, state, phone, address, address_unit, share_address, pickup_description, share_pickup').in('id', profileIds)
+        if (profilesErr) console.error('profile page: profiles lookup failed', profilesErr)
         const pm: Record<string, any> = {}
         for (const p of profileRows ?? []) pm[p.id] = p
 
         // Fetch messages separately (used by the Messages tab)
-        const { data: messageRows } = await supabase
+        const { data: messageRows, error: messagesErr } = await supabase
           .from('messages').select('id, conversation_id, body, sender_id, created_at')
           .in('conversation_id', merged.map((r: any) => r.id))
           .order('created_at', { ascending: true })
+        if (messagesErr) console.error('profile page: messages lookup failed', messagesErr)
         const mm: Record<string, any[]> = {}
         for (const m of messageRows ?? []) (mm[m.conversation_id] ??= []).push(m)
 
