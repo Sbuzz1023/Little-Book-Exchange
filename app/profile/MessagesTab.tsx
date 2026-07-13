@@ -86,10 +86,12 @@ export default function MessagesTab({
         event: 'INSERT', schema: 'public', table: 'messages',
         filter: `conversation_id=eq.${convo.id}`,
       }, (payload: any) => {
-        setLocalMessages(prev => ({
-          ...prev,
-          [convo.id]: [...(prev[convo.id] ?? convo.messages), payload.new as MessageRow],
-        }))
+        setLocalMessages(prev => {
+          const existing = prev[convo.id] ?? convo.messages
+          const incoming = payload.new as MessageRow
+          if (existing.some(m => m.id === incoming.id)) return prev
+          return { ...prev, [convo.id]: [...existing, incoming] }
+        })
       })
       .subscribe()
     return () => { supabase.removeChannel(channel) }
@@ -119,7 +121,17 @@ export default function MessagesTab({
 
     try {
       const supabase = createClient()
-      await supabase.from('messages').insert({ conversation_id: convo.id, sender_id: userId, body: text })
+      const { data, error } = await supabase
+        .from('messages')
+        .insert({ conversation_id: convo.id, sender_id: userId, body: text })
+        .select()
+        .single()
+      if (error) throw error
+      setLocalMessages(prev => {
+        const existing = prev[convo.id] ?? convo.messages
+        if (existing.some(m => m.id === data.id)) return prev
+        return { ...prev, [convo.id]: [...existing, data as MessageRow] }
+      })
     } catch {}
   }
 

@@ -89,8 +89,11 @@ describe('MessagesTab', () => {
     expect(createClient).not.toHaveBeenCalled()
   })
 
-  it('non-demo mode: sending a message inserts a row via Supabase', async () => {
-    const insert = vi.fn(() => Promise.resolve({ error: null }))
+  it('non-demo mode: sending a message inserts a row via Supabase and shows it immediately', async () => {
+    const inserted = { id: 'm3', conversation_id: 'convo-1', sender_id: 'me', body: 'See you Saturday!', created_at: '2026-07-01T10:10:00.000Z' }
+    const single = vi.fn(() => Promise.resolve({ data: inserted, error: null }))
+    const select = vi.fn(() => ({ single }))
+    const insert = vi.fn(() => ({ select }))
     vi.mocked(createClient).mockReturnValue({
       from: vi.fn(() => ({ insert })),
       channel: vi.fn(() => ({ on: vi.fn().mockReturnThis(), subscribe: vi.fn().mockReturnThis() })),
@@ -103,8 +106,9 @@ describe('MessagesTab', () => {
     const input = container.querySelector('input') as HTMLInputElement
     fireEvent.change(input, { target: { value: 'See you Saturday!' } })
     fireEvent.click(container.querySelector('button[type="submit"]')!)
-    await waitFor(() => expect(insert).toHaveBeenCalledWith({
+    expect(insert).toHaveBeenCalledWith({
       conversation_id: 'convo-1', sender_id: 'me', body: 'See you Saturday!',
-    }))
+    })
+    await waitFor(() => expect(container.textContent).toContain('See you Saturday!'))
   })
 })
