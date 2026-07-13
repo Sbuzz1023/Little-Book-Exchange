@@ -74,8 +74,6 @@ export default function Nav({ userName: serverUserName, isAdmin }: { userName?: 
               <span className="w-px h-5 bg-gray-200" />
               <Link href="/profile" className="font-bold text-[15px] text-[#2d2d2d] hover:text-bk-orange transition-colors">Dashboard</Link>
               <span className="w-px h-5 bg-gray-200" />
-              <Link href="/messages" className="font-bold text-[15px] text-[#2d2d2d] hover:text-bk-orange transition-colors">Messages</Link>
-              <span className="w-px h-5 bg-gray-200" />
 
               {/* Avatar dropdown — uses native <details> toggle, no JS state needed */}
               <details ref={detailsRef} style={{ position: 'relative' }}>
@@ -182,9 +180,6 @@ export default function Nav({ userName: serverUserName, isAdmin }: { userName?: 
               </Link>
               <Link href="/profile" className="flex items-center gap-3 px-5 py-4 font-bold text-[15px] text-[#2d2d2d] border-b border-gray-100 hover:bg-[#fff7ed] hover:text-bk-orange transition-colors md:hidden">
                 📊 Dashboard
-              </Link>
-              <Link href="/messages" className="flex items-center gap-3 px-5 py-4 font-bold text-[15px] text-[#2d2d2d] border-b border-gray-100 hover:bg-[#fff7ed] hover:text-bk-orange transition-colors md:hidden">
-                💬 Messages
               </Link>
               <a href="/auth/signout" onClick={clearDemoUser} className="flex items-center gap-3 px-5 py-4 font-bold text-[15px] text-red-400 hover:bg-red-50 transition-colors">
                 🚪 Sign Out
