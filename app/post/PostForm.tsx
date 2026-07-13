@@ -23,6 +23,19 @@ type Props = {
   city?: string
   action: (formData: FormData) => Promise<void>
   error?: string
+  initialValues?: {
+    title: string
+    author: string
+    condition: string
+    genre: string
+    format: string
+    description: string | null
+    pickup_description: string | null
+    photo_url: string | null
+    photo_url_2: string | null
+    photo_url_3: string | null
+  }
+  submitLabel?: string
 }
 
 function SectionHeading({ emoji, title }: { emoji: string; title: string }) {
@@ -127,16 +140,16 @@ const inputStyle = {
   outline: 'none',
 } as React.CSSProperties
 
-export default function PostForm({ city, action, error }: Props) {
-  const [genre, setGenre] = useState('Fiction')
-  const [format, setFormat] = useState('Paperback')
-  const [title, setTitle] = useState('')
-  const [author, setAuthor] = useState('')
-  const [condition, setCondition] = useState('Good')
-  const [description, setDescription] = useState('')
-  const [photoPreview, setPhotoPreview] = useState<string | null>(null)
-  const [photo2Preview, setPhoto2Preview] = useState<string | null>(null)
-  const [photo3Preview, setPhoto3Preview] = useState<string | null>(null)
+export default function PostForm({ city, action, error, initialValues, submitLabel }: Props) {
+  const [genre, setGenre] = useState(initialValues?.genre ?? 'Fiction')
+  const [format, setFormat] = useState(initialValues?.format ?? 'Paperback')
+  const [title, setTitle] = useState(initialValues?.title ?? '')
+  const [author, setAuthor] = useState(initialValues?.author ?? '')
+  const [condition, setCondition] = useState(initialValues?.condition ?? 'Good')
+  const [description, setDescription] = useState(initialValues?.description ?? '')
+  const [photoPreview, setPhotoPreview] = useState<string | null>(initialValues?.photo_url ?? null)
+  const [photo2Preview, setPhoto2Preview] = useState<string | null>(initialValues?.photo_url_2 ?? null)
+  const [photo3Preview, setPhoto3Preview] = useState<string | null>(initialValues?.photo_url_3 ?? null)
 
   function makePhotoHandler(setPreview: (url: string | null) => void) {
     return (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -307,6 +320,7 @@ export default function PostForm({ city, action, error }: Props) {
           <input
             name="pickup_description"
             type="text"
+            defaultValue={initialValues?.pickup_description ?? ''}
             placeholder="e.g. front porch, side gate — overrides your profile default"
             style={inputStyle}
           />
@@ -397,7 +411,7 @@ export default function PostForm({ city, action, error }: Props) {
             fontFamily: 'inherit',
           }}
         >
-          Post My Book →
+          {submitLabel ?? 'Post My Book →'}
         </button>
       </div>
     </form>
