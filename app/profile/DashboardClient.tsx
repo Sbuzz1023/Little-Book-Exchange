@@ -4,8 +4,9 @@ import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import ProfileCard from './ProfileCard'
+import MessagesTab from './MessagesTab'
 
-type Tab = 'listings' | 'exchanges' | 'tbr' | 'saved' | 'wallet' | 'account'
+type Tab = 'listings' | 'exchanges' | 'tbr' | 'saved' | 'wallet' | 'account' | 'messages'
 
 type Listing = {
   id: string
@@ -69,6 +70,7 @@ type Exchange = {
     pickup_description?: string | null
     share_pickup?: boolean | null
   }
+  messages: { id: string; body: string; sender_id: string; created_at: string }[]
 }
 
 type Props = {
@@ -103,6 +105,8 @@ type Props = {
   defaultTab?: Tab
   queryError?: string | null
   tbrError?: string | null
+  isDemo: boolean
+  initialConversationId?: string | null
 }
 
 const TABS = [
@@ -112,6 +116,7 @@ const TABS = [
   { id: 'saved' as Tab,      icon: '❤️',  label: 'Saved Books',  desc: 'Books you hearted',  color: '#e11d48', bg: '#fff1f2', border: '#fecdd3', shadow: '#fda4af' },
   { id: 'wallet' as Tab,     icon: '💳', label: 'Wallet',       desc: 'Credits & history',  color: '#059669', bg: '#ecfdf5', border: '#a7f3d0', shadow: '#6ee7b7' },
   { id: 'account' as Tab,    icon: '👤', label: 'Profile',      desc: 'Your profile',       color: '#2563eb', bg: '#eff6ff', border: '#bfdbfe', shadow: '#93c5fd' },
+  { id: 'messages' as Tab,   icon: '💬', label: 'Messages',     desc: 'Chat with neighbors', color: '#0ea5e9', bg: '#f0f9ff', border: '#bae6fd', shadow: '#7dd3fc' },
 ]
 
 const COVER_GRADIENTS = [
@@ -149,8 +154,9 @@ const MOCK_TRANSACTIONS = [
   { id: '3', type: 'earn',     desc: 'Book claimed by neighbor',  amount: '+1', date: 'Jun 22, 2026', color: '#059669' },
 ]
 
-export default function DashboardClient({ profile, listings, exchanges, savedListings, tbrEntries, updateAction, updateListingStatus, notifyPickedUp, confirmExchange, cancelPurchase, removeSavedListing, addTbrEntry, removeTbrEntry, success, defaultTab, queryError, tbrError }: Props) {
+export default function DashboardClient({ profile, listings, exchanges, savedListings, tbrEntries, updateAction, updateListingStatus, notifyPickedUp, confirmExchange, cancelPurchase, removeSavedListing, addTbrEntry, removeTbrEntry, success, defaultTab, queryError, tbrError, isDemo, initialConversationId }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>(defaultTab ?? 'listings')
+  const [selectedConversationId, setSelectedConversationId] = useState<string | null>(initialConversationId ?? null)
 
   const tab = TABS.find(t => t.id === activeTab)!
 
@@ -174,7 +180,7 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
       </div>
 
       {/* Tab nav — 3 cols mobile, 6 cols desktop */}
-      <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
+      <div className="grid grid-cols-4 md:grid-cols-7 gap-3">
         {TABS.map(t => {
           const isActive = activeTab === t.id
           return (
@@ -393,11 +399,14 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
                 </div>
 
                 {/* Message button always visible */}
-                <Link href={`/messages/${ex.id}`}
+                <button
+                  type="button"
+                  onClick={() => { setActiveTab('messages'); setSelectedConversationId(ex.id) }}
                   className="font-extrabold text-[11px] text-white whitespace-nowrap shrink-0"
-                  style={{ background: '#0d9488', padding: '6px 12px', borderRadius: 999, boxShadow: '0 2px 0 #0f766e' }}>
+                  style={{ background: '#0d9488', padding: '6px 12px', borderRadius: 999, boxShadow: '0 2px 0 #0f766e', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+                >
                   💬 Message
-                </Link>
+                </button>
               </div>
 
               {/* Action row below — status-driven */}
@@ -715,6 +724,17 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
             </form>
           </div>
         </div>
+      )}
+
+      {/* ── MESSAGES ── */}
+      {activeTab === 'messages' && (
+        <MessagesTab
+          exchanges={exchanges}
+          userId={profile?.id ?? ''}
+          isDemo={isDemo}
+          selectedId={selectedConversationId}
+          onSelectId={setSelectedConversationId}
+        />
       )}
 
     </div>
