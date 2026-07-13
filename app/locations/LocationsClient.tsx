@@ -368,7 +368,7 @@ export default function LocationsClient({ initialLocations, isLoggedIn }: {
           </div>
 
           {/* MAP — right panel */}
-          <div className="order-1 lg:order-2 lg:flex-1 relative h-[300px] lg:h-auto">
+          <div className="order-1 lg:order-2 lg:flex-1 relative z-0 h-[300px] lg:h-auto">
             <MapView
               locations={filteredLocations}
               pendingPin={pendingPin}
