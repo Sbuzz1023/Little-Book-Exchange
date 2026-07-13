@@ -726,8 +726,9 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
         </div>
       )}
 
-      {/* ── MESSAGES ── */}
-      {activeTab === 'messages' && (
+      {/* ── MESSAGES — always mounted (not conditionally rendered like the other tabs) so
+          MessagesTab's local message state and realtime subscription survive tab switches ── */}
+      <div hidden={activeTab !== 'messages'}>
         <MessagesTab
           exchanges={exchanges}
           userId={profile?.id ?? ''}
@@ -735,7 +736,7 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
           selectedId={selectedConversationId}
           onSelectId={setSelectedConversationId}
         />
-      )}
+      </div>
 
     </div>
   )
