@@ -82,7 +82,7 @@ export default async function ListingDetailPage({ params, searchParams }: { para
     if (isDemo) {
       const { MOCK_CONVERSATIONS: convos } = await import('@/lib/mock-data')
       const mock = convos.find(c => c.listing_id === params.id)
-      redirect(`/messages/${mock?.id ?? 'mock-convo-1'}`)
+      redirect(`/profile?tab=messages&conversation=${mock?.id ?? 'mock-convo-1'}`)
     }
 
     try {
@@ -93,7 +93,7 @@ export default async function ListingDetailPage({ params, searchParams }: { para
 
       const { data: existing } = await supabase
         .from('conversations').select('id').eq('listing_id', listing.id).eq('buyer_id', u!.id).maybeSingle()
-      if (existing) redirect(`/messages/${existing.id}`)
+      if (existing) redirect(`/profile?tab=messages&conversation=${existing.id}`)
 
       const sellerId = (listing.profiles as any)?.id ?? listing.user_id
       const { data: convo } = await supabase
@@ -101,12 +101,12 @@ export default async function ListingDetailPage({ params, searchParams }: { para
         .insert({ listing_id: listing.id, buyer_id: u!.id, seller_id: sellerId })
         .select('id').single()
 
-      redirect(`/messages/${convo!.id}`)
+      redirect(`/profile?tab=messages&conversation=${convo!.id}`)
     } catch (err: any) {
       if (err?.digest?.startsWith('NEXT_REDIRECT')) throw err
       const { MOCK_CONVERSATIONS: convos } = await import('@/lib/mock-data')
       const mock = convos.find(c => c.listing_id === params.id)
-      redirect(`/messages/${mock?.id ?? 'mock-convo-1'}`)
+      redirect(`/profile?tab=messages&conversation=${mock?.id ?? 'mock-convo-1'}`)
     }
   }
 
