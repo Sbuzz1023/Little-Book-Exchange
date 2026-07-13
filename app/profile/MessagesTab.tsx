@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
+import { createClient } from '@/lib/supabase/client'
 
 export type MessageRow = { id: string; body: string; sender_id: string; created_at: string }
 
@@ -78,25 +79,20 @@ export default function MessagesTab({
     setLocalMessages(prev => (prev[convo.id] ? prev : { ...prev, [convo.id]: convo.messages }))
 
     if (isDemo) return
-    let cleanup: (() => void) | undefined
-    ;(async () => {
-      const { createClient } = await import('@/lib/supabase/client')
-      const supabase = createClient()
-      const channel = supabase
-        .channel(`messages:${convo.id}`)
-        .on('postgres_changes', {
-          event: 'INSERT', schema: 'public', table: 'messages',
-          filter: `conversation_id=eq.${convo.id}`,
-        }, (payload: any) => {
-          setLocalMessages(prev => ({
-            ...prev,
-            [convo.id]: [...(prev[convo.id] ?? convo.messages), payload.new as MessageRow],
-          }))
-        })
-        .subscribe()
-      cleanup = () => supabase.removeChannel(channel)
-    })()
-    return () => cleanup?.()
+    const supabase = createClient()
+    const channel = supabase
+      .channel(`messages:${convo.id}`)
+      .on('postgres_changes', {
+        event: 'INSERT', schema: 'public', table: 'messages',
+        filter: `conversation_id=eq.${convo.id}`,
+      }, (payload: any) => {
+        setLocalMessages(prev => ({
+          ...prev,
+          [convo.id]: [...(prev[convo.id] ?? convo.messages), payload.new as MessageRow],
+        }))
+      })
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [convo?.id, isDemo])
 
@@ -122,7 +118,6 @@ export default function MessagesTab({
     }
 
     try {
-      const { createClient } = await import('@/lib/supabase/client')
       const supabase = createClient()
       await supabase.from('messages').insert({ conversation_id: convo.id, sender_id: userId, body: text })
     } catch {}
