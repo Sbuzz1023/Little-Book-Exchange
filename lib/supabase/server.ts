@@ -17,6 +17,12 @@ export function createClient() {
           } catch {}
         },
       },
+      global: {
+        // Next.js's Data Cache keys fetches by URL/method only, not headers —
+        // without this, one user's auth/session response gets cached and served
+        // to every other user hitting the same Supabase endpoint.
+        fetch: (input, init) => fetch(input, { ...init, cache: 'no-store' }),
+      },
     }
   )
 }
