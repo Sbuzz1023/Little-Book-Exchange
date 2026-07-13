@@ -10,7 +10,7 @@ import { addTbrEntry, removeTbrEntry } from '@/lib/actions/tbrEntries'
 export default async function ProfilePage({
   searchParams,
 }: {
-  searchParams: { success?: string; error?: string; demo_pending?: string; tbr_error?: string }
+  searchParams: { success?: string; error?: string; demo_pending?: string; tbr_error?: string; tab?: string; conversation?: string }
 }) {
   const cookieStore = cookies()
   const demo = !process.env.NEXT_PUBLIC_SUPABASE_URL?.startsWith('http') ||
@@ -130,6 +130,14 @@ export default async function ProfilePage({
         const pm: Record<string, any> = {}
         for (const p of profileRows ?? []) pm[p.id] = p
 
+        // Fetch messages separately (used by the Messages tab)
+        const { data: messageRows } = await supabase
+          .from('messages').select('id, conversation_id, body, sender_id, created_at')
+          .in('conversation_id', merged.map((r: any) => r.id))
+          .order('created_at', { ascending: true })
+        const mm: Record<string, any[]> = {}
+        for (const m of messageRows ?? []) (mm[m.conversation_id] ??= []).push(m)
+
         exchanges = merged.map((row: any) => {
           const sellerData = pm[row.seller_id] ?? { username: null, city: null, state: null, phone: null }
           const isConfirmed = (row.exchange_status ?? 'none') === 'confirmed'
@@ -144,6 +152,7 @@ export default async function ProfilePage({
               address_unit:       isConfirmed ? sellerData.address_unit       : null,
               pickup_description: isConfirmed ? sellerData.pickup_description : null,
             },
+            messages: mm[row.id] ?? [],
           }
         })
       } else {
@@ -173,9 +182,11 @@ export default async function ProfilePage({
       addTbrEntry={addTbrEntry}
       removeTbrEntry={removeTbrEntry}
       success={!!searchParams.success}
-      defaultTab={searchParams.demo_pending ? 'exchanges' : 'listings'}
+      defaultTab={searchParams.tab === 'messages' ? 'messages' : (searchParams.demo_pending ? 'exchanges' : 'listings')}
       queryError={queryError}
       tbrError={searchParams.tbr_error ?? null}
+      isDemo={demo}
+      initialConversationId={searchParams.conversation ?? null}
     />
   )
 }
