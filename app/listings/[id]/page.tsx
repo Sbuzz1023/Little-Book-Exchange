@@ -75,6 +75,7 @@ export default async function ListingDetailPage({ params, searchParams }: { para
     'use server'
     const { redirect } = await import('next/navigation')
     const { cookies } = await import('next/headers')
+    const { revalidatePath } = await import('next/cache')
 
     const isDemo = !process.env.NEXT_PUBLIC_SUPABASE_URL?.startsWith('http') ||
       !!cookies().get('lbe_demo_user')
@@ -82,6 +83,7 @@ export default async function ListingDetailPage({ params, searchParams }: { para
     if (isDemo) {
       const { MOCK_CONVERSATIONS: convos } = await import('@/lib/mock-data')
       const mock = convos.find(c => c.listing_id === params.id)
+      revalidatePath('/profile')
       redirect(`/profile?tab=messages&conversation=${mock?.id ?? 'mock-convo-1'}`)
     }
 
@@ -93,7 +95,10 @@ export default async function ListingDetailPage({ params, searchParams }: { para
 
       const { data: existing } = await supabase
         .from('conversations').select('id').eq('listing_id', listing.id).eq('buyer_id', u!.id).maybeSingle()
-      if (existing) redirect(`/profile?tab=messages&conversation=${existing.id}`)
+      if (existing) {
+        revalidatePath('/profile')
+        redirect(`/profile?tab=messages&conversation=${existing.id}`)
+      }
 
       const sellerId = (listing.profiles as any)?.id ?? listing.user_id
       const { data: convo } = await supabase
@@ -101,11 +106,13 @@ export default async function ListingDetailPage({ params, searchParams }: { para
         .insert({ listing_id: listing.id, buyer_id: u!.id, seller_id: sellerId })
         .select('id').single()
 
+      revalidatePath('/profile')
       redirect(`/profile?tab=messages&conversation=${convo!.id}`)
     } catch (err: any) {
       if (err?.digest?.startsWith('NEXT_REDIRECT')) throw err
       const { MOCK_CONVERSATIONS: convos } = await import('@/lib/mock-data')
       const mock = convos.find(c => c.listing_id === params.id)
+      revalidatePath('/profile')
       redirect(`/profile?tab=messages&conversation=${mock?.id ?? 'mock-convo-1'}`)
     }
   }
