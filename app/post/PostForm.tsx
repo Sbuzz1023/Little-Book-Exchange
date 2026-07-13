@@ -48,6 +48,72 @@ function FieldLabel({ children, optional }: { children: React.ReactNode; optiona
   )
 }
 
+function PhotoUploadSlot({
+  name, label, preview, onChange, size,
+}: {
+  name: string
+  label: string
+  preview: string | null
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void
+  size: 'large' | 'small'
+}) {
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  return (
+    <div
+      style={{
+        border: `2.5px dashed ${preview ? '#0d9488' : '#fed7aa'}`,
+        borderRadius: 14,
+        padding: preview ? 0 : (size === 'large' ? 28 : 16),
+        textAlign: 'center',
+        cursor: 'pointer',
+        background: preview ? '#000' : '#fffbf0',
+        position: 'relative',
+        overflow: 'hidden',
+        minHeight: preview ? (size === 'large' ? 180 : 100) : undefined,
+      }}
+      onClick={() => inputRef.current?.click()}
+    >
+      {preview ? (
+        <>
+          <img
+            src={preview}
+            alt={`${label} preview`}
+            style={{ width: '100%', maxHeight: size === 'large' ? 260 : 140, objectFit: 'contain', display: 'block' }}
+          />
+          <div style={{
+            position: 'absolute', bottom: 8, right: 8,
+            background: 'rgba(0,0,0,0.6)', color: '#fff',
+            padding: '4px 10px', borderRadius: 999,
+            fontSize: 11, fontWeight: 700,
+          }}>
+            📸 Change
+          </div>
+        </>
+      ) : (
+        <>
+          <div style={{ fontSize: size === 'large' ? 36 : 22, marginBottom: 8 }}>📸</div>
+          <p className="text-[14px] font-bold" style={{ color: '#aaa' }}>
+            <span style={{ color: '#f97316', fontWeight: 800 }}>Click to upload</span> {label}
+          </p>
+          {size === 'large' && (
+            <p className="text-[12px] font-semibold mt-1.5" style={{ color: '#aaa' }}>JPG or PNG · Max 5MB</p>
+          )}
+        </>
+      )}
+      <input
+        ref={inputRef}
+        name={name}
+        type="file"
+        accept="image/*"
+        onChange={onChange}
+        className="absolute inset-0 opacity-0 cursor-pointer"
+        style={{ width: '100%', height: '100%' }}
+      />
+    </div>
+  )
+}
+
 const inputStyle = {
   width: '100%',
   border: '2px solid #fed7aa',
@@ -69,13 +135,15 @@ export default function PostForm({ city, action, error }: Props) {
   const [condition, setCondition] = useState('Good')
   const [description, setDescription] = useState('')
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [photo2Preview, setPhoto2Preview] = useState<string | null>(null)
+  const [photo3Preview, setPhoto3Preview] = useState<string | null>(null)
 
-  function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) { setPhotoPreview(null); return }
-    const url = URL.createObjectURL(file)
-    setPhotoPreview(url)
+  function makePhotoHandler(setPreview: (url: string | null) => void) {
+    return (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0]
+      if (!file) { setPreview(null); return }
+      setPreview(URL.createObjectURL(file))
+    }
   }
 
   return (
@@ -268,54 +336,30 @@ export default function PostForm({ city, action, error }: Props) {
         {/* Photo */}
         <SectionHeading emoji="📸" title="Photo" />
 
-        <div
-          style={{
-            border: `2.5px dashed ${photoPreview ? '#0d9488' : '#fed7aa'}`,
-            borderRadius: 14,
-            padding: photoPreview ? 0 : 28,
-            textAlign: 'center',
-            cursor: 'pointer',
-            background: photoPreview ? '#000' : '#fffbf0',
-            marginBottom: 16,
-            position: 'relative',
-            overflow: 'hidden',
-            minHeight: photoPreview ? 180 : undefined,
-          }}
-          onClick={() => fileInputRef.current?.click()}
-        >
-          {photoPreview ? (
-            <>
-              <img
-                src={photoPreview}
-                alt="Book preview"
-                style={{ width: '100%', maxHeight: 260, objectFit: 'contain', display: 'block' }}
-              />
-              <div style={{
-                position: 'absolute', bottom: 8, right: 8,
-                background: 'rgba(0,0,0,0.6)', color: '#fff',
-                padding: '4px 10px', borderRadius: 999,
-                fontSize: 11, fontWeight: 700,
-              }}>
-                📸 Change photo
-              </div>
-            </>
-          ) : (
-            <>
-              <div style={{ fontSize: 36, marginBottom: 8 }}>📸</div>
-              <p className="text-[14px] font-bold" style={{ color: '#aaa' }}>
-                <span style={{ color: '#f97316', fontWeight: 800 }}>Click to upload</span> a photo of your book
-              </p>
-              <p className="text-[12px] font-semibold mt-1.5" style={{ color: '#aaa' }}>JPG or PNG · Max 5MB</p>
-            </>
-          )}
-          <input
-            ref={fileInputRef}
+        <div style={{ marginBottom: 12 }}>
+          <PhotoUploadSlot
             name="photo"
-            type="file"
-            accept="image/*"
-            onChange={handlePhotoChange}
-            className="absolute inset-0 opacity-0 cursor-pointer"
-            style={{ width: '100%', height: '100%' }}
+            label="a cover photo of your book"
+            preview={photoPreview}
+            onChange={makePhotoHandler(setPhotoPreview)}
+            size="large"
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-3" style={{ marginBottom: 16 }}>
+          <PhotoUploadSlot
+            name="photo_2"
+            label="Photo 2"
+            preview={photo2Preview}
+            onChange={makePhotoHandler(setPhoto2Preview)}
+            size="small"
+          />
+          <PhotoUploadSlot
+            name="photo_3"
+            label="Photo 3"
+            preview={photo3Preview}
+            onChange={makePhotoHandler(setPhoto3Preview)}
+            size="small"
           />
         </div>
 
