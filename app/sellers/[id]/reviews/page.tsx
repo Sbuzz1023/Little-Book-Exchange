@@ -7,7 +7,7 @@ export default async function SellerReviewsPage({ params }: { params: { id: stri
   const supabase = createClient()
 
   const { data: seller } = await supabase
-    .from('profiles').select('id, username, name').eq('id', params.id).single()
+    .from('profiles').select('id, username').eq('id', params.id).single()
   if (!seller) notFound()
 
   const { data: reviewRows } = await supabase
@@ -18,10 +18,10 @@ export default async function SellerReviewsPage({ params }: { params: { id: stri
 
   const reviewerIds = [...new Set((reviewRows ?? []).map((r: any) => r.reviewer_id))]
   const { data: reviewerRows } = reviewerIds.length > 0
-    ? await supabase.from('profiles').select('id, username, name').in('id', reviewerIds)
+    ? await supabase.from('profiles').select('id, username').in('id', reviewerIds)
     : { data: [] as any[] }
   const reviewerMap: Record<string, string> = {}
-  for (const p of reviewerRows ?? []) reviewerMap[p.id] = p.username || p.name || 'Neighbor'
+  for (const p of reviewerRows ?? []) reviewerMap[p.id] = p.username || 'Neighbor'
 
   const summary = averageRating((reviewRows ?? []).map((r: any) => r.rating))
 
@@ -32,7 +32,7 @@ export default async function SellerReviewsPage({ params }: { params: { id: stri
       </Link>
 
       <h1 className="font-display text-[28px] mb-1" style={{ color: '#1a1a1a' }}>
-        {seller.username || seller.name || 'Neighbor'}'s Reviews
+        {seller.username || 'Neighbor'}'s Reviews
       </h1>
       <p className="font-bold text-[14px] mb-8" style={{ color: '#aaa' }}>
         {summary ? `★ ${summary.average.toFixed(1)} average from ${summary.count} review${summary.count !== 1 ? 's' : ''}` : 'No reviews yet'}

@@ -609,9 +609,9 @@ export default function AdminClient() {
         if (!data || data.length === 0) return
 
         const profileIds = [...new Set(data.flatMap(r => [r.seller_id, r.reviewer_id]))]
-        const { data: profileRows } = await supabase.from('profiles').select('id, username, name').in('id', profileIds)
+        const { data: profileRows } = await supabase.from('profiles').select('id, username').in('id', profileIds)
         const pm: Record<string, string> = {}
-        for (const p of profileRows ?? []) pm[p.id] = (p as any).username || (p as any).name || 'Unknown'
+        for (const p of profileRows ?? []) pm[p.id] = (p as any).username || 'Unknown'
 
         const convoIds = [...new Set(data.map(r => r.conversation_id))]
         const { data: convoRows } = await supabase.from('conversations').select('id, listing_id').in('id', convoIds)
