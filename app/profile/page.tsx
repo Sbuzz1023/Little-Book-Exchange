@@ -3,7 +3,9 @@ import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import DashboardClient from './DashboardClient'
 import { MOCK_PROFILE, MOCK_LISTINGS, MOCK_USER_ID, MOCK_CONVERSATIONS } from '@/lib/mock-data'
-import { updateProfile, updateListingStatus, notifyPickedUp, confirmExchange, cancelPurchase } from './actions'
+import { updateProfile, updateListingStatus, completeExchange, hideExchangeHistory, confirmExchange, cancelPurchase } from './actions'
+import { submitReview } from '@/lib/actions/reviews'
+import { averageRating } from '@/lib/reviewAverages'
 import { removeSavedListing } from '@/lib/actions/savedListings'
 import { addTbrEntry, removeTbrEntry } from '@/lib/actions/tbrEntries'
 
@@ -141,6 +143,19 @@ export default async function ProfilePage({
         const mm: Record<string, any[]> = {}
         for (const m of messageRows ?? []) (mm[m.conversation_id] ??= []).push(m)
 
+        // Reviews: which completed exchanges already have a buyer review, and
+        // each seller's aggregate rating across all their completed sales
+        const completedIds = merged.filter((r: any) => r.exchange_status === 'completed').map((r: any) => r.id)
+        const { data: reviewedRows } = completedIds.length > 0
+          ? await supabase.from('reviews').select('conversation_id').in('conversation_id', completedIds)
+          : { data: [] as any[] }
+        const reviewedSet = new Set((reviewedRows ?? []).map((r: any) => r.conversation_id))
+
+        const sellerIds = [...new Set(merged.map((r: any) => r.seller_id))]
+        const { data: ratingRows } = await supabase.from('reviews').select('seller_id, rating').in('seller_id', sellerIds)
+        const ratingsBySeller: Record<string, number[]> = {}
+        for (const r of ratingRows ?? []) (ratingsBySeller[r.seller_id] ??= []).push(r.rating)
+
         exchanges = merged.map((row: any) => {
           const sellerData = pm[row.seller_id] ?? { username: null, city: null, state: null, phone: null }
           const isConfirmed = (row.exchange_status ?? 'none') === 'confirmed'
@@ -156,6 +171,8 @@ export default async function ProfilePage({
               pickup_description: isConfirmed ? sellerData.pickup_description : null,
             },
             messages: mm[row.id] ?? [],
+            sellerRating: averageRating(ratingsBySeller[row.seller_id] ?? []),
+            reviewed: reviewedSet.has(row.id),
           }
         })
       } else {
@@ -178,7 +195,9 @@ export default async function ProfilePage({
       tbrEntries={tbrEntries}
       updateAction={updateProfile}
       updateListingStatus={updateListingStatus}
-      notifyPickedUp={notifyPickedUp}
+      completeExchange={completeExchange}
+      hideExchangeHistory={hideExchangeHistory}
+      submitReview={submitReview}
       confirmExchange={confirmExchange}
       cancelPurchase={cancelPurchase}
       removeSavedListing={removeSavedListing}
