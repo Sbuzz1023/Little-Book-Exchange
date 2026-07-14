@@ -1,6 +1,7 @@
 export type Profile = {
   id: string
   name: string
+  username?: string
   city: string
   created_at: string
 }

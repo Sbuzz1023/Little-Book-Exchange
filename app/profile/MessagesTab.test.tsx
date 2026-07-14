@@ -22,6 +22,7 @@ const exchanges: MessagesTabExchange[] = [
     listings: { title: 'Sapiens', author: 'Yuval Noah Harari' },
     buyer: { name: 'Me' }, seller: { name: 'Neighbor B' },
     messages: [],
+    sellerRating: { average: 4.5, count: 8 },
   },
 ]
 
@@ -110,5 +111,20 @@ describe('MessagesTab', () => {
       conversation_id: 'convo-1', sender_id: 'me', body: 'See you Saturday!',
     })
     await waitFor(() => expect(container.textContent).toContain('See you Saturday!'))
+  })
+
+  it('shows the seller\'s rating badge next to their name when the other party is the seller', () => {
+    const { container } = render(
+      <MessagesTab exchanges={exchanges} userId="me" isDemo={true} selectedId="convo-2" onSelectId={vi.fn()} />
+    )
+    expect(container.textContent).toContain('4.5')
+    expect(container.textContent).toContain('(8)')
+  })
+
+  it('does not show a rating badge when the other party is the buyer, not the seller', () => {
+    const { container } = render(
+      <MessagesTab exchanges={exchanges} userId="me" isDemo={true} selectedId="convo-1" onSelectId={vi.fn()} />
+    )
+    expect(container.textContent).not.toContain('★')
   })
 })

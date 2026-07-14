@@ -35,16 +35,39 @@ export async function updateListingStatus(formData: FormData) {
   redirect('/profile')
 }
 
-export async function notifyPickedUp(formData: FormData) {
+export async function completeExchange(formData: FormData) {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/auth/signin')
   const conversationId = formData.get('conversation_id') as string
+
+  await supabase.from('conversations')
+    .update({ exchange_status: 'completed', completed_at: new Date().toISOString() })
+    .eq('id', conversationId)
+    .eq('exchange_status', 'confirmed')
+    .or(`buyer_id.eq.${user.id},seller_id.eq.${user.id}`)
+
   await supabase.from('messages').insert({
     conversation_id: conversationId,
     sender_id: user.id,
     body: '📚 Book picked up! Thanks so much!',
   })
+
+  redirect('/profile?tab=exchanges')
+}
+
+export async function hideExchangeHistory(formData: FormData) {
+  const supabase = createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/auth/signin')
+  const conversationId = formData.get('conversation_id') as string
+  const role = formData.get('role') as 'buyer' | 'seller'
+
+  await supabase.from('conversations')
+    .update(role === 'seller' ? { seller_hidden: true } : { buyer_hidden: true })
+    .eq('id', conversationId)
+    .eq(role === 'seller' ? 'seller_id' : 'buyer_id', user.id)
+
   redirect('/profile?tab=exchanges')
 }
 

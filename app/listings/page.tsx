@@ -5,6 +5,8 @@ import Image from 'next/image'
 import HeartButton from '@/components/HeartButton'
 import type { Listing } from '@/lib/types'
 import { MOCK_LISTINGS } from '@/lib/mock-data'
+import { averageRating } from '@/lib/reviewAverages'
+import { StarRatingBadge } from '@/components/StarRating'
 
 const COVER_GRADIENTS = [
   'linear-gradient(145deg, #fde68a, #fca5a5)',
@@ -80,6 +82,22 @@ async function getUserSaveContext(): Promise<{ isLoggedIn: boolean; userId: stri
   }
 }
 
+async function getSellerRatings(listings: Listing[]): Promise<Record<string, { average: number; count: number } | null>> {
+  const sellerIds = [...new Set(listings.map(l => l.user_id))]
+  if (sellerIds.length === 0) return {}
+  try {
+    const supabase = createClient()
+    const { data } = await supabase.from('reviews').select('seller_id, rating').in('seller_id', sellerIds)
+    const bySeller: Record<string, number[]> = {}
+    for (const r of data ?? []) (bySeller[r.seller_id] ??= []).push(r.rating)
+    const result: Record<string, { average: number; count: number } | null> = {}
+    for (const id of sellerIds) result[id] = averageRating(bySeller[id] ?? [])
+    return result
+  } catch {
+    return {}
+  }
+}
+
 const filterInputStyle = {
   width: '100%',
   border: '2px solid #fed7aa',
@@ -118,6 +136,7 @@ export default async function ListingsPage({
     getListings({ city, title, author, type, genre, condition, sort }),
     getUserSaveContext(),
   ])
+  const sellerRatings = await getSellerRatings(listings)
 
   const activeFilters = [
     city && { label: `📍 ${city}`, key: 'city' },
@@ -389,6 +408,12 @@ export default async function ListingsPage({
                   <div style={{ padding: '12px 14px' }}>
                     <p className="font-black text-[13px] truncate mb-0.5">{l.title}</p>
                     <p className="text-[11px] font-semibold mb-2" style={{ color: '#aaa' }}>{l.author}</p>
+                    {l.profiles?.username && (
+                      <div className="flex items-center gap-1.5 mb-2">
+                        <span className="text-[11px] font-bold truncate" style={{ color: '#888' }}>{l.profiles.username}</span>
+                        <StarRatingBadge rating={sellerRatings[l.user_id] ?? null} sellerId={l.user_id} />
+                      </div>
+                    )}
                     <div className="flex items-center justify-between">
                       <span
                         className="font-extrabold text-[10px]"

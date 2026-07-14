@@ -5,6 +5,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import ProfileCard from './ProfileCard'
 import MessagesTab from './MessagesTab'
+import HistorySection, { type HistoryExchange } from './HistorySection'
 
 type Tab = 'listings' | 'exchanges' | 'tbr' | 'saved' | 'wallet' | 'account' | 'messages'
 
@@ -42,7 +43,12 @@ type Exchange = {
   listing_id: string
   buyer_id: string
   seller_id: string
-  exchange_status: 'none' | 'requested' | 'confirmed'
+  exchange_status: 'none' | 'requested' | 'confirmed' | 'completed'
+  completed_at: string | null
+  buyer_hidden: boolean
+  seller_hidden: boolean
+  sellerRating: { average: number; count: number } | null
+  reviewed: boolean
   listings: {
     title: string
     author: string
@@ -95,7 +101,9 @@ type Props = {
   tbrEntries: TbrEntry[]
   updateAction: (formData: FormData) => Promise<void>
   updateListingStatus: (formData: FormData) => Promise<void>
-  notifyPickedUp: (formData: FormData) => Promise<void>
+  completeExchange: (formData: FormData) => Promise<void>
+  hideExchangeHistory: (formData: FormData) => Promise<void>
+  submitReview: (formData: FormData) => Promise<{ ok: boolean; error?: string }>
   confirmExchange: (formData: FormData) => Promise<void>
   cancelPurchase: (formData: FormData) => Promise<void>
   removeSavedListing: (formData: FormData) => Promise<void>
@@ -154,7 +162,7 @@ const MOCK_TRANSACTIONS = [
   { id: '3', type: 'earn',     desc: 'Book claimed by neighbor',  amount: '+1', date: 'Jun 22, 2026', color: '#059669' },
 ]
 
-export default function DashboardClient({ profile, listings, exchanges, savedListings, tbrEntries, updateAction, updateListingStatus, notifyPickedUp, confirmExchange, cancelPurchase, removeSavedListing, addTbrEntry, removeTbrEntry, success, defaultTab, queryError, tbrError, isDemo, initialConversationId }: Props) {
+export default function DashboardClient({ profile, listings, exchanges, savedListings, tbrEntries, updateAction, updateListingStatus, completeExchange, hideExchangeHistory, submitReview, confirmExchange, cancelPurchase, removeSavedListing, addTbrEntry, removeTbrEntry, success, defaultTab, queryError, tbrError, isDemo, initialConversationId }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>(defaultTab ?? 'listings')
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(initialConversationId ?? null)
 
@@ -308,8 +316,8 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
       {/* ── EXCHANGES ── */}
       {activeTab === 'exchanges' && (() => {
         const userId = profile?.id ?? ''
-        const sold   = exchanges.filter(e => e.seller_id === userId)
-        const bought = exchanges.filter(e => e.buyer_id  === userId)
+        const sold   = exchanges.filter(e => e.seller_id === userId && e.exchange_status !== 'completed')
+        const bought = exchanges.filter(e => e.buyer_id  === userId && e.exchange_status !== 'completed')
 
         const ExchangeRow = ({ ex, role }: { ex: Exchange; role: 'seller' | 'buyer' }) => {
           const other     = role === 'seller' ? (ex.buyer ?? {}) : (ex.seller ?? {})
@@ -429,7 +437,7 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
 
                 {/* Seller: mark picked up after confirmed */}
                 {role === 'seller' && status === 'confirmed' && (
-                  <form action={notifyPickedUp}>
+                  <form action={completeExchange}>
                     <input type="hidden" name="conversation_id" value={ex.id} />
                     <button className="font-extrabold text-[12px] hover:opacity-80"
                       style={{ background: '#fff7ed', border: '1.5px solid #fed7aa', color: '#f97316', padding: '7px 18px', borderRadius: 999, cursor: 'pointer', fontFamily: 'inherit' }}>
@@ -451,7 +459,7 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
 
                 {/* Buyer: "I got it" after confirmed */}
                 {role === 'buyer' && status === 'confirmed' && (
-                  <form action={notifyPickedUp}>
+                  <form action={completeExchange}>
                     <input type="hidden" name="conversation_id" value={ex.id} />
                     <button className="font-extrabold text-[12px] hover:opacity-80"
                       style={{ background: '#f0fdf4', border: '1.5px solid #bbf7d0', color: '#166534', padding: '7px 18px', borderRadius: 999, cursor: 'pointer', fontFamily: 'inherit' }}>
@@ -491,6 +499,14 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
                 bought.map(ex => <ExchangeRow key={ex.id} ex={ex} role="buyer" />)
               )}
             </div>
+
+            {/* History */}
+            <HistorySection
+              exchanges={exchanges as HistoryExchange[]}
+              userId={userId}
+              hideExchangeHistory={hideExchangeHistory}
+              submitReview={submitReview}
+            />
           </div>
         )
       })()}
