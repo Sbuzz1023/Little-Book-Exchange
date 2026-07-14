@@ -291,3 +291,77 @@ create policy "Admins can update any location" on library_locations
 create policy "Admins can delete any location" on library_locations
   for delete using (exists (select 1 from profiles p where p.id = auth.uid() and p.is_admin = true));
 -- ──────────────────────────────────────────────────────────────────────────────
+
+-- ── Migration: exchange completion, history, and seller ratings ──────────────
+
+-- 1. Exchanges can now be marked complete
+ALTER TABLE conversations DROP CONSTRAINT IF EXISTS conversations_exchange_status_check;
+ALTER TABLE conversations ADD CONSTRAINT conversations_exchange_status_check
+  CHECK (exchange_status IN ('none', 'requested', 'confirmed', 'completed'));
+
+-- 2. Per-user history hide (the shared conversation row survives; each side can
+-- hide their own copy independently without affecting the other party), and a
+-- timestamp for when the exchange actually completed (History's "date" column
+-- needs this — created_at is when the conversation started, not when it ended).
+ALTER TABLE conversations ADD COLUMN IF NOT EXISTS buyer_hidden boolean NOT NULL DEFAULT false;
+ALTER TABLE conversations ADD COLUMN IF NOT EXISTS seller_hidden boolean NOT NULL DEFAULT false;
+ALTER TABLE conversations ADD COLUMN IF NOT EXISTS completed_at timestamptz;
+
+-- 3. Conversations never had an UPDATE policy — confirmExchange, the new
+-- completion action, and the hide action all need one.
+create policy "Participants can update conversations" on conversations
+  for update using (auth.uid() = buyer_id or auth.uid() = seller_id);
+
+-- 4. Auto-complete the listing when the exchange completes. A trigger (not an
+-- RLS policy letting buyers UPDATE listings directly) because RLS can't be
+-- scoped to a single column — a buyer-facing listings UPDATE policy would let
+-- a buyer rewrite the seller's title/price/description too. security definer
+-- mirrors the existing prevent_is_admin_self_grant trigger's approach.
+create or replace function complete_exchange_marks_listing_sold()
+returns trigger as $$
+begin
+  if new.exchange_status = 'completed' and old.exchange_status is distinct from 'completed' then
+    update listings set status = 'sold' where id = new.listing_id;
+  end if;
+  return new;
+end;
+$$ language plpgsql security definer;
+
+drop trigger if exists mark_listing_sold_on_completion on conversations;
+create trigger mark_listing_sold_on_completion after update on conversations
+  for each row execute procedure complete_exchange_marks_listing_sold();
+
+-- 5. Seller ratings (one per completed exchange, buyer -> seller only)
+create table if not exists reviews (
+  id uuid default gen_random_uuid() primary key,
+  conversation_id uuid references conversations(id) on delete cascade not null unique,
+  seller_id uuid references profiles(id) on delete cascade not null,
+  reviewer_id uuid references profiles(id) on delete cascade not null,
+  rating int not null check (rating between 1 and 5),
+  text text,
+  flagged boolean not null default false,
+  created_at timestamptz default now()
+);
+
+alter table reviews enable row level security;
+
+create policy "Reviews are viewable by everyone" on reviews for select using (true);
+
+create policy "Buyers can review a completed exchange" on reviews
+  for insert with check (
+    auth.uid() = reviewer_id and
+    exists (
+      select 1 from conversations c
+      where c.id = conversation_id
+      and c.buyer_id = auth.uid()
+      and c.seller_id = reviews.seller_id
+      and c.exchange_status = 'completed'
+    )
+  );
+
+create policy "Admins can moderate reviews" on reviews
+  for update using (exists (select 1 from profiles p where p.id = auth.uid() and p.is_admin = true));
+
+create policy "Admins can delete reviews" on reviews
+  for delete using (exists (select 1 from profiles p where p.id = auth.uid() and p.is_admin = true));
+-- ──────────────────────────────────────────────────────────────────────────────
