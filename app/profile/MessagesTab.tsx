@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import { StarRatingBadge } from '@/components/StarRating'
 
 export type MessageRow = { id: string; body: string; sender_id: string; created_at: string }
 
@@ -14,6 +15,7 @@ export type MessagesTabExchange = {
   listings: { title: string; author: string; photo_url?: string | null }
   buyer: { username?: string | null; name?: string | null }
   seller: { username?: string | null; name?: string | null }
+  sellerRating?: { average: number; count: number } | null
   messages: MessageRow[]
 }
 
@@ -223,7 +225,10 @@ export default function MessagesTab({
                 ‹
               </button>
               <div>
-                <p style={{ fontWeight: 900, fontSize: 16, color: '#1a1a1a', lineHeight: 1.2 }}>{otherNameFor(convo, userId)}</p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <p style={{ fontWeight: 900, fontSize: 16, color: '#1a1a1a', lineHeight: 1.2 }}>{otherNameFor(convo, userId)}</p>
+                  {convo.seller_id !== userId && <StarRatingBadge rating={convo.sellerRating ?? null} sellerId={convo.seller_id} />}
+                </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
                   <span style={{ fontSize: 12, fontWeight: 700, color: '#aaa' }}>📚 {convo.listings?.title}</span>
                   <Link href={`/listings/${convo.listing_id}`} style={{ fontSize: 11, fontWeight: 700, color: '#f97316', textDecoration: 'none' }}>
