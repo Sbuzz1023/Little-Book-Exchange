@@ -1,16 +1,8 @@
 'use client'
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { adminUpdateReview, adminDeleteReview } from '@/lib/actions/reviews'
 import LocationsAdminTab from './LocationsAdminTab'
-
-const MOCK_REVIEWS = [
-  { id:'rv1', reviewer:'Sarah M.',  book:'The Great Gatsby',       rating:5, text:'Beautiful prose, timeless story. The copy I got was in great shape!',     date:'2024-06-15', flagged:false },
-  { id:'rv2', reviewer:'Priya N.',  book:'Dune',                   rating:5, text:'A sci-fi masterpiece. Highly recommend to anyone who loves world-building.', date:'2024-06-18', flagged:false },
-  { id:'rv3', reviewer:'James K.',  book:'Twilight',               rating:2, text:'Not my thing but was in good condition.',                                   date:'2024-06-19', flagged:false },
-  { id:'rv4', reviewer:'Tom B.',    book:'Harry Potter Sorcerer',  rating:1, text:'This is garbage, the seller is a scammer!!!',                              date:'2024-06-20', flagged:true  },
-  { id:'rv5', reviewer:'Maria C.',  book:'Gone Girl',              rating:4, text:"Couldn't put it down. Book was in excellent condition.",                    date:'2024-06-21', flagged:false },
-  { id:'rv6', reviewer:'Devon H.',  book:'Into the Wild',          rating:5, text:'One of my favorites. Glad to pass it along.',                               date:'2024-06-22', flagged:false },
-]
 
 const WEEKLY_ACTIVITY = [
   { week:'May 5',  posts:4,  signups:2, trades:3 },
@@ -53,7 +45,15 @@ type User = {
   reviews: number
   is_admin: boolean
 }
-type Review = typeof MOCK_REVIEWS[0]
+type Review = {
+  id: string
+  reviewer: string
+  book: string
+  rating: number
+  text: string
+  date: string
+  flagged: boolean
+}
 
 // ─── Simple SVG bar chart ────────────────────────────────────────────────────
 
@@ -432,18 +432,23 @@ function ReviewsTab({ reviews, setReviews }: { reviews: Review[]; setReviews: Re
 
   function openEdit(r: Review) { setEditTarget(r); setEditText(r.text) }
 
-  function saveEdit() {
+  async function saveEdit() {
     if (!editTarget) return
-    setReviews(prev => prev.map(r => r.id === editTarget.id ? { ...r, text: editText, flagged: false } : r))
-    setEditTarget(null)
+    const result = await adminUpdateReview(editTarget.id, editText)
+    if (result.ok) {
+      setReviews(prev => prev.map(r => r.id === editTarget.id ? { ...r, text: editText, flagged: false } : r))
+      setEditTarget(null)
+    }
   }
 
-  function deleteReview(id: string) {
-    setReviews(prev => prev.filter(r => r.id !== id))
+  async function deleteReview(id: string) {
+    const result = await adminDeleteReview(id)
+    if (result.ok) setReviews(prev => prev.filter(r => r.id !== id))
   }
 
-  function unflag(id: string) {
-    setReviews(prev => prev.map(r => r.id === id ? { ...r, flagged: false } : r))
+  async function unflag(id: string) {
+    const result = await adminUpdateReview(id, reviews.find(r => r.id === id)?.text ?? '')
+    if (result.ok) setReviews(prev => prev.map(r => r.id === id ? { ...r, flagged: false } : r))
   }
 
   const shown = filter === 'flagged' ? reviews.filter(r => r.flagged) : reviews
@@ -551,7 +556,8 @@ export default function AdminClient() {
   const [tab, setTab] = useState<Tab>('dashboard')
   const [users, setUsers] = useState<User[]>([])
   const [pendingLocationReports, setPendingLocationReports] = useState(0)
-  const [reviews, setReviews] = useState(MOCK_REVIEWS)
+  const [reviews, setReviews] = useState<Review[]>([])
+  const [reviewSellerIds, setReviewSellerIds] = useState<string[]>([])
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const hasTabCount = useRef(false)
 
@@ -593,6 +599,46 @@ export default function AdminClient() {
       })
   }, [])
 
+  useEffect(() => {
+    const supabase = createClient()
+    supabase
+      .from('reviews')
+      .select('id, rating, text, flagged, created_at, seller_id, reviewer_id, conversation_id')
+      .order('created_at', { ascending: false })
+      .then(async ({ data }) => {
+        if (!data || data.length === 0) return
+
+        const profileIds = [...new Set(data.flatMap(r => [r.seller_id, r.reviewer_id]))]
+        const { data: profileRows } = await supabase.from('profiles').select('id, username, name').in('id', profileIds)
+        const pm: Record<string, string> = {}
+        for (const p of profileRows ?? []) pm[p.id] = (p as any).username || (p as any).name || 'Unknown'
+
+        const convoIds = [...new Set(data.map(r => r.conversation_id))]
+        const { data: convoRows } = await supabase.from('conversations').select('id, listing_id').in('id', convoIds)
+        const listingIdByConvo: Record<string, string> = {}
+        for (const c of convoRows ?? []) listingIdByConvo[c.id] = c.listing_id
+
+        const listingIds = [...new Set(Object.values(listingIdByConvo))]
+        const { data: listingRows } = listingIds.length > 0
+          ? await supabase.from('listings').select('id, title').in('id', listingIds)
+          : { data: [] as any[] }
+        const titleByListing: Record<string, string> = {}
+        for (const l of listingRows ?? []) titleByListing[l.id] = l.title
+
+        setReviewSellerIds(data.map(r => r.seller_id))
+
+        setReviews(data.map(r => ({
+          id: r.id,
+          reviewer: pm[r.reviewer_id] ?? 'Unknown',
+          book: titleByListing[listingIdByConvo[r.conversation_id]] ?? 'Unknown',
+          rating: r.rating,
+          text: r.text ?? '',
+          date: r.created_at ? r.created_at.slice(0, 10) : '',
+          flagged: r.flagged,
+        })))
+      })
+  }, [])
+
   function handleTabPendingCountChange(count: number) {
     hasTabCount.current = true
     setPendingLocationReports(count)
@@ -610,6 +656,11 @@ export default function AdminClient() {
   }
 
   const flaggedReviews = reviews.filter(r => r.flagged).length
+
+  const reviewCountBySeller = reviewSellerIds.reduce<Record<string, number>>((acc, id) => {
+    acc[id] = (acc[id] ?? 0) + 1
+    return acc
+  }, {})
 
   function badge(id: Tab) {
     if (id === 'locations') return pendingLocationReports
@@ -665,7 +716,13 @@ export default function AdminClient() {
       <div className="flex-1 bg-[#f8fafc] overflow-auto">
         <div className="max-w-[1100px] mx-auto px-4 md:px-6 py-6 pb-24 md:pb-6">
           {tab === 'dashboard' && <Dashboard users={users} pendingLocationReports={pendingLocationReports} reviews={reviews} />}
-          {tab === 'users'     && <UsersTab users={users} setUsers={setUsers} toggleAdmin={toggleAdmin} />}
+          {tab === 'users'     && (
+            <UsersTab
+              users={users.map(u => ({ ...u, reviews: reviewCountBySeller[u.id] ?? 0 }))}
+              setUsers={setUsers}
+              toggleAdmin={toggleAdmin}
+            />
+          )}
           {tab === 'locations' && <LocationsAdminTab onPendingCountChange={handleTabPendingCountChange} />}
           {tab === 'reviews'   && <ReviewsTab reviews={reviews} setReviews={setReviews} />}
         </div>
