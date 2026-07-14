@@ -312,6 +312,12 @@ ALTER TABLE conversations ADD COLUMN IF NOT EXISTS completed_at timestamptz;
 create policy "Participants can update conversations" on conversations
   for update using (auth.uid() = buyer_id or auth.uid() = seller_id);
 
+-- Admins need to read conversations too (e.g. AdminClient's Reviews tab looks
+-- up the listing/book title via conversations) — without this, an admin who
+-- isn't a participant gets an empty result and every review shows "Unknown".
+create policy "Admins can view all conversations" on conversations
+  for select using (exists (select 1 from profiles p where p.id = auth.uid() and p.is_admin = true));
+
 -- 4. Auto-complete the listing when the exchange completes. A trigger (not an
 -- RLS policy letting buyers UPDATE listings directly) because RLS can't be
 -- scoped to a single column — a buyer-facing listings UPDATE policy would let

@@ -44,6 +44,7 @@ export async function completeExchange(formData: FormData) {
   await supabase.from('conversations')
     .update({ exchange_status: 'completed', completed_at: new Date().toISOString() })
     .eq('id', conversationId)
+    .eq('exchange_status', 'confirmed')
     .or(`buyer_id.eq.${user.id},seller_id.eq.${user.id}`)
 
   await supabase.from('messages').insert({
