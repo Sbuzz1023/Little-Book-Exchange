@@ -5,6 +5,8 @@ import Link from 'next/link'
 import HeartButton from '@/components/HeartButton'
 import PhotoGallery from './PhotoGallery'
 import { MOCK_LISTINGS, MOCK_CONVERSATIONS, MOCK_USER_ID } from '@/lib/mock-data'
+import { averageRating } from '@/lib/reviewAverages'
+import { StarRatingBadge } from '@/components/StarRating'
 
 const COVER_GRADIENTS = [
   'linear-gradient(145deg, #fde68a, #fca5a5)',
@@ -33,6 +35,7 @@ export default async function ListingDetailPage({ params, searchParams }: { para
   let listing: any = null
   let user: any = null
   let myConvoStatus: string | null = null
+  let sellerRating: { average: number; count: number } | null = null
 
   try {
     const supabase = createClient()
@@ -47,6 +50,11 @@ export default async function ListingDetailPage({ params, searchParams }: { para
         .from('conversations').select('exchange_status')
         .eq('listing_id', params.id).eq('buyer_id', u.id).maybeSingle()
       myConvoStatus = c?.exchange_status ?? null
+    }
+    const sellerId = (l?.profiles as any)?.id ?? l?.user_id
+    if (sellerId) {
+      const { data: ratingRows } = await supabase.from('reviews').select('rating').eq('seller_id', sellerId)
+      sellerRating = averageRating((ratingRows ?? []).map((r: any) => r.rating))
     }
   } catch {
     const mock = MOCK_LISTINGS.find(l => l.id === params.id)
@@ -251,9 +259,12 @@ export default async function ListingDetailPage({ params, searchParams }: { para
           {/* Divider + footer */}
           <div style={{ borderTop: '2px dashed #e5e7eb', marginBottom: 24 }} />
           <div className="flex items-center justify-between gap-3 flex-wrap">
-            <p className="font-semibold text-[14px]" style={{ color: '#888' }}>
-              Listed by <strong style={{ color: '#1a1a1a', fontWeight: 900 }}>{listing.profiles?.username ?? 'a neighbor'}</strong>
-            </p>
+            <div className="flex items-center gap-2 flex-wrap">
+              <p className="font-semibold text-[14px]" style={{ color: '#888' }}>
+                Listed by <strong style={{ color: '#1a1a1a', fontWeight: 900 }}>{listing.profiles?.username ?? 'a neighbor'}</strong>
+              </p>
+              <StarRatingBadge rating={sellerRating} sellerId={(listing.profiles as any)?.id ?? listing.user_id} />
+            </div>
             {isOwner ? (
               <Link
                 href="/profile"
