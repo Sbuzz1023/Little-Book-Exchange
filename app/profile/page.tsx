@@ -8,6 +8,7 @@ import { submitReview } from '@/lib/actions/reviews'
 import { averageRating } from '@/lib/reviewAverages'
 import { removeSavedListing } from '@/lib/actions/savedListings'
 import { addTbrEntry, removeTbrEntry } from '@/lib/actions/tbrEntries'
+import { tbrMatchPattern } from '@/lib/tbrMatch'
 
 export default async function ProfilePage({
   searchParams,
@@ -95,9 +96,9 @@ export default async function ProfilePage({
           .select('id, title, author, city, profiles!inner(state)')
           .eq('status', 'active')
           .neq('user_id', user.id)
-        if (entry.title)  query = query.ilike('title', `%${entry.title}%`)
-        if (entry.author) query = query.ilike('author', `%${entry.author}%`)
-        if (entry.city)   query = query.ilike('city', `%${entry.city}%`)
+        if (entry.title)  query = query.regexIMatch('title', tbrMatchPattern(entry.title))
+        if (entry.author) query = query.regexIMatch('author', tbrMatchPattern(entry.author))
+        if (entry.city)   query = query.regexIMatch('city', tbrMatchPattern(entry.city))
         if (entry.state)  query = query.eq('profiles.state', entry.state)
         const { data: match } = await query.limit(1).maybeSingle()
         return { ...entry, match: match ? { id: match.id, title: match.title } : null }
