@@ -26,7 +26,10 @@ create policy "Users can update own profile" on profiles for update using (auth.
 create or replace function handle_new_user()
 returns trigger as $$
 begin
-  insert into profiles (id, email, username, city, state, phone, contact_preference, address, address_unit, share_address, pickup_description, share_pickup)
+  -- Must be schema-qualified: this trigger fires inside GoTrue's own
+  -- transaction (as supabase_auth_admin), whose search_path doesn't
+  -- include public, so the bare table name fails to resolve.
+  insert into public.profiles (id, email, username, city, state, phone, contact_preference, address, address_unit, share_address, pickup_description, share_pickup)
   values (
     new.id,
     new.email,
