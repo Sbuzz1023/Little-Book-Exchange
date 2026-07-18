@@ -385,12 +385,17 @@ export default async function ListingsPage({
                 <>
                   <div
                     className="relative flex items-center justify-center text-[46px]"
-                    style={{ height: 135, background: gradient, ...(locked ? { filter: 'grayscale(1)', opacity: 0.55 } : {}) }}
+                    style={{ height: 135 }}
                   >
-                    {l.photo_url
-                      ? <Image src={l.photo_url} alt={l.title} fill className="object-cover" />
-                      : <span>📚</span>
-                    }
+                    <div
+                      className="absolute inset-0 flex items-center justify-center"
+                      style={{ background: gradient, ...(locked ? { filter: 'grayscale(1)', opacity: 0.55 } : {}) }}
+                    >
+                      {l.photo_url
+                        ? <Image src={l.photo_url} alt={l.title} fill className="object-cover" />
+                        : <span>📚</span>
+                      }
+                    </div>
                     {!locked && l.user_id !== userId && (
                       <HeartButton listingId={l.id} isLoggedIn={isLoggedIn} initialSaved={savedIds.has(l.id)} />
                     )}
