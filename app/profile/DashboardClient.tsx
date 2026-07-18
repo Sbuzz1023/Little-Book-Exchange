@@ -290,7 +290,13 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
                   </Link>
                   <form action={updateListingStatus} className="flex gap-2 shrink-0">
                     <input type="hidden" name="id" value={l.id} />
-                    {l.status === 'pending' ? null : l.status === 'active' ? (
+                    {l.status === 'pending' ? (
+                      <button name="status" value="active"
+                        className="font-extrabold text-[11px] hover:opacity-80"
+                        style={{ background: 'none', border: 'none', color: '#16a34a', cursor: 'pointer', padding: 0 }}>
+                        Reset to Active
+                      </button>
+                    ) : l.status === 'active' ? (
                       <button name="status" value="sold"
                         className="font-extrabold text-[11px] hover:opacity-80"
                         style={{ background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', padding: 0 }}>

@@ -392,11 +392,15 @@ ALTER TABLE listings ADD CONSTRAINT listings_status_check
 -- security-definer RPCs expose exactly one narrow, safe mutation each.
 -- Accepted risk: any authenticated user can call this to lock an arbitrary
 -- active listing to 'pending' without following through with a real
--- purchase request. The compensating cleanup in requestPurchase's catch
--- block (app/listings/[id]/page.tsx) bounds the damage for the legitimate-
--- buyer failure path, but a deliberately malicious caller bypassing that
--- flow entirely could still soft-lock listings with no automatic expiry.
--- Scoping this further (e.g. rate limiting, an expiry sweep) is deferred.
+-- purchase request. requestPurchase's catch block calls reopen_listing to
+-- release the lock on most downstream failures, but reopen_listing's own
+-- authorization check (owner, or a buyer with a 'requested' conversation)
+-- can't be satisfied if the conversation insert itself is what failed — in
+-- that one sub-path the listing stays 'pending' with no conversation. The
+-- seller's "Reset to Active" control (My Listings tab, DashboardClient.tsx)
+-- is the manual recovery for that case and for a deliberately malicious
+-- caller who never creates a conversation at all. Automatic expiry or
+-- rate limiting is deferred.
 create or replace function lock_listing_for_request(p_listing_id uuid)
 returns boolean as $$
 declare
@@ -407,7 +411,7 @@ begin
   returning id into updated_id;
   return updated_id is not null;
 end;
-$$ language plpgsql security definer;
+$$ language plpgsql security definer set search_path = public, pg_temp;
 
 create or replace function reopen_listing(p_listing_id uuid)
 returns boolean as $$
@@ -429,7 +433,7 @@ begin
   returning id into updated_id;
   return updated_id is not null;
 end;
-$$ language plpgsql security definer;
+$$ language plpgsql security definer set search_path = public, pg_temp;
 
 grant execute on function lock_listing_for_request(uuid) to authenticated;
 grant execute on function reopen_listing(uuid) to authenticated;
