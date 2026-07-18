@@ -374,3 +374,10 @@ create policy "Admins can moderate reviews" on reviews
 create policy "Admins can delete reviews" on reviews
   for delete using (exists (select 1 from profiles p where p.id = auth.uid() and p.is_admin = true));
 -- ──────────────────────────────────────────────────────────────────────────────
+
+-- ── Migration: pending transaction lock ───────────────────────────────────────
+-- Run this block in Supabase SQL Editor:
+ALTER TABLE listings DROP CONSTRAINT IF EXISTS listings_status_check;
+ALTER TABLE listings ADD CONSTRAINT listings_status_check
+  CHECK (status IN ('active', 'pending', 'sold', 'given'));
+-- ──────────────────────────────────────────────────────────────────────────────
