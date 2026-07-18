@@ -19,6 +19,7 @@ export const viewport: Viewport = {
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   let userName: string | null = null
   let isAdmin = false
+  let unreadCount = 0
 
   // Check demo cookie first — getUser() returns null silently with placeholder URL
   // so we can't rely on the catch block to read it
@@ -34,6 +35,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         const { data: p } = await supabase.from('profiles').select('username, is_admin').eq('id', user.id).single()
         userName = p?.username ?? user.email ?? 'Me'
         isAdmin = p?.is_admin === true
+        const { count } = await supabase
+          .from('notifications').select('id', { count: 'exact', head: true })
+          .eq('user_id', user.id).eq('read', false)
+        unreadCount = count ?? 0
       }
     } catch {}
   }
@@ -42,7 +47,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html lang="en">
       <body className="bg-cream min-h-screen flex flex-col">
         <ScrollToTop />
-        <Nav userName={userName} isAdmin={isAdmin} />
+        <Nav userName={userName} isAdmin={isAdmin} unreadCount={unreadCount} />
         <main className="flex-1">{children}</main>
         <Footer />
       </body>

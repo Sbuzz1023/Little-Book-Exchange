@@ -27,7 +27,23 @@ function clearDemoUser() {
   try { localStorage.removeItem('lbe_demo_user') } catch {}
 }
 
-export default function Nav({ userName: serverUserName, isAdmin }: { userName?: string | null; isAdmin?: boolean }) {
+function DashboardBadge({ count }: { count?: number }) {
+  if (!count) return null
+  return (
+    <span
+      data-testid="dashboard-badge"
+      style={{
+        marginLeft: 6, background: '#ef4444', color: '#fff', fontSize: 10, fontWeight: 900,
+        borderRadius: 999, padding: '2px 6px', minWidth: 16, textAlign: 'center', display: 'inline-block',
+        boxShadow: '0 2px 0 #b91c1c',
+      }}
+    >
+      {count > 99 ? '99+' : count}
+    </span>
+  )
+}
+
+export default function Nav({ userName: serverUserName, isAdmin, unreadCount }: { userName?: string | null; isAdmin?: boolean; unreadCount?: number }) {
   const pathname = usePathname()
   const isHome = pathname === '/'
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -72,7 +88,7 @@ export default function Nav({ userName: serverUserName, isAdmin }: { userName?: 
               <span className="w-px h-5 bg-gray-200" />
               <Link href="/locations" className="font-bold text-[15px] text-[#2d2d2d] hover:text-bk-orange transition-colors">Libraries</Link>
               <span className="w-px h-5 bg-gray-200" />
-              <Link href="/profile" className="font-bold text-[15px] text-[#2d2d2d] hover:text-bk-orange transition-colors">Dashboard</Link>
+              <Link href="/profile" className="font-bold text-[15px] text-[#2d2d2d] hover:text-bk-orange transition-colors flex items-center">Dashboard<DashboardBadge count={unreadCount} /></Link>
               <span className="w-px h-5 bg-gray-200" />
 
               {/* Avatar dropdown — uses native <details> toggle, no JS state needed */}
@@ -179,7 +195,7 @@ export default function Nav({ userName: serverUserName, isAdmin }: { userName?: 
                 🗺️ Libraries
               </Link>
               <Link href="/profile" className="flex items-center gap-3 px-5 py-4 font-bold text-[15px] text-[#2d2d2d] border-b border-gray-100 hover:bg-[#fff7ed] hover:text-bk-orange transition-colors md:hidden">
-                📊 Dashboard
+                📊 Dashboard<DashboardBadge count={unreadCount} />
               </Link>
               <a href="/auth/signout" onClick={clearDemoUser} className="flex items-center gap-3 px-5 py-4 font-bold text-[15px] text-red-400 hover:bg-red-50 transition-colors">
                 🚪 Sign Out
