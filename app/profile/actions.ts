@@ -51,6 +51,7 @@ export async function completeExchange(formData: FormData) {
     conversation_id: conversationId,
     sender_id: user.id,
     body: '📚 Book picked up! Thanks so much!',
+    kind: 'pickup',
   })
 
   redirect('/profile?tab=exchanges')
@@ -156,6 +157,7 @@ export async function confirmExchange(formData: FormData) {
       conversation_id: conversationId,
       sender_id: user.id,
       body,
+      kind: 'confirmation',
     })
   }
 
