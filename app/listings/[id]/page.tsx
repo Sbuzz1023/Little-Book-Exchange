@@ -7,6 +7,9 @@ import PhotoGallery from './PhotoGallery'
 import { MOCK_LISTINGS, MOCK_CONVERSATIONS, MOCK_USER_ID } from '@/lib/mock-data'
 import { averageRating } from '@/lib/reviewAverages'
 import { StarRatingBadge } from '@/components/StarRating'
+import { getListingAvailability } from '@/lib/listingAvailability'
+import type { ListingStatus } from '@/lib/types'
+import { addTbrEntry } from '@/lib/actions/tbrEntries'
 
 const COVER_GRADIENTS = [
   'linear-gradient(145deg, #fde68a, #fca5a5)',
@@ -78,6 +81,10 @@ export default async function ListingDetailPage({ params, searchParams }: { para
 
   const gradient = coverGradient(listing.id)
   const isPending = searchParams.requested === '1' || myConvoStatus === 'requested'
+  const avail = getListingAvailability((listing.status ?? 'active') as ListingStatus, {
+    isOwner,
+    isRequester: myConvoStatus === 'requested',
+  })
 
   async function startConversation(formData: FormData) {
     'use server'
@@ -143,6 +150,16 @@ export default async function ListingDetailPage({ params, searchParams }: { para
       const supabase = createSrv()
       const { data: { user: u } } = await supabase.auth.getUser()
       if (!u) redirect(`/auth/signin?redirect=/listings/${params.id}`)
+
+      const { data: locked } = await supabase
+        .from('listings')
+        .update({ status: 'pending' })
+        .eq('id', listing.id)
+        .eq('status', 'active')
+        .select('id')
+      if (!locked || locked.length === 0) {
+        redirect(`/listings/${params.id}?purchase_failed=1`)
+      }
 
       // Find or create conversation (without exchange_status so it works before migration)
       let convoId: string
@@ -277,7 +294,7 @@ export default async function ListingDetailPage({ params, searchParams }: { para
               <div style={{ background: '#fef2f2', border: '2px solid #fca5a5', color: '#b91c1c', padding: '12px 22px', borderRadius: 16, fontWeight: 800, fontSize: 14 }}>
                 ❌ Purchase failed — please try again or message the seller.
               </div>
-            ) : isPending ? (
+            ) : (isPending || avail === 'pending-mine') ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'flex-end' }}>
                 <div
                   className="font-extrabold text-[14px]"
@@ -292,6 +309,31 @@ export default async function ListingDetailPage({ params, searchParams }: { para
                 >
                   View in Exchanges tab →
                 </Link>
+              </div>
+            ) : avail === 'pending-locked' ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'flex-end' }}>
+                <div
+                  className="font-extrabold text-[14px]"
+                  style={{ background: '#fffbeb', border: '2px solid #fcd34d', color: '#92400e', padding: '12px 22px', borderRadius: 16 }}
+                >
+                  ⏳ This book is currently pending with another buyer
+                </div>
+                <form action={addTbrEntry}>
+                  <input type="hidden" name="title" value={listing.title} />
+                  <input type="hidden" name="author" value={listing.author} />
+                  <input type="hidden" name="redirect_to" value={`/listings/${params.id}`} />
+                  <button
+                    type="submit"
+                    className="font-extrabold text-[12px] hover:underline"
+                    style={{ background: 'none', border: 'none', color: '#7c3aed', cursor: 'pointer', padding: 0 }}
+                  >
+                    📚 Add to my TBR — notify me if it reopens
+                  </button>
+                </form>
+              </div>
+            ) : avail === 'unavailable' ? (
+              <div style={{ background: '#f3f4f6', color: '#888', padding: '12px 22px', borderRadius: 16, fontWeight: 800, fontSize: 14 }}>
+                No longer available
               </div>
             ) : (
               <div className="flex items-center gap-3 flex-wrap">
