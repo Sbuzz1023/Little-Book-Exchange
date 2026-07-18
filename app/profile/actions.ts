@@ -113,6 +113,13 @@ export async function confirmExchange(formData: FormData) {
     .eq('id', conversationId)
     .eq('seller_id', user.id)
 
+  await supabase
+    .from('notifications')
+    .update({ read: true })
+    .eq('user_id', user.id)
+    .eq('entity_id', conversationId)
+    .eq('type', 'purchase_request')
+
   const { data: profile } = await supabase
     .from('profiles')
     .select('username, city, state, phone, address, address_unit, share_address, pickup_description, share_pickup')
@@ -173,11 +180,23 @@ export async function denyPurchase(formData: FormData) {
 
   const { data: convo } = await supabase
     .from('conversations')
-    .select('listing_id')
+    .select('listing_id, buyer_id, exchange_status')
     .eq('id', conversationId)
     .eq('seller_id', user.id)
     .eq('exchange_status', 'requested')
     .maybeSingle()
+
+  if (convo?.buyer_id) {
+    try {
+      await supabase.rpc('create_notification', {
+        p_user_id: convo.buyer_id,
+        p_type: 'purchase_decision',
+        p_entity_id: conversationId,
+        p_title: 'Purchase request declined',
+        p_body: 'The seller declined your purchase request.',
+      })
+    } catch {}
+  }
 
   await supabase
     .from('conversations')
@@ -193,6 +212,13 @@ export async function denyPurchase(formData: FormData) {
       .eq('id', convo.listing_id)
       .eq('status', 'pending')
   }
+
+  await supabase
+    .from('notifications')
+    .update({ read: true })
+    .eq('user_id', user.id)
+    .eq('entity_id', conversationId)
+    .eq('type', 'purchase_request')
 
   redirect('/profile')
 }
