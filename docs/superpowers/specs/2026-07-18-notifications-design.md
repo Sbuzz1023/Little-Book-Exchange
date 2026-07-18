@@ -133,19 +133,23 @@ grant execute on function create_notification(uuid, text, uuid, text, text) to a
 
 ## Read State & Highlighting
 
+Exchange rows have no per-row expand/collapse today — everything about a row renders inline as soon as its tab is open. So "viewed" is tab-level for Exchanges/TBR, and item-level only for Messages, where selecting a specific conversation is already a real interaction:
+
 | Type | Tab | Clears when |
 |---|---|---|
-| `message` | Messages | Thread for that `entity_id` (conversation) is opened |
-| `purchase_decision` | Exchanges | Exchange row is opened/expanded |
-| `pickup` | Exchanges | Exchange row is opened/expanded |
-| `tbr_match` | TBR | TBR entry's match is viewed/clicked |
-| `purchase_request` | Exchanges | **Not** on view — only when the seller clicks Confirm or Deny |
+| `message` | Messages | That specific conversation is selected/opened in the thread pane |
+| `purchase_decision` | Exchanges | The Exchanges tab is opened (clears all currently-unread `purchase_decision`/`pickup` notifications at once) |
+| `pickup` | Exchanges | Same as above |
+| `tbr_match` | TBR | The TBR tab is opened (clears all currently-unread `tbr_match` notifications at once) |
+| `purchase_request` | Exchanges | **Not** on tab view — only when the seller clicks Confirm or Deny |
 
-For the first four, opening the relevant item calls a small `markNotificationsRead(entityId)` server action (`update notifications set read = true where entity_id = $1 and user_id = auth.uid()`).
+For `message`/`purchase_decision`/`pickup`/`tbr_match`, the clear is a direct client-side Supabase update (`update notifications set read = true where entity_id = ... and user_id = auth.uid()`), fired from the same components that already do client-side writes — `DashboardClient.tsx`'s tab-switch handler for Exchanges/TBR, `MessagesTab.tsx`'s conversation-select handler for Messages — rather than a new server action, matching the pattern `MessagesTab.tsx` already uses for sending messages.
 
 `purchase_request` is handled differently on both ends, deliberately:
-- `confirmExchange` and `denyPurchase` each mark the request's notification read as part of what they already do (one extra `update ... where entity_id = conversationId and type = 'purchase_request'`).
-- The Exchanges tab's row highlight itself is **not** driven by the notification's `read` flag — it's driven directly by `exchange_status === 'requested'`. This is belt-and-suspenders: even if the notification write silently failed, the highlight can't drift out of sync with the actual unresolved state, and a seller can't make a pending request "look handled" by merely glancing at the tab.
+- `confirmExchange` and `denyPurchase` (server actions in `app/profile/actions.ts`) each mark the request's notification read as part of what they already do (one extra `update ... where entity_id = conversationId and type = 'purchase_request'`).
+- The Exchanges tab's row highlight itself is **not** driven by the notification's `read` flag — it's driven directly by `exchange_status === 'requested'` (seller's row only — that's who has the pending action). This is belt-and-suspenders: even if the notification write silently failed, the highlight can't drift out of sync with the actual unresolved state, and a seller can't make a pending request "look handled" by merely glancing at the tab.
+
+**Note:** badge counts are computed once, server-side, when `/profile` loads. Clearing a highlight happens instantly (client-side), but the numeric badge on the Nav bar and tab buttons won't visually decrement until the next navigation or page refresh — there's no global realtime count store in Phase 1. Acceptable given the scope; revisit only if it proves confusing in practice.
 
 ## Badge Counts
 
@@ -187,9 +191,11 @@ Five checkboxes added to the existing Profile tab, next to `share_address`/`shar
 |---|---|
 | `supabase/schema.sql` | New migration: `notifications` table + RLS; `messages.kind` column; 5 `profiles.notify_*` columns; `messages` AFTER INSERT trigger; `listings` AFTER INSERT/UPDATE trigger; `create_notification()` RPC |
 | `app/listings/[id]/page.tsx` | `requestPurchase`'s message insert gains `kind: 'purchase_request'` |
-| `app/profile/actions.ts` | `confirmExchange`'s message insert gains `kind: 'confirmation'`; `completeExchange`'s gains `kind: 'pickup'`; `denyPurchase` calls `create_notification()` + marks the request notification read; new `markNotificationsRead(entityId)` action |
-| `app/profile/page.tsx` | Fetch unread counts (total + per-tab) and per-row unread `entity_id` sets; pass down as props |
+| `app/profile/actions.ts` | `confirmExchange`'s message insert gains `kind: 'confirmation'`; `completeExchange`'s gains `kind: 'pickup'`; `confirmExchange` and `denyPurchase` each mark the request's notification read; `denyPurchase` also calls `create_notification()` |
+| `app/profile/page.tsx` | Fetch unread counts (total + per-tab) and per-row unread `entity_id` lists; pass down as props |
+| `app/layout.tsx` | Fetch total unread count alongside the existing profile lookup; pass to `Nav` |
 | `components/Nav.tsx` | `Dashboard` link gets a total-unread badge |
-| `app/profile/DashboardClient.tsx` | Exchanges/TBR/Messages tabs get per-tab unread badges; rows in each gain highlight styling driven by unread `entity_id` set (Exchanges' pending-request highlight driven by `exchange_status` instead) |
+| `app/profile/DashboardClient.tsx` | Exchanges/TBR/Messages tabs get per-tab unread badges; tab-switch handlers for Exchanges/TBR mark their notifications read client-side; rows gain highlight styling driven by unread `entity_id` lists (Exchanges' pending-request highlight driven by `exchange_status` instead) |
+| `app/profile/MessagesTab.tsx` | Conversation-select handler marks that conversation's `message` notifications read client-side; list rows gain highlight styling for unread conversations |
 | `app/profile/actions.ts` (`updateProfile`) | Accepts and persists the 5 new `notify_*` checkboxes |
 | `app/profile/ProfileCard.tsx` | 5 new notification-preference checkboxes, alongside the existing `share_address`/`share_pickup` checkboxes |
