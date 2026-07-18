@@ -635,6 +635,16 @@ create or replace function create_notification(
   p_user_id uuid, p_type text, p_entity_id uuid, p_title text, p_body text
 ) returns void as $$
 begin
+  if not exists (
+    select 1 from conversations
+    where id = p_entity_id
+      and auth.uid() in (buyer_id, seller_id)
+      and p_user_id in (buyer_id, seller_id)
+      and p_user_id <> auth.uid()
+  ) then
+    return;
+  end if;
+
   insert into notifications (user_id, type, entity_id, title, body)
   select p_user_id, p_type, p_entity_id, p_title, p_body
   from profiles
