@@ -6,6 +6,7 @@ import Image from 'next/image'
 import ProfileCard from './ProfileCard'
 import MessagesTab from './MessagesTab'
 import HistorySection, { type HistoryExchange } from './HistorySection'
+import { createClient } from '@/lib/supabase/client'
 
 type Tab = 'listings' | 'exchanges' | 'tbr' | 'saved' | 'wallet' | 'account' | 'messages'
 
@@ -116,6 +117,8 @@ type Props = {
   tbrError?: string | null
   isDemo: boolean
   initialConversationId?: string | null
+  unreadCounts: { total: number; exchanges: number; tbr: number; messages: number }
+  unreadEntityIds: { message: string[]; decisionOrPickup: string[]; tbrMatch: string[] }
 }
 
 const TABS = [
@@ -165,9 +168,29 @@ const MOCK_TRANSACTIONS = [
   { id: '3', type: 'earn',     desc: 'Book claimed by neighbor',  amount: '+1', date: 'Jun 22, 2026', color: '#059669' },
 ]
 
-export default function DashboardClient({ profile, listings, exchanges, savedListings, tbrEntries, updateAction, updateListingStatus, completeExchange, hideExchangeHistory, submitReview, confirmExchange, denyPurchase, cancelPurchase, removeSavedListing, addTbrEntry, removeTbrEntry, success, defaultTab, queryError, tbrError, isDemo, initialConversationId }: Props) {
+export default function DashboardClient({ profile, listings, exchanges, savedListings, tbrEntries, updateAction, updateListingStatus, completeExchange, hideExchangeHistory, submitReview, confirmExchange, denyPurchase, cancelPurchase, removeSavedListing, addTbrEntry, removeTbrEntry, success, defaultTab, queryError, tbrError, isDemo, initialConversationId, unreadCounts, unreadEntityIds }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>(defaultTab ?? 'listings')
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(initialConversationId ?? null)
+
+  async function markTabRead(tabId: Tab) {
+    if (isDemo || !profile?.id) return
+    if (tabId === 'exchanges' && unreadEntityIds.decisionOrPickup.length > 0) {
+      const supabase = createClient()
+      await supabase.from('notifications').update({ read: true })
+        .eq('user_id', profile.id).in('type', ['purchase_decision', 'pickup'])
+    } else if (tabId === 'tbr' && unreadEntityIds.tbrMatch.length > 0) {
+      const supabase = createClient()
+      await supabase.from('notifications').update({ read: true })
+        .eq('user_id', profile.id).eq('type', 'tbr_match')
+    }
+  }
+
+  function tabBadgeCount(id: Tab): number {
+    if (id === 'exchanges') return unreadCounts.exchanges
+    if (id === 'tbr') return unreadCounts.tbr
+    if (id === 'messages') return unreadCounts.messages
+    return 0
+  }
 
   const tab = TABS.find(t => t.id === activeTab)!
 
@@ -197,7 +220,7 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
           return (
             <button
               key={t.id}
-              onClick={() => setActiveTab(t.id)}
+              onClick={() => { setActiveTab(t.id); markTabRead(t.id) }}
               className="flex flex-col items-center text-center transition-all duration-150 hover:-translate-y-1"
               style={{
                 background: isActive ? t.color : t.bg,
@@ -209,8 +232,21 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
                 padding: '14px 8px 12px',
                 cursor: 'pointer',
                 fontFamily: 'inherit',
+                position: 'relative',
               }}
             >
+              {tabBadgeCount(t.id) > 0 && (
+                <span
+                  data-testid="tab-badge"
+                  style={{
+                    position: 'absolute', top: -6, right: -6, background: '#ef4444', color: '#fff',
+                    fontSize: 10, fontWeight: 900, borderRadius: 999, padding: '2px 6px', minWidth: 18,
+                    textAlign: 'center', boxShadow: '0 2px 0 #b91c1c',
+                  }}
+                >
+                  {tabBadgeCount(t.id)}
+                </span>
+              )}
               <span style={{ fontSize: 26, marginBottom: 6, display: 'block' }}>{t.icon}</span>
               <span
                 className="font-black leading-tight"
@@ -346,8 +382,18 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
               ? { bg: '#f0fdf4', border: '#86efac', color: '#166534', label: '✅ Ready for Pick Up' }
             : { bg: '#f3f4f6', border: '#e5e7eb', color: '#888', label: '💬 Chatting' }
 
+          const isPendingSellerAction = role === 'seller' && status === 'requested'
+          const isUnreadDecisionOrPickup = unreadEntityIds.decisionOrPickup.includes(ex.id)
+          const highlighted = isPendingSellerAction || isUnreadDecisionOrPickup
+
           return (
-            <div style={{ padding: '16px 0', borderBottom: '2px solid #f3f4f6' }}>
+            <div
+              data-testid={highlighted ? 'exchange-row-highlighted' : undefined}
+              style={{
+                padding: '16px 0 16px 12px', borderBottom: '2px solid #f3f4f6',
+                ...(highlighted ? { background: '#fff7ed', borderRadius: 12, boxShadow: 'inset 3px 0 0 #f97316' } : {}),
+              }}
+            >
               <div className="flex gap-3 items-start">
                 {/* Book thumbnail */}
                 <div className="relative shrink-0 overflow-hidden"
@@ -578,9 +624,11 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
                     </span>
                   ))}
                 </div>
-                {tbrEntries.map(entry => (
+                {tbrEntries.map(entry => {
+                  const isUnread = unreadEntityIds.tbrMatch.includes(entry.id)
+                  return (
                   <div key={entry.id} className="grid gap-3 items-center px-1"
-                    style={{ gridTemplateColumns: '2fr 1.5fr 1fr 70px 150px', padding: '12px 4px', borderBottom: '2px solid #f3f4f6' }}>
+                    style={{ gridTemplateColumns: '2fr 1.5fr 1fr 70px 150px', padding: '12px 4px', borderBottom: '2px solid #f3f4f6', ...(isUnread ? { background: '#f5f3ff', borderRadius: 10 } : {}) }}>
                     <span className="font-black text-[14px] truncate">{entry.title || '—'}</span>
                     <span className="font-semibold text-[13px] truncate" style={{ color: entry.author ? '#555' : '#ccc' }}>{entry.author || '—'}</span>
                     <span className="font-semibold text-[13px] truncate" style={{ color: entry.city ? '#555' : '#ccc' }}>{entry.city || '—'}</span>
@@ -602,13 +650,16 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
                       </form>
                     </div>
                   </div>
-                ))}
+                  )
+                })}
               </div>
 
               {/* Mobile: stacked cards */}
               <div className="md:hidden">
-                {tbrEntries.map(entry => (
-                  <div key={entry.id} style={{ padding: '12px 0', borderBottom: '2px solid #f3f4f6' }}>
+                {tbrEntries.map(entry => {
+                  const isUnread = unreadEntityIds.tbrMatch.includes(entry.id)
+                  return (
+                  <div key={entry.id} style={{ padding: '12px 0', borderBottom: '2px solid #f3f4f6', ...(isUnread ? { background: '#f5f3ff', borderRadius: 10 } : {}) }}>
                     <p className="font-black text-[14px] truncate">
                       {entry.title || `by ${entry.author}`}
                     </p>
@@ -633,7 +684,8 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
                       </form>
                     </div>
                   </div>
-                ))}
+                  )
+                })}
               </div>
             </>
           )}
@@ -776,6 +828,7 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
           isDemo={isDemo}
           selectedId={selectedConversationId}
           onSelectId={setSelectedConversationId}
+          unreadConversationIds={unreadEntityIds.message}
         />
       </div>
 
