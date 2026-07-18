@@ -689,3 +689,17 @@ ALTER TABLE conversations DROP CONSTRAINT IF EXISTS conversations_exchange_statu
 ALTER TABLE conversations ADD CONSTRAINT conversations_exchange_status_check
   CHECK (exchange_status IN ('none', 'requested', 'confirmed', 'completed', 'declined'));
 -- ──────────────────────────────────────────────────────────────────────────────
+
+-- ── Migration: drop the now-obsolete seller-delete policy on conversations ────
+-- Run this block in Supabase SQL Editor:
+
+-- "Sellers can deny conversations" (added in the "seller can deny a purchase
+-- request" migration above) let a seller DELETE a conversation row, back when
+-- denyPurchase deleted on decline. denyPurchase now UPDATEs to 'declined'
+-- instead (see the "declined purchase requests survive as History entries"
+-- migration above) — the whole point of that change was to keep the row
+-- around so the buyer's decline notification has something to point at.
+-- Leaving this policy in place would let a seller undo that via a raw
+-- DELETE call. Nothing in the app calls it anymore.
+DROP POLICY IF EXISTS "Sellers can deny conversations" ON conversations;
+-- ──────────────────────────────────────────────────────────────────────────────
