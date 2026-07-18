@@ -78,6 +78,17 @@ export async function cancelPurchase(formData: FormData) {
 
   const conversationId = formData.get('conversation_id') as string
 
+  const { data: convo } = await supabase
+    .from('conversations')
+    .select('listing_id, exchange_status')
+    .eq('id', conversationId)
+    .eq('buyer_id', user.id)
+    .maybeSingle()
+
+  if (convo?.listing_id && convo.exchange_status === 'requested') {
+    await supabase.rpc('reopen_listing', { p_listing_id: convo.listing_id })
+  }
+
   // Only allowed while still pending — not after seller confirms
   await supabase
     .from('conversations')
@@ -120,6 +131,12 @@ export async function confirmExchange(formData: FormData) {
       .eq('id', convo.listing_id)
       .single()
     listingPickup = listing?.pickup_description ?? null
+
+    await supabase
+      .from('listings')
+      .update({ status: 'sold' })
+      .eq('id', convo.listing_id)
+      .eq('status', 'pending')
   }
 
   if (profile) {
@@ -140,6 +157,39 @@ export async function confirmExchange(formData: FormData) {
       sender_id: user.id,
       body,
     })
+  }
+
+  redirect('/profile')
+}
+
+export async function denyPurchase(formData: FormData) {
+  const supabase = createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/auth/signin')
+
+  const conversationId = formData.get('conversation_id') as string
+
+  const { data: convo } = await supabase
+    .from('conversations')
+    .select('listing_id')
+    .eq('id', conversationId)
+    .eq('seller_id', user.id)
+    .eq('exchange_status', 'requested')
+    .maybeSingle()
+
+  await supabase
+    .from('conversations')
+    .delete()
+    .eq('id', conversationId)
+    .eq('seller_id', user.id)
+    .eq('exchange_status', 'requested')
+
+  if (convo?.listing_id) {
+    await supabase
+      .from('listings')
+      .update({ status: 'active' })
+      .eq('id', convo.listing_id)
+      .eq('status', 'pending')
   }
 
   redirect('/profile')

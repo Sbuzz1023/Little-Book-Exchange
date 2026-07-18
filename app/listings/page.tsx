@@ -3,10 +3,12 @@ import { cookies } from 'next/headers'
 import Link from 'next/link'
 import Image from 'next/image'
 import HeartButton from '@/components/HeartButton'
-import type { Listing } from '@/lib/types'
+import type { Listing, ListingStatus } from '@/lib/types'
 import { MOCK_LISTINGS } from '@/lib/mock-data'
 import { averageRating } from '@/lib/reviewAverages'
 import { StarRatingBadge } from '@/components/StarRating'
+import { getListingAvailability } from '@/lib/listingAvailability'
+import { addTbrEntry } from '@/lib/actions/tbrEntries'
 
 const COVER_GRADIENTS = [
   'linear-gradient(145deg, #fde68a, #fca5a5)',
@@ -45,7 +47,7 @@ async function getListings(params: {
     let query = supabase
       .from('listings')
       .select('*, profiles(username, city)')
-      .eq('status', 'active')
+      .in('status', ['active', 'pending'])
 
     if (params.city) query = query.ilike('city', `%${params.city}%`)
     if (params.title) query = query.ilike('title', `%${params.title}%`)
@@ -79,6 +81,21 @@ async function getUserSaveContext(): Promise<{ isLoggedIn: boolean; userId: stri
     return { isLoggedIn: true, userId: user.id, savedIds: new Set((data ?? []).map(r => r.listing_id)) }
   } catch {
     return { isLoggedIn: hasDemoCookie, userId: null, savedIds: new Set() }
+  }
+}
+
+async function getMyRequestedListingIds(userId: string | null): Promise<Set<string>> {
+  if (!userId) return new Set()
+  try {
+    const supabase = createClient()
+    const { data } = await supabase
+      .from('conversations')
+      .select('listing_id')
+      .eq('buyer_id', userId)
+      .eq('exchange_status', 'requested')
+    return new Set((data ?? []).map(r => r.listing_id))
+  } catch {
+    return new Set()
   }
 }
 
@@ -137,6 +154,20 @@ export default async function ListingsPage({
     getUserSaveContext(),
   ])
   const sellerRatings = await getSellerRatings(listings)
+  const myRequestedIds = await getMyRequestedListingIds(userId)
+
+  const currentUrl = (() => {
+    const p = new URLSearchParams()
+    if (city) p.set('city', city)
+    if (title) p.set('title', title)
+    if (author) p.set('author', author)
+    if (type !== 'all') p.set('type', type)
+    if (genre !== 'all') p.set('genre', genre)
+    if (condition !== 'any') p.set('condition', condition)
+    if (sort !== 'newest') p.set('sort', sort)
+    const qs = p.toString()
+    return qs ? `/listings?${qs}` : '/listings'
+  })()
 
   const activeFilters = [
     city && { label: `📍 ${city}`, key: 'city' },
@@ -357,49 +388,44 @@ export default async function ListingsPage({
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(185px, 1fr))', gap: 18 }}>
             {listings.map(l => {
               const gradient = coverGradient(l.id)
-              return (
-                <Link
-                  key={l.id}
-                  href={`/listings/${l.id}`}
-                  className="block bg-white border-2 border-gray-100 shadow-[0_5px_0_#e5e7eb] hover:-translate-y-1 transition-transform overflow-hidden"
-                  style={{ borderRadius: 20, textDecoration: 'none', color: 'inherit' }}
-                >
+              const avail = getListingAvailability((l.status ?? 'active') as ListingStatus, {
+                isOwner: l.user_id === userId,
+                isRequester: myRequestedIds.has(l.id),
+              })
+              const locked = avail === 'pending-locked'
+
+              const cardInner = (
+                <>
                   <div
                     className="relative flex items-center justify-center text-[46px]"
-                    style={{ height: 135, background: gradient }}
+                    style={{ height: 135, background: gradient, ...(locked ? { filter: 'grayscale(1)', opacity: 0.55 } : {}) }}
                   >
                     {l.photo_url
                       ? <Image src={l.photo_url} alt={l.title} fill className="object-cover" />
                       : <span>📚</span>
                     }
-                    {l.user_id !== userId && (
+                    {!locked && l.user_id !== userId && (
                       <HeartButton listingId={l.id} isLoggedIn={isLoggedIn} initialSaved={savedIds.has(l.id)} />
                     )}
-                    {/* Price tag */}
-                    <span
-                      className="absolute text-white font-black"
-                      style={{
-                        top: 8, right: 8,
-                        padding: '3px 10px',
-                        borderRadius: 999,
-                        fontSize: 11,
-                        background: '#f97316',
-                      }}
-                    >
-                      1 credit
-                    </span>
-                    {/* Genre tag */}
+                    {avail === 'active' ? (
+                      <span
+                        className="absolute text-white font-black"
+                        style={{ top: 8, right: 8, padding: '3px 10px', borderRadius: 999, fontSize: 11, background: '#f97316' }}
+                      >
+                        1 credit
+                      </span>
+                    ) : (
+                      <span
+                        className="absolute text-white font-black"
+                        style={{ top: 8, right: 8, padding: '3px 10px', borderRadius: 999, fontSize: 11, background: '#f59e0b' }}
+                      >
+                        ⏳ Pending
+                      </span>
+                    )}
                     {l.genre && (
                       <span
                         className="absolute font-extrabold"
-                        style={{
-                          bottom: 8, left: 8,
-                          padding: '2px 8px',
-                          borderRadius: 999,
-                          fontSize: 10,
-                          background: 'rgba(255,255,255,0.85)',
-                          color: '#555',
-                        }}
+                        style={{ bottom: 8, left: 8, padding: '2px 8px', borderRadius: 999, fontSize: 10, background: 'rgba(255,255,255,0.85)', color: '#555' }}
                       >
                         {l.genre}
                       </span>
@@ -417,24 +443,48 @@ export default async function ListingsPage({
                     <div className="flex items-center justify-between">
                       <span
                         className="font-extrabold text-[10px]"
-                        style={{
-                          padding: '2px 7px',
-                          borderRadius: 6,
-                          background: '#fef9c3',
-                          color: '#854d0e',
-                          border: '1.5px solid #fde047',
-                        }}
+                        style={{ padding: '2px 7px', borderRadius: 6, background: '#fef9c3', color: '#854d0e', border: '1.5px solid #fde047' }}
                       >
                         {conditionLabel(l.condition)}
                       </span>
-                      <span
-                        className="font-extrabold text-[10px]"
-                        style={{ color: '#f97316' }}
-                      >
+                      <span className="font-extrabold text-[10px]" style={{ color: '#f97316' }}>
                         🪙 1 credit
                       </span>
                     </div>
+                    {locked && (
+                      <form action={addTbrEntry} className="mt-2">
+                        <input type="hidden" name="title" value={l.title} />
+                        <input type="hidden" name="author" value={l.author} />
+                        <input type="hidden" name="redirect_to" value={currentUrl} />
+                        <button
+                          type="submit"
+                          className="w-full font-extrabold text-[11px]"
+                          style={{ background: '#f5f3ff', border: '1.5px solid #ddd6fe', color: '#7c3aed', padding: '6px 0', borderRadius: 10, cursor: 'pointer' }}
+                        >
+                          📚 Add to my TBR
+                        </button>
+                      </form>
+                    )}
                   </div>
+                </>
+              )
+
+              return locked ? (
+                <div
+                  key={l.id}
+                  className="bg-white border-2 border-gray-100 shadow-[0_5px_0_#e5e7eb] overflow-hidden"
+                  style={{ borderRadius: 20 }}
+                >
+                  {cardInner}
+                </div>
+              ) : (
+                <Link
+                  key={l.id}
+                  href={`/listings/${l.id}`}
+                  className="block bg-white border-2 border-gray-100 shadow-[0_5px_0_#e5e7eb] hover:-translate-y-1 transition-transform overflow-hidden"
+                  style={{ borderRadius: 20, textDecoration: 'none', color: 'inherit' }}
+                >
+                  {cardInner}
                 </Link>
               )
             })}

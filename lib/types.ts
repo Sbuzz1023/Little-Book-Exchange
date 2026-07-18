@@ -7,7 +7,7 @@ export type Profile = {
 }
 
 export type ListingCondition = 'good' | 'fair' | 'well-loved'
-export type ListingStatus = 'active' | 'sold' | 'given'
+export type ListingStatus = 'active' | 'pending' | 'sold' | 'given'
 
 export type Listing = {
   id: string

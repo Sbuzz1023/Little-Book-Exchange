@@ -374,3 +374,67 @@ create policy "Admins can moderate reviews" on reviews
 create policy "Admins can delete reviews" on reviews
   for delete using (exists (select 1 from profiles p where p.id = auth.uid() and p.is_admin = true));
 -- ──────────────────────────────────────────────────────────────────────────────
+
+-- ── Migration: pending transaction lock ───────────────────────────────────────
+-- Run this block in Supabase SQL Editor:
+ALTER TABLE listings DROP CONSTRAINT IF EXISTS listings_status_check;
+ALTER TABLE listings ADD CONSTRAINT listings_status_check
+  CHECK (status IN ('active', 'pending', 'sold', 'given'));
+-- ──────────────────────────────────────────────────────────────────────────────
+
+-- ── Migration: RPCs for buyer-side listing lock/unlock ────────────────────────
+-- Buyers aren't the listing owner, so the existing "Users can update own
+-- listings" RLS policy (auth.uid() = user_id) blocks them from updating a
+-- listing's status directly. A broad buyer-facing UPDATE policy isn't safe
+-- either — RLS can't be scoped to a single column, so it would let a buyer
+-- rewrite the seller's title/price/description too (same reasoning as the
+-- complete_exchange_marks_listing_sold trigger above). These two
+-- security-definer RPCs expose exactly one narrow, safe mutation each.
+-- Accepted risk: any authenticated user can call this to lock an arbitrary
+-- active listing to 'pending' without following through with a real
+-- purchase request. requestPurchase's catch block calls reopen_listing to
+-- release the lock on most downstream failures, but reopen_listing's own
+-- authorization check (owner, or a buyer with a 'requested' conversation)
+-- can't be satisfied if the conversation insert itself is what failed — in
+-- that one sub-path the listing stays 'pending' with no conversation. The
+-- seller's "Reset to Active" control (My Listings tab, DashboardClient.tsx)
+-- is the manual recovery for that case and for a deliberately malicious
+-- caller who never creates a conversation at all. Automatic expiry or
+-- rate limiting is deferred.
+create or replace function lock_listing_for_request(p_listing_id uuid)
+returns boolean as $$
+declare
+  updated_id uuid;
+begin
+  update listings set status = 'pending'
+  where id = p_listing_id and status = 'active'
+  returning id into updated_id;
+  return updated_id is not null;
+end;
+$$ language plpgsql security definer set search_path = public, pg_temp;
+
+create or replace function reopen_listing(p_listing_id uuid)
+returns boolean as $$
+declare
+  updated_id uuid;
+begin
+  update listings set status = 'active'
+  where id = p_listing_id
+    and status = 'pending'
+    and (
+      user_id = auth.uid()
+      or exists (
+        select 1 from conversations
+        where listing_id = p_listing_id
+          and buyer_id = auth.uid()
+          and exchange_status = 'requested'
+      )
+    )
+  returning id into updated_id;
+  return updated_id is not null;
+end;
+$$ language plpgsql security definer set search_path = public, pg_temp;
+
+grant execute on function lock_listing_for_request(uuid) to authenticated;
+grant execute on function reopen_listing(uuid) to authenticated;
+-- ──────────────────────────────────────────────────────────────────────────────
