@@ -17,6 +17,11 @@ type Props = {
     share_address?: boolean | null
     pickup_description?: string | null
     share_pickup?: boolean | null
+    notify_message?: boolean | null
+    notify_purchase_request?: boolean | null
+    notify_purchase_decision?: boolean | null
+    notify_tbr_match?: boolean | null
+    notify_pickup?: boolean | null
     created_at?: string | null
   } | null
   updateAction: (formData: FormData) => Promise<void>
@@ -150,6 +155,45 @@ export default function ProfileCard({ profile, updateAction, success }: Props) {
                   defaultValue={profile?.share_pickup ?? true}
                   label="Share pickup spot after approval"
                   hint="📦 Only revealed to a buyer after you approve their purchase."
+                />
+              </div>
+            </div>
+
+            {/* Notifications section */}
+            <div style={{ borderTop: '2px dashed #fed7aa', paddingTop: 16, marginTop: 4 }}>
+              <p style={{ fontSize: 11, fontWeight: 900, color: '#f97316', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 12 }}>
+                🔔 Notifications
+              </p>
+              <div className="flex flex-col gap-3">
+                <ShareToggle
+                  name="notify_message"
+                  defaultValue={profile?.notify_message ?? true}
+                  label="New messages"
+                  hint="Get notified when someone messages you about a listing."
+                />
+                <ShareToggle
+                  name="notify_purchase_request"
+                  defaultValue={profile?.notify_purchase_request ?? true}
+                  label="Purchase requests"
+                  hint="Get notified when someone requests one of your books."
+                />
+                <ShareToggle
+                  name="notify_purchase_decision"
+                  defaultValue={profile?.notify_purchase_decision ?? true}
+                  label="Purchase decisions"
+                  hint="Get notified when a seller confirms or declines your request."
+                />
+                <ShareToggle
+                  name="notify_tbr_match"
+                  defaultValue={profile?.notify_tbr_match ?? true}
+                  label="TBR matches"
+                  hint="Get notified when a book on your TBR list becomes available."
+                />
+                <ShareToggle
+                  name="notify_pickup"
+                  defaultValue={profile?.notify_pickup ?? true}
+                  label="Pickup confirmations"
+                  hint="Get notified when the other party marks a book picked up."
                 />
               </div>
             </div>

@@ -17,6 +17,11 @@ export async function updateProfile(formData: FormData) {
     share_address:      formData.get('share_address')       === 'true',
     pickup_description: (formData.get('pickup_description') as string) || '',
     share_pickup:       formData.get('share_pickup')        === 'true',
+    notify_message:          formData.get('notify_message')          === 'true',
+    notify_purchase_request: formData.get('notify_purchase_request') === 'true',
+    notify_purchase_decision: formData.get('notify_purchase_decision') === 'true',
+    notify_tbr_match:        formData.get('notify_tbr_match')        === 'true',
+    notify_pickup:           formData.get('notify_pickup')           === 'true',
   }).eq('id', user!.id)
   redirect('/profile?success=1')
 }
