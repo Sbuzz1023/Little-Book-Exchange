@@ -629,7 +629,7 @@ create trigger notify_tbr_matches_trigger after insert or update on listings
   for each row execute procedure notify_tbr_matches();
 
 -- 7. create_notification RPC — the one event with no message insert to hook:
--- denyPurchase (Task 4) deletes the conversation outright rather than
+-- denyPurchase marks the conversation 'declined' outright rather than
 -- posting to it.
 drop function if exists create_notification(uuid, text, uuid, text, text);
 create or replace function create_notification(
