@@ -156,19 +156,6 @@ export default async function ListingsPage({
   const sellerRatings = await getSellerRatings(listings)
   const myRequestedIds = await getMyRequestedListingIds(userId)
 
-  const currentUrl = (() => {
-    const p = new URLSearchParams()
-    if (city) p.set('city', city)
-    if (title) p.set('title', title)
-    if (author) p.set('author', author)
-    if (type !== 'all') p.set('type', type)
-    if (genre !== 'all') p.set('genre', genre)
-    if (condition !== 'any') p.set('condition', condition)
-    if (sort !== 'newest') p.set('sort', sort)
-    const qs = p.toString()
-    return qs ? `/listings?${qs}` : '/listings'
-  })()
-
   const activeFilters = [
     city && { label: `📍 ${city}`, key: 'city' },
     title && { label: `Title: "${title}"`, key: 'title' },
@@ -417,7 +404,7 @@ export default async function ListingsPage({
                     ) : (
                       <span
                         className="absolute text-white font-black"
-                        style={{ top: 8, right: 8, padding: '3px 10px', borderRadius: 999, fontSize: 11, background: '#f59e0b' }}
+                        style={{ top: 8, right: 8, padding: '3px 10px', borderRadius: 999, fontSize: 11, background: '#dc2626' }}
                       >
                         ⏳ Pending
                       </span>
@@ -455,7 +442,7 @@ export default async function ListingsPage({
                       <form action={addTbrEntry} className="mt-2">
                         <input type="hidden" name="title" value={l.title} />
                         <input type="hidden" name="author" value={l.author} />
-                        <input type="hidden" name="redirect_to" value={currentUrl} />
+                        <input type="hidden" name="redirect_to" value="/profile?tab=tbr" />
                         <button
                           type="submit"
                           className="w-full font-extrabold text-[11px]"

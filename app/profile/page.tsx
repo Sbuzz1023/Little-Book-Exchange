@@ -206,7 +206,7 @@ export default async function ProfilePage({
       addTbrEntry={addTbrEntry}
       removeTbrEntry={removeTbrEntry}
       success={!!searchParams.success}
-      defaultTab={searchParams.tab === 'messages' ? 'messages' : (searchParams.demo_pending ? 'exchanges' : 'listings')}
+      defaultTab={searchParams.tab === 'messages' ? 'messages' : searchParams.tab === 'tbr' ? 'tbr' : (searchParams.demo_pending ? 'exchanges' : 'listings')}
       queryError={queryError}
       tbrError={searchParams.tbr_error ?? null}
       isDemo={demo}
