@@ -390,6 +390,13 @@ ALTER TABLE listings ADD CONSTRAINT listings_status_check
 -- rewrite the seller's title/price/description too (same reasoning as the
 -- complete_exchange_marks_listing_sold trigger above). These two
 -- security-definer RPCs expose exactly one narrow, safe mutation each.
+-- Accepted risk: any authenticated user can call this to lock an arbitrary
+-- active listing to 'pending' without following through with a real
+-- purchase request. The compensating cleanup in requestPurchase's catch
+-- block (app/listings/[id]/page.tsx) bounds the damage for the legitimate-
+-- buyer failure path, but a deliberately malicious caller bypassing that
+-- flow entirely could still soft-lock listings with no automatic expiry.
+-- Scoping this further (e.g. rate limiting, an expiry sweep) is deferred.
 create or replace function lock_listing_for_request(p_listing_id uuid)
 returns boolean as $$
 declare
@@ -408,7 +415,17 @@ declare
   updated_id uuid;
 begin
   update listings set status = 'active'
-  where id = p_listing_id and status = 'pending'
+  where id = p_listing_id
+    and status = 'pending'
+    and (
+      user_id = auth.uid()
+      or exists (
+        select 1 from conversations
+        where listing_id = p_listing_id
+          and buyer_id = auth.uid()
+          and exchange_status = 'requested'
+      )
+    )
   returning id into updated_id;
   return updated_id is not null;
 end;

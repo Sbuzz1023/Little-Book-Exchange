@@ -145,6 +145,7 @@ export default async function ListingDetailPage({ params, searchParams }: { para
       redirect(`/listings/${params.id}?requested=1`)
     }
 
+    let lockAcquired = false
     try {
       const { createClient: createSrv } = await import('@/lib/supabase/server')
       const supabase = createSrv()
@@ -155,6 +156,7 @@ export default async function ListingDetailPage({ params, searchParams }: { para
       if (!locked) {
         redirect(`/listings/${params.id}?purchase_failed=1`)
       }
+      lockAcquired = true
 
       // Find or create conversation (without exchange_status so it works before migration)
       let convoId: string
@@ -186,6 +188,13 @@ export default async function ListingDetailPage({ params, searchParams }: { para
       redirect(`/listings/${params.id}?requested=1`)
     } catch (err: any) {
       if (err?.digest?.startsWith('NEXT_REDIRECT')) throw err
+      if (lockAcquired) {
+        try {
+          const { createClient: createSrv } = await import('@/lib/supabase/server')
+          const supabase = createSrv()
+          await supabase.rpc('reopen_listing', { p_listing_id: listing.id })
+        } catch {}
+      }
       redirect(`/listings/${params.id}?purchase_failed=1`)
     }
   }
