@@ -450,3 +450,206 @@ grant execute on function reopen_listing(uuid) to authenticated;
 create policy "Sellers can deny conversations" on conversations
   for delete using (auth.uid() = seller_id);
 -- ──────────────────────────────────────────────────────────────────────────────
+
+-- ── Migration: in-app notifications (Phase 1) ─────────────────────────────────
+-- Run this block in Supabase SQL Editor:
+
+-- 1. notifications table. No INSERT policy for `authenticated` — every row is
+-- written either by a security-definer trigger function below (which runs as
+-- the function owner and bypasses RLS, same pattern as
+-- complete_exchange_marks_listing_sold) or by create_notification() (also
+-- security definer). A regular client can never forge a notification into
+-- someone else's feed.
+create table if not exists notifications (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references profiles(id) on delete cascade not null,
+  type text not null check (type in ('message', 'purchase_request', 'purchase_decision', 'tbr_match', 'pickup')),
+  entity_id uuid not null,
+  title text not null,
+  body text not null,
+  read boolean not null default false,
+  created_at timestamptz not null default now()
+);
+
+alter table notifications enable row level security;
+
+create policy "Users can view their own notifications" on notifications
+  for select using (auth.uid() = user_id);
+
+create policy "Users can mark their own notifications read" on notifications
+  for update using (auth.uid() = user_id);
+
+create index if not exists notifications_user_unread_idx on notifications (user_id, read);
+create index if not exists notifications_entity_type_idx on notifications (entity_id, type);
+
+-- 2. messages gains a `kind` column so one trigger can classify 4 of the 5
+-- notification types without string-sniffing message bodies. Ordinary chat
+-- sends (MessagesTab.tsx) are untouched — they default to 'chat'.
+alter table messages add column if not exists kind text not null default 'chat'
+  check (kind in ('chat', 'purchase_request', 'confirmation', 'pickup'));
+
+-- 3. profiles gains 5 notification preference toggles, matching the existing
+-- flat-boolean style already used for share_address / share_pickup.
+alter table profiles
+  add column if not exists notify_message boolean not null default true,
+  add column if not exists notify_purchase_request boolean not null default true,
+  add column if not exists notify_purchase_decision boolean not null default true,
+  add column if not exists notify_tbr_match boolean not null default true,
+  add column if not exists notify_pickup boolean not null default true;
+
+-- 4. Regex-escape helper mirroring lib/tbrMatch.ts's escapeRegex(), used by
+-- the listings trigger below. Character-by-character substitution avoids the
+-- ambiguity of hand-building a POSIX/ARE bracket expression for the special-
+-- character class.
+create or replace function tbr_escape_regex(v text) returns text as $$
+declare
+  result text := '';
+  c text;
+  specials text := '.^$*+?()[]{}|\';
+begin
+  for i in 1..length(v) loop
+    c := substr(v, i, 1);
+    if position(c in specials) > 0 then
+      result := result || '\' || c;
+    else
+      result := result || c;
+    end if;
+  end loop;
+  return result;
+end;
+$$ language plpgsql immutable;
+
+-- 5. messages trigger — covers `message`, `purchase_request`,
+-- `purchase_decision` (confirmed), and `pickup`. requestPurchase,
+-- confirmExchange, and completeExchange (Tasks 3-4) each insert a message
+-- with a specific `kind`; this is the only place that turns those inserts
+-- into notifications, so nothing in application code calls
+-- create_notification() for these four cases.
+create or replace function notify_on_message()
+returns trigger as $$
+declare
+  v_conv conversations%rowtype;
+  v_recipient uuid;
+  v_type text;
+  v_pref boolean;
+  v_title text;
+begin
+  select * into v_conv from conversations where id = new.conversation_id;
+  if not found then
+    return new;
+  end if;
+
+  v_recipient := case when new.sender_id = v_conv.buyer_id then v_conv.seller_id else v_conv.buyer_id end;
+
+  v_type := case new.kind
+    when 'purchase_request' then 'purchase_request'
+    when 'confirmation'     then 'purchase_decision'
+    when 'pickup'            then 'pickup'
+    else 'message'
+  end;
+
+  select case v_type
+    when 'purchase_request'  then notify_purchase_request
+    when 'purchase_decision' then notify_purchase_decision
+    when 'pickup'             then notify_pickup
+    else notify_message
+  end into v_pref
+  from profiles where id = v_recipient;
+
+  if v_pref is distinct from true then
+    return new;
+  end if;
+
+  v_title := case v_type
+    when 'purchase_request'  then 'New purchase request'
+    when 'purchase_decision' then 'Purchase request update'
+    when 'pickup'             then 'Book picked up'
+    else 'New message'
+  end;
+
+  insert into notifications (user_id, type, entity_id, title, body)
+  values (v_recipient, v_type, new.conversation_id, v_title, left(new.body, 200));
+
+  return new;
+exception when others then
+  raise warning 'notify_on_message failed: %', sqlerrm;
+  return new;
+end;
+$$ language plpgsql security definer set search_path = public, pg_temp;
+
+drop trigger if exists notify_on_message_trigger on messages;
+create trigger notify_on_message_trigger after insert on messages
+  for each row execute procedure notify_on_message();
+
+-- 6. listings trigger — covers `tbr_match`, including "notify me if it
+-- reopens" (fires on ANY transition to 'active', not just creation, so it
+-- covers denyPurchase's direct status update and cancelPurchase's
+-- reopen_listing() RPC the same way, regardless of which path changed the
+-- row). Mirrors the word-boundary rule in lib/tbrMatch.ts's
+-- tbrMatchPattern() — any change to one must be mirrored in the other.
+create or replace function notify_tbr_matches()
+returns trigger as $$
+declare
+  v_entry record;
+  v_seller_state text;
+begin
+  if new.status <> 'active' then
+    return new;
+  end if;
+  if tg_op = 'UPDATE' and old.status = 'active' then
+    return new;
+  end if;
+
+  select state into v_seller_state from profiles where id = new.user_id;
+
+  for v_entry in
+    select t.id, t.user_id
+    from tbr_entries t
+    join profiles p on p.id = t.user_id
+    where t.user_id <> new.user_id
+      and p.notify_tbr_match = true
+      and (t.title = '' or new.title ~* ('(^|\W)' || tbr_escape_regex(t.title) || '(\W|$)'))
+      and (t.author = '' or new.author ~* ('(^|\W)' || tbr_escape_regex(t.author) || '(\W|$)'))
+      and (t.city = '' or new.city ~* ('(^|\W)' || tbr_escape_regex(t.city) || '(\W|$)'))
+      and (t.state = '' or t.state = v_seller_state)
+  loop
+    insert into notifications (user_id, type, entity_id, title, body)
+    values (v_entry.user_id, 'tbr_match', v_entry.id, 'A book on your TBR is available', new.title || ' by ' || new.author);
+  end loop;
+
+  return new;
+exception when others then
+  raise warning 'notify_tbr_matches failed: %', sqlerrm;
+  return new;
+end;
+$$ language plpgsql security definer set search_path = public, pg_temp;
+
+drop trigger if exists notify_tbr_matches_trigger on listings;
+create trigger notify_tbr_matches_trigger after insert or update on listings
+  for each row execute procedure notify_tbr_matches();
+
+-- 7. create_notification RPC — the one event with no message insert to hook:
+-- denyPurchase (Task 4) deletes the conversation outright rather than
+-- posting to it.
+create or replace function create_notification(
+  p_user_id uuid, p_type text, p_entity_id uuid, p_title text, p_body text
+) returns void as $$
+begin
+  insert into notifications (user_id, type, entity_id, title, body)
+  select p_user_id, p_type, p_entity_id, p_title, p_body
+  from profiles
+  where id = p_user_id
+  and (case p_type
+    when 'purchase_request'  then notify_purchase_request
+    when 'purchase_decision' then notify_purchase_decision
+    when 'pickup'             then notify_pickup
+    when 'tbr_match'          then notify_tbr_match
+    else notify_message
+  end);
+exception when others then
+  raise warning 'create_notification failed: %', sqlerrm;
+end;
+$$ language plpgsql security definer set search_path = public, pg_temp;
+
+grant execute on function create_notification(uuid, text, uuid, text, text) to authenticated;
+-- ──────────────────────────────────────────────────────────────────────────────
