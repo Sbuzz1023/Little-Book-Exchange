@@ -106,6 +106,7 @@ type Props = {
   submitReview: (formData: FormData) => Promise<{ ok: boolean; error?: string }>
   confirmExchange: (formData: FormData) => Promise<void>
   cancelPurchase: (formData: FormData) => Promise<void>
+  denyPurchase: (formData: FormData) => Promise<void>
   removeSavedListing: (formData: FormData) => Promise<void>
   addTbrEntry: (formData: FormData) => Promise<void>
   removeTbrEntry: (formData: FormData) => Promise<void>
@@ -145,14 +146,16 @@ function coverGradient(id: string | null | undefined) {
 }
 
 function statusStyle(status: string) {
-  if (status === 'sold')  return { background: '#dbeafe', color: '#1d4ed8' }
-  if (status === 'given') return { background: '#f3e8ff', color: '#6b21a8' }
+  if (status === 'sold')    return { background: '#dbeafe', color: '#1d4ed8' }
+  if (status === 'given')   return { background: '#f3e8ff', color: '#6b21a8' }
+  if (status === 'pending') return { background: '#fffbeb', color: '#92400e' }
   return { background: '#dcfce7', color: '#166534' }
 }
 
 function statusLabel(status: string) {
-  if (status === 'sold')  return 'Sold'
-  if (status === 'given') return 'Given Away'
+  if (status === 'sold')    return 'Sold'
+  if (status === 'given')   return 'Given Away'
+  if (status === 'pending') return 'Pending'
   return 'Active'
 }
 
@@ -162,7 +165,7 @@ const MOCK_TRANSACTIONS = [
   { id: '3', type: 'earn',     desc: 'Book claimed by neighbor',  amount: '+1', date: 'Jun 22, 2026', color: '#059669' },
 ]
 
-export default function DashboardClient({ profile, listings, exchanges, savedListings, tbrEntries, updateAction, updateListingStatus, completeExchange, hideExchangeHistory, submitReview, confirmExchange, cancelPurchase, removeSavedListing, addTbrEntry, removeTbrEntry, success, defaultTab, queryError, tbrError, isDemo, initialConversationId }: Props) {
+export default function DashboardClient({ profile, listings, exchanges, savedListings, tbrEntries, updateAction, updateListingStatus, completeExchange, hideExchangeHistory, submitReview, confirmExchange, denyPurchase, cancelPurchase, removeSavedListing, addTbrEntry, removeTbrEntry, success, defaultTab, queryError, tbrError, isDemo, initialConversationId }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>(defaultTab ?? 'listings')
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(initialConversationId ?? null)
 
@@ -287,7 +290,7 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
                   </Link>
                   <form action={updateListingStatus} className="flex gap-2 shrink-0">
                     <input type="hidden" name="id" value={l.id} />
-                    {l.status === 'active' ? (
+                    {l.status === 'pending' ? null : l.status === 'active' ? (
                       <button name="status" value="sold"
                         className="font-extrabold text-[11px] hover:opacity-80"
                         style={{ background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', padding: 0 }}>
@@ -431,6 +434,17 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
                     <button className="font-extrabold text-[12px] text-white hover:opacity-90"
                       style={{ background: '#0d9488', border: 'none', padding: '7px 18px', borderRadius: 999, cursor: 'pointer', fontFamily: 'inherit', boxShadow: '0 2px 0 #0f766e' }}>
                       ✅ Confirm — Send My Contact Info
+                    </button>
+                  </form>
+                )}
+
+                {/* Seller: deny a purchase request */}
+                {role === 'seller' && status === 'requested' && (
+                  <form action={denyPurchase} onSubmit={e => { if (!confirm('Deny this purchase request?')) e.preventDefault() }}>
+                    <input type="hidden" name="conversation_id" value={ex.id} />
+                    <button className="font-extrabold text-[12px] hover:opacity-80"
+                      style={{ background: '#fff1f2', border: '1.5px solid #fca5a5', color: '#dc2626', padding: '7px 18px', borderRadius: 999, cursor: 'pointer', fontFamily: 'inherit' }}>
+                      ✕ Deny
                     </button>
                   </form>
                 )}

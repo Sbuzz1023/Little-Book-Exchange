@@ -3,7 +3,7 @@ import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import DashboardClient from './DashboardClient'
 import { MOCK_PROFILE, MOCK_LISTINGS, MOCK_USER_ID, MOCK_CONVERSATIONS } from '@/lib/mock-data'
-import { updateProfile, updateListingStatus, completeExchange, hideExchangeHistory, confirmExchange, cancelPurchase } from './actions'
+import { updateProfile, updateListingStatus, completeExchange, hideExchangeHistory, confirmExchange, denyPurchase, cancelPurchase } from './actions'
 import { submitReview } from '@/lib/actions/reviews'
 import { averageRating } from '@/lib/reviewAverages'
 import { removeSavedListing } from '@/lib/actions/savedListings'
@@ -200,6 +200,7 @@ export default async function ProfilePage({
       hideExchangeHistory={hideExchangeHistory}
       submitReview={submitReview}
       confirmExchange={confirmExchange}
+      denyPurchase={denyPurchase}
       cancelPurchase={cancelPurchase}
       removeSavedListing={removeSavedListing}
       addTbrEntry={addTbrEntry}
