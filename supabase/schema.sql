@@ -631,9 +631,13 @@ create trigger notify_tbr_matches_trigger after insert or update on listings
 -- 7. create_notification RPC — the one event with no message insert to hook:
 -- denyPurchase (Task 4) deletes the conversation outright rather than
 -- posting to it.
+drop function if exists create_notification(uuid, text, uuid, text, text);
 create or replace function create_notification(
-  p_user_id uuid, p_type text, p_entity_id uuid, p_title text, p_body text
+  p_user_id uuid, p_type text, p_entity_id uuid
 ) returns void as $$
+declare
+  v_title text;
+  v_body text;
 begin
   if not exists (
     select 1 from conversations
@@ -645,8 +649,17 @@ begin
     return;
   end if;
 
+  v_title := case p_type
+    when 'purchase_decision' then 'Purchase request declined'
+    else 'Notification'
+  end;
+  v_body := case p_type
+    when 'purchase_decision' then 'The seller declined your purchase request.'
+    else ''
+  end;
+
   insert into notifications (user_id, type, entity_id, title, body)
-  select p_user_id, p_type, p_entity_id, p_title, p_body
+  select p_user_id, p_type, p_entity_id, v_title, v_body
   from profiles
   where id = p_user_id
   and (case p_type
@@ -661,5 +674,5 @@ exception when others then
 end;
 $$ language plpgsql security definer set search_path = public, pg_temp;
 
-grant execute on function create_notification(uuid, text, uuid, text, text) to authenticated;
+grant execute on function create_notification(uuid, text, uuid) to authenticated;
 -- ──────────────────────────────────────────────────────────────────────────────

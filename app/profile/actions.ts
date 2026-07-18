@@ -197,8 +197,6 @@ export async function denyPurchase(formData: FormData) {
         p_user_id: convo.buyer_id,
         p_type: 'purchase_decision',
         p_entity_id: conversationId,
-        p_title: 'Purchase request declined',
-        p_body: 'The seller declined your purchase request.',
       })
     } catch {}
   }
