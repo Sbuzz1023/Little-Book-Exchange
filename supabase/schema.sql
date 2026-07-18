@@ -438,3 +438,15 @@ $$ language plpgsql security definer set search_path = public, pg_temp;
 grant execute on function lock_listing_for_request(uuid) to authenticated;
 grant execute on function reopen_listing(uuid) to authenticated;
 -- ──────────────────────────────────────────────────────────────────────────────
+
+-- ── Migration: seller can deny a purchase request ─────────────────────────────
+-- conversations only ever had a DELETE policy for the buyer ("buyer can cancel
+-- conversations" in rls-policies.sql — this file's inline policies never had
+-- a DELETE policy at all). denyPurchase (app/profile/actions.ts) needs the
+-- seller to be able to delete the conversation row too, or the delete silently
+-- matches 0 rows and the request never actually clears from the seller's
+-- Exchanges tab, even though the listing itself still correctly reopens.
+-- Run this block in Supabase SQL Editor:
+create policy "Sellers can deny conversations" on conversations
+  for delete using (auth.uid() = seller_id);
+-- ──────────────────────────────────────────────────────────────────────────────
