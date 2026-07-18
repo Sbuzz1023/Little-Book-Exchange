@@ -8,6 +8,7 @@ export async function addTbrEntry(formData: FormData): Promise<void> {
   const author = ((formData.get('author') as string) || '').trim()
   const city = ((formData.get('city') as string) || '').trim()
   const state = ((formData.get('state') as string) || '').trim()
+  const redirectTo = ((formData.get('redirect_to') as string) || '').trim() || '/profile'
 
   if (!title && !author) {
     redirect('/profile?tbr_error=' + encodeURIComponent('Enter a title or an author.'))
@@ -25,7 +26,7 @@ export async function addTbrEntry(formData: FormData): Promise<void> {
     state,
   })
 
-  redirect('/profile')
+  redirect(redirectTo)
 }
 
 export async function removeTbrEntry(formData: FormData): Promise<void> {
