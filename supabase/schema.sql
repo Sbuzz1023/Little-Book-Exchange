@@ -381,3 +381,39 @@ ALTER TABLE listings DROP CONSTRAINT IF EXISTS listings_status_check;
 ALTER TABLE listings ADD CONSTRAINT listings_status_check
   CHECK (status IN ('active', 'pending', 'sold', 'given'));
 -- ──────────────────────────────────────────────────────────────────────────────
+
+-- ── Migration: RPCs for buyer-side listing lock/unlock ────────────────────────
+-- Buyers aren't the listing owner, so the existing "Users can update own
+-- listings" RLS policy (auth.uid() = user_id) blocks them from updating a
+-- listing's status directly. A broad buyer-facing UPDATE policy isn't safe
+-- either — RLS can't be scoped to a single column, so it would let a buyer
+-- rewrite the seller's title/price/description too (same reasoning as the
+-- complete_exchange_marks_listing_sold trigger above). These two
+-- security-definer RPCs expose exactly one narrow, safe mutation each.
+create or replace function lock_listing_for_request(p_listing_id uuid)
+returns boolean as $$
+declare
+  updated_id uuid;
+begin
+  update listings set status = 'pending'
+  where id = p_listing_id and status = 'active'
+  returning id into updated_id;
+  return updated_id is not null;
+end;
+$$ language plpgsql security definer;
+
+create or replace function reopen_listing(p_listing_id uuid)
+returns boolean as $$
+declare
+  updated_id uuid;
+begin
+  update listings set status = 'active'
+  where id = p_listing_id and status = 'pending'
+  returning id into updated_id;
+  return updated_id is not null;
+end;
+$$ language plpgsql security definer;
+
+grant execute on function lock_listing_for_request(uuid) to authenticated;
+grant execute on function reopen_listing(uuid) to authenticated;
+-- ──────────────────────────────────────────────────────────────────────────────

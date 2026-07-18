@@ -151,13 +151,8 @@ export default async function ListingDetailPage({ params, searchParams }: { para
       const { data: { user: u } } = await supabase.auth.getUser()
       if (!u) redirect(`/auth/signin?redirect=/listings/${params.id}`)
 
-      const { data: locked } = await supabase
-        .from('listings')
-        .update({ status: 'pending' })
-        .eq('id', listing.id)
-        .eq('status', 'active')
-        .select('id')
-      if (!locked || locked.length === 0) {
+      const { data: locked } = await supabase.rpc('lock_listing_for_request', { p_listing_id: listing.id })
+      if (!locked) {
         redirect(`/listings/${params.id}?purchase_failed=1`)
       }
 

@@ -94,11 +94,7 @@ export async function cancelPurchase(formData: FormData) {
     .in('exchange_status', ['requested', 'none'])
 
   if (convo?.listing_id && convo.exchange_status === 'requested') {
-    await supabase
-      .from('listings')
-      .update({ status: 'active' })
-      .eq('id', convo.listing_id)
-      .eq('status', 'pending')
+    await supabase.rpc('reopen_listing', { p_listing_id: convo.listing_id })
   }
 
   redirect('/profile')
