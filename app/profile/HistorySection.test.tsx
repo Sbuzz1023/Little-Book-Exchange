@@ -102,4 +102,33 @@ describe('HistorySection', () => {
     fireEvent.click(Array.from(container.querySelectorAll('button')).find(b => b.textContent?.includes('Submit Rating'))!)
     await waitFor(() => expect(container.textContent).toContain('Rated'))
   })
+
+  it('shows a "Declined" badge and "Declined by <name>" text for a declined exchange from the buyer\'s perspective, and no "Rate Seller" button', () => {
+    const declined: HistoryExchange = { ...baseExchange, exchange_status: 'declined' }
+    const { container } = render(
+      <HistorySection exchanges={[declined]} userId="me" hideExchangeHistory={hideExchangeHistory} submitReview={submitReview} />
+    )
+    expect(container.textContent).toContain('Declined')
+    expect(container.textContent).toContain('Declined by')
+    expect(container.textContent).toContain('Neighbor One')
+    expect(container.textContent).not.toContain('Rate Seller')
+  })
+
+  it('shows "You declined <name>\'s request" text for a declined exchange from the seller\'s perspective', () => {
+    const declined: HistoryExchange = { ...baseExchange, exchange_status: 'declined', buyer_id: 'them-2', seller_id: 'me', buyer: { username: 'them2', name: 'Neighbor Two' } }
+    const { container } = render(
+      <HistorySection exchanges={[declined]} userId="me" hideExchangeHistory={hideExchangeHistory} submitReview={submitReview} />
+    )
+    expect(container.textContent).toContain('You declined')
+    expect(container.textContent).toContain('Neighbor Two')
+    expect(container.textContent).toContain("request")
+  })
+
+  it('excludes a declined exchange the current user has hidden on their own side', () => {
+    const hidden: HistoryExchange = { ...baseExchange, exchange_status: 'declined', buyer_hidden: true }
+    const { container } = render(
+      <HistorySection exchanges={[hidden]} userId="me" hideExchangeHistory={hideExchangeHistory} submitReview={submitReview} />
+    )
+    expect(container.textContent).toContain('No completed exchanges yet')
+  })
 })

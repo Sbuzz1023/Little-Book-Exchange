@@ -65,7 +65,7 @@ export default function HistorySection({
 
   const completed = exchanges
     .filter(e => {
-      if (e.exchange_status !== 'completed') return false
+      if (e.exchange_status !== 'completed' && e.exchange_status !== 'declined') return false
       if (e.seller_id === userId) return !e.seller_hidden
       if (e.buyer_id === userId) return !e.buyer_hidden
       return false
@@ -114,6 +114,7 @@ export default function HistorySection({
           const other = role === 'seller' ? ex.buyer : ex.seller
           const otherName = other?.name || other?.username || 'Neighbor'
           const reviewed = ex.reviewed || !!reviewedOverride[ex.id]
+          const isDeclined = ex.exchange_status === 'declined'
 
           return (
             <div key={ex.id} className="flex items-center gap-3" style={{ padding: '12px 0', borderBottom: '2px solid #f3f4f6' }}>
@@ -130,19 +131,27 @@ export default function HistorySection({
                 <p className="font-black text-[13px] truncate">{ex.listings?.title ?? 'Unknown'}</p>
                 <div className="flex items-center gap-2 flex-wrap">
                   <p className="font-semibold text-[12px]" style={{ color: '#aaa' }}>
-                    {role === 'seller' ? 'Sold to' : 'Bought from'} <strong style={{ color: '#555' }}>{otherName}</strong>
+                    {isDeclined
+                      ? (role === 'seller'
+                          ? <>You declined <strong style={{ color: '#555' }}>{otherName}</strong>'s request</>
+                          : <>Declined by <strong style={{ color: '#555' }}>{otherName}</strong></>)
+                      : <>{role === 'seller' ? 'Sold to' : 'Bought from'} <strong style={{ color: '#555' }}>{otherName}</strong></>}
                   </p>
-                  {role === 'buyer' && <StarRatingBadge rating={ex.sellerRating} sellerId={ex.seller_id} />}
+                  {!isDeclined && role === 'buyer' && <StarRatingBadge rating={ex.sellerRating} sellerId={ex.seller_id} />}
                 </div>
                 <p className="font-semibold text-[11px]" style={{ color: '#ccc' }}>{formatDate(ex.completed_at)}</p>
               </div>
 
               <span className="font-extrabold text-[10px] whitespace-nowrap shrink-0"
-                style={{ padding: '3px 10px', borderRadius: 999, background: role === 'seller' ? '#fff7ed' : '#f0fdfa', color: role === 'seller' ? '#f97316' : '#0d9488' }}>
-                {role === 'seller' ? 'Sold' : 'Bought'}
+                style={{
+                  padding: '3px 10px', borderRadius: 999,
+                  background: isDeclined ? '#fef2f2' : (role === 'seller' ? '#fff7ed' : '#f0fdfa'),
+                  color: isDeclined ? '#dc2626' : (role === 'seller' ? '#f97316' : '#0d9488'),
+                }}>
+                {isDeclined ? 'Declined' : (role === 'seller' ? 'Sold' : 'Bought')}
               </span>
 
-              {role === 'buyer' && (
+              {!isDeclined && role === 'buyer' && (
                 reviewed ? (
                   <span className="font-bold text-[11px] shrink-0" style={{ color: '#aaa' }}>Rated</span>
                 ) : (

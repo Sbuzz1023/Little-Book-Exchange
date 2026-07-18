@@ -676,3 +676,16 @@ $$ language plpgsql security definer set search_path = public, pg_temp;
 
 grant execute on function create_notification(uuid, text, uuid) to authenticated;
 -- ──────────────────────────────────────────────────────────────────────────────
+
+-- ── Migration: declined purchase requests survive as History entries ─────────
+-- Run this block in Supabase SQL Editor:
+
+-- denyPurchase now marks a conversation 'declined' instead of deleting it, so
+-- the buyer's purchase_decision notification (create_notification, above) has
+-- a permanent row to point at — Phase 1 has no notification feed UI, so a
+-- notification is only ever visible via a highlighted row; deleting the
+-- conversation left decline notifications with nothing to highlight.
+ALTER TABLE conversations DROP CONSTRAINT IF EXISTS conversations_exchange_status_check;
+ALTER TABLE conversations ADD CONSTRAINT conversations_exchange_status_check
+  CHECK (exchange_status IN ('none', 'requested', 'confirmed', 'completed', 'declined'));
+-- ──────────────────────────────────────────────────────────────────────────────

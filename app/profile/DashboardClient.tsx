@@ -44,7 +44,7 @@ type Exchange = {
   listing_id: string
   buyer_id: string
   seller_id: string
-  exchange_status: 'none' | 'requested' | 'confirmed' | 'completed'
+  exchange_status: 'none' | 'requested' | 'confirmed' | 'completed' | 'declined'
   completed_at: string | null
   buyer_hidden: boolean
   seller_hidden: boolean
@@ -361,8 +361,8 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
       {/* ── EXCHANGES ── */}
       {activeTab === 'exchanges' && (() => {
         const userId = profile?.id ?? ''
-        const sold   = exchanges.filter(e => e.seller_id === userId && e.exchange_status !== 'completed')
-        const bought = exchanges.filter(e => e.buyer_id  === userId && e.exchange_status !== 'completed')
+        const sold   = exchanges.filter(e => e.seller_id === userId && e.exchange_status !== 'completed' && e.exchange_status !== 'declined')
+        const bought = exchanges.filter(e => e.buyer_id  === userId && e.exchange_status !== 'completed' && e.exchange_status !== 'declined')
 
         const ExchangeRow = ({ ex, role }: { ex: Exchange; role: 'seller' | 'buyer' }) => {
           const other     = role === 'seller' ? (ex.buyer ?? {}) : (ex.seller ?? {})

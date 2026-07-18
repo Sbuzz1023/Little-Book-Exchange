@@ -203,7 +203,7 @@ export async function denyPurchase(formData: FormData) {
 
   await supabase
     .from('conversations')
-    .delete()
+    .update({ exchange_status: 'declined', completed_at: new Date().toISOString() })
     .eq('id', conversationId)
     .eq('seller_id', user.id)
     .eq('exchange_status', 'requested')

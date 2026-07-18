@@ -94,4 +94,12 @@ describe('DashboardClient — notification badges and highlighting', () => {
     fireEvent.click(screen.getByText('Exchanges').closest('button')!)
     expect(createClient).not.toHaveBeenCalled()
   })
+
+  it('excludes a declined exchange from the active Sold/Bought lists, moving it to History instead', () => {
+    const declined = { ...pendingExchange, exchange_status: 'declined' as const }
+    const { container } = render(<DashboardClient {...baseProps} exchanges={[declined]} defaultTab="exchanges" />)
+    expect(container.querySelector('[data-testid="exchange-row-highlighted"]')).toBeNull()
+    expect(container.textContent).toContain('Sold (0)')
+    expect(container.textContent).toContain('History (1)')
+  })
 })
