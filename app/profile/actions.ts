@@ -85,6 +85,10 @@ export async function cancelPurchase(formData: FormData) {
     .eq('buyer_id', user.id)
     .maybeSingle()
 
+  if (convo?.listing_id && convo.exchange_status === 'requested') {
+    await supabase.rpc('reopen_listing', { p_listing_id: convo.listing_id })
+  }
+
   // Only allowed while still pending — not after seller confirms
   await supabase
     .from('conversations')
@@ -92,10 +96,6 @@ export async function cancelPurchase(formData: FormData) {
     .eq('id', conversationId)
     .eq('buyer_id', user.id)
     .in('exchange_status', ['requested', 'none'])
-
-  if (convo?.listing_id && convo.exchange_status === 'requested') {
-    await supabase.rpc('reopen_listing', { p_listing_id: convo.listing_id })
-  }
 
   redirect('/profile')
 }
