@@ -9,6 +9,7 @@ import { averageRating } from '@/lib/reviewAverages'
 import { removeSavedListing } from '@/lib/actions/savedListings'
 import { addTbrEntry, removeTbrEntry } from '@/lib/actions/tbrEntries'
 import { tbrMatchPattern } from '@/lib/tbrMatch'
+import { unreadCounts as computeUnreadCounts, unreadEntityIds as computeUnreadEntityIds, type NotificationRow } from '@/lib/notifications'
 
 export default async function ProfilePage({
   searchParams,
@@ -25,6 +26,8 @@ export default async function ProfilePage({
   let savedListings: any[] = []
   let tbrEntries: any[] = []
   let queryError: string | null = null
+  let unreadCounts = { total: 0, exchanges: 0, tbr: 0, messages: 0 }
+  let unreadEntityIds = { message: [] as string[], decisionOrPickup: [] as string[], tbrMatch: [] as string[] }
 
   if (demo) {
     profile = MOCK_PROFILE
@@ -103,6 +106,16 @@ export default async function ProfilePage({
         const { data: match } = await query.limit(1).maybeSingle()
         return { ...entry, match: match ? { id: match.id, title: match.title } : null }
       }))
+
+      const { data: notifRows } = await supabase
+        .from('notifications').select('type, entity_id').eq('user_id', user.id).eq('read', false)
+      const notifications: NotificationRow[] = (notifRows ?? []) as NotificationRow[]
+      unreadCounts = computeUnreadCounts(notifications)
+      unreadEntityIds = {
+        message: computeUnreadEntityIds(notifications, ['message']),
+        decisionOrPickup: computeUnreadEntityIds(notifications, ['purchase_decision', 'pickup']),
+        tbrMatch: computeUnreadEntityIds(notifications, ['tbr_match']),
+      }
 
       // Fetch conversations with NO joins — joins can silently fail due to RLS
       const [{ data: asBuyer, error: buyerErr }, { data: asSeller, error: sellerErr }] =
@@ -209,6 +222,8 @@ export default async function ProfilePage({
       defaultTab={searchParams.tab === 'messages' ? 'messages' : searchParams.tab === 'tbr' ? 'tbr' : (searchParams.demo_pending ? 'exchanges' : 'listings')}
       queryError={queryError}
       tbrError={searchParams.tbr_error ?? null}
+      unreadCounts={unreadCounts}
+      unreadEntityIds={unreadEntityIds}
       isDemo={demo}
       initialConversationId={searchParams.conversation ?? null}
     />

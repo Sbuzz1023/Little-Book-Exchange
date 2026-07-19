@@ -128,3 +128,49 @@ describe('MessagesTab', () => {
     expect(container.textContent).not.toContain('★')
   })
 })
+
+describe('MessagesTab — unread highlighting', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('highlights a conversation row that has an unread message notification', () => {
+    const { container } = render(
+      <MessagesTab exchanges={exchanges} userId="me" isDemo={true} selectedId={null} onSelectId={vi.fn()} unreadConversationIds={['convo-1']} />
+    )
+    expect(container.querySelector('[data-testid="conversation-row-unread"]')).not.toBeNull()
+  })
+
+  it('does not highlight a conversation with no unread notification', () => {
+    const { container } = render(
+      <MessagesTab exchanges={exchanges} userId="me" isDemo={true} selectedId={null} onSelectId={vi.fn()} unreadConversationIds={[]} />
+    )
+    expect(container.querySelector('[data-testid="conversation-row-unread"]')).toBeNull()
+  })
+
+  it('marks the conversation read via Supabase when selected in non-demo mode', () => {
+    const update = vi.fn(() => ({ eq: vi.fn().mockReturnThis() }))
+    vi.mocked(createClient).mockReturnValue({
+      from: vi.fn(() => ({ update })),
+      channel: vi.fn(() => ({ on: vi.fn().mockReturnThis(), subscribe: vi.fn().mockReturnThis() })),
+      removeChannel: vi.fn(),
+    } as any)
+
+    const onSelectId = vi.fn()
+    const { container } = render(
+      <MessagesTab exchanges={exchanges} userId="me" isDemo={false} selectedId={null} onSelectId={onSelectId} unreadConversationIds={['convo-1']} />
+    )
+    fireEvent.click(findButtonWithText(container, 'Neighbor A')!)
+    expect(onSelectId).toHaveBeenCalledWith('convo-1')
+    expect(update).toHaveBeenCalledWith({ read: true })
+  })
+
+  it('does not call Supabase to mark read in demo mode', () => {
+    const onSelectId = vi.fn()
+    const { container } = render(
+      <MessagesTab exchanges={exchanges} userId="me" isDemo={true} selectedId={null} onSelectId={onSelectId} unreadConversationIds={['convo-1']} />
+    )
+    fireEvent.click(findButtonWithText(container, 'Neighbor A')!)
+    expect(createClient).not.toHaveBeenCalled()
+  })
+})

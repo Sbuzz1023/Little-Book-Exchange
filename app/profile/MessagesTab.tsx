@@ -60,13 +60,14 @@ function formatTime(iso: string) {
 }
 
 export default function MessagesTab({
-  exchanges, userId, isDemo, selectedId, onSelectId,
+  exchanges, userId, isDemo, selectedId, onSelectId, unreadConversationIds = [],
 }: {
   exchanges: MessagesTabExchange[]
   userId: string
   isDemo: boolean
   selectedId: string | null
   onSelectId: (id: string | null) => void
+  unreadConversationIds?: string[]
 }) {
   const [localMessages, setLocalMessages] = useState<Record<string, MessageRow[]>>({})
   const [body, setBody] = useState('')
@@ -75,6 +76,15 @@ export default function MessagesTab({
 
   const convo = exchanges.find(e => e.id === selectedId) ?? null
   const messages = convo ? (localMessages[convo.id] ?? convo.messages) : []
+
+  async function selectConversation(id: string) {
+    onSelectId(id)
+    if (!isDemo && unreadConversationIds.includes(id)) {
+      const supabase = createClient()
+      await supabase.from('notifications').update({ read: true })
+        .eq('user_id', userId).eq('type', 'message').eq('entity_id', id)
+    }
+  }
 
   useEffect(() => {
     if (!convo) return
@@ -162,17 +172,19 @@ export default function MessagesTab({
             const msgs = localMessages[ex.id] ?? ex.messages
             const lastMsg = msgs[msgs.length - 1]
             const isActive = selectedId === ex.id
+            const isUnread = unreadConversationIds.includes(ex.id)
             const color = avatarColor(otherName)
             return (
               <button
                 key={ex.id}
                 type="button"
-                onClick={() => onSelectId(ex.id)}
+                onClick={() => selectConversation(ex.id)}
+                data-testid={isUnread ? 'conversation-row-unread' : undefined}
                 className="flex items-center gap-3 text-left"
                 style={{
                   padding: '14px 16px', border: 'none', width: '100%', fontFamily: 'inherit', cursor: 'pointer',
-                  background: isActive ? '#fff7ed' : 'transparent',
-                  borderLeft: isActive ? '3px solid #f97316' : '3px solid transparent',
+                  background: isActive ? '#fff7ed' : isUnread ? '#fef9f0' : 'transparent',
+                  borderLeft: isActive ? '3px solid #f97316' : isUnread ? '3px solid #fdba74' : '3px solid transparent',
                   borderBottom: '1px solid #f3f4f6',
                 }}
               >

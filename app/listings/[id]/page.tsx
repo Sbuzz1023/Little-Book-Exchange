@@ -183,6 +183,7 @@ export default async function ListingDetailPage({ params, searchParams }: { para
         conversation_id: convoId,
         sender_id: u!.id,
         body: '🛒 I\'d like to purchase this book! Please confirm when you\'re ready.',
+        kind: 'purchase_request',
       })
 
       redirect(`/listings/${params.id}?requested=1`)
