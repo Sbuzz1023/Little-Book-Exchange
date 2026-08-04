@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent, within } from '@testing-library/react'
 import { describe, it, expect, vi } from 'vitest'
 import Nav from './Nav'
 
@@ -6,7 +6,30 @@ vi.mock('next/navigation', () => ({
   usePathname: () => '/profile',
 }))
 
+function openMobileMenu() {
+  fireEvent.click(screen.getByLabelText('Menu'))
+  return within(screen.getByTestId('mobile-menu'))
+}
+
 describe('Nav', () => {
+  it('shows an Admin Panel link in the mobile menu when isAdmin is true', () => {
+    render(<Nav userName="Alice" isAdmin />)
+    const mobileMenu = openMobileMenu()
+    expect(mobileMenu.getByRole('link', { name: /Admin Panel/i })).toHaveAttribute('href', '/admin')
+  })
+
+  it('does not show an Admin Panel link in the mobile menu when isAdmin is false', () => {
+    render(<Nav userName="Alice" isAdmin={false} />)
+    const mobileMenu = openMobileMenu()
+    expect(mobileMenu.queryByRole('link', { name: /Admin Panel/i })).not.toBeInTheDocument()
+  })
+
+  it('does not show an Admin Panel link in the mobile menu when isAdmin is omitted', () => {
+    render(<Nav userName="Alice" />)
+    const mobileMenu = openMobileMenu()
+    expect(mobileMenu.queryByRole('link', { name: /Admin Panel/i })).not.toBeInTheDocument()
+  })
+
   it('does not show a badge on Dashboard when unreadCount is 0', () => {
     render(<Nav userName="Alice" unreadCount={0} />)
     expect(screen.queryByTestId('dashboard-badge')).not.toBeInTheDocument()
