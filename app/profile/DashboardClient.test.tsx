@@ -102,4 +102,12 @@ describe('DashboardClient — notification badges and highlighting', () => {
     expect(container.textContent).toContain('Sold (0)')
     expect(container.textContent).toContain('History (1)')
   })
+
+  it('excludes a plain message-only conversation (no purchase request) from Sold/Bought/History — it belongs only in Messages', () => {
+    const messageOnly = { ...pendingExchange, exchange_status: 'none' as const }
+    const { container } = render(<DashboardClient {...baseProps} exchanges={[messageOnly]} defaultTab="exchanges" />)
+    expect(container.textContent).toContain('Sold (0)')
+    expect(container.textContent).toContain('Bought (0)')
+    expect(container.textContent).toContain('History (0)')
+  })
 })
