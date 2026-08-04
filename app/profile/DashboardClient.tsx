@@ -361,8 +361,8 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
       {/* ── EXCHANGES ── */}
       {activeTab === 'exchanges' && (() => {
         const userId = profile?.id ?? ''
-        const sold   = exchanges.filter(e => e.seller_id === userId && e.exchange_status !== 'completed' && e.exchange_status !== 'declined')
-        const bought = exchanges.filter(e => e.buyer_id  === userId && e.exchange_status !== 'completed' && e.exchange_status !== 'declined')
+        const sold   = exchanges.filter(e => e.seller_id === userId && e.exchange_status !== 'completed' && e.exchange_status !== 'declined' && e.exchange_status !== 'none')
+        const bought = exchanges.filter(e => e.buyer_id  === userId && e.exchange_status !== 'completed' && e.exchange_status !== 'declined' && e.exchange_status !== 'none')
 
         const ExchangeRow = ({ ex, role }: { ex: Exchange; role: 'seller' | 'buyer' }) => {
           const other     = role === 'seller' ? (ex.buyer ?? {}) : (ex.seller ?? {})
