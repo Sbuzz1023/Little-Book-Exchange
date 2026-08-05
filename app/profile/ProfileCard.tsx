@@ -34,9 +34,9 @@ const labelStyle: React.CSSProperties = {
 
 const inputClass = "w-full border-2 border-[#fed7aa] rounded-[12px] px-4 bg-cream font-bold text-[15px] focus:outline-none focus:border-bk-orange"
 
-function Field({ label, value }: { label: string; value?: string | null }) {
+function Field({ label, value, full }: { label: string; value?: string | null; full?: boolean }) {
   return (
-    <div className="flex flex-col gap-1 min-w-0">
+    <div className={`flex flex-col gap-1 min-w-0 ${full ? 'col-span-2' : ''}`}>
       <span style={labelStyle}>{label}</span>
       <span className="font-black text-[18px] text-[#1a1a1a] break-words">{value || '—'}</span>
     </div>
@@ -218,8 +218,8 @@ export default function ProfileCard({ profile, updateAction, success }: Props) {
         </form>
       ) : (
         <div className="grid grid-cols-2 gap-x-8 gap-y-5">
+          <Field label="Email" value={profile?.email} full />
           <Field label="Username" value={profile?.username} />
-          <Field label="Email" value={profile?.email} />
           <Field label="City" value={profile?.city} />
           <Field label="State" value={profile?.state} />
           <Field label="Phone" value={profile?.phone} />
