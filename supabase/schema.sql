@@ -703,3 +703,10 @@ ALTER TABLE conversations ADD CONSTRAINT conversations_exchange_status_check
 -- DELETE call. Nothing in the app calls it anymore.
 DROP POLICY IF EXISTS "Sellers can deny conversations" ON conversations;
 -- ──────────────────────────────────────────────────────────────────────────────
+
+-- ── Migration: paused listings ────────────────────────────────────────────────
+-- Run this block in Supabase SQL Editor:
+ALTER TABLE listings DROP CONSTRAINT IF EXISTS listings_status_check;
+ALTER TABLE listings ADD CONSTRAINT listings_status_check
+  CHECK (status IN ('active', 'pending', 'sold', 'given', 'paused'));
+-- ──────────────────────────────────────────────────────────────────────────────
