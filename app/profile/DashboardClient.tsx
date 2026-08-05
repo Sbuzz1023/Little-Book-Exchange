@@ -44,6 +44,7 @@ type Exchange = {
   listing_id: string
   buyer_id: string
   seller_id: string
+  created_at: string
   exchange_status: 'none' | 'requested' | 'confirmed' | 'completed' | 'declined'
   completed_at: string | null
   buyer_hidden: boolean

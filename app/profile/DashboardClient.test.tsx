@@ -32,6 +32,7 @@ const baseProps = {
 
 const pendingExchange = {
   id: 'convo-1', listing_id: 'listing-1', buyer_id: 'them', seller_id: 'me',
+  created_at: '2026-07-14T00:00:00.000Z',
   exchange_status: 'requested' as const, completed_at: null, buyer_hidden: false, seller_hidden: false,
   sellerRating: null, reviewed: false,
   listings: { title: 'Dune', author: 'Frank Herbert' },

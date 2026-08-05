@@ -10,6 +10,7 @@ vi.mock('@/lib/supabase/client', () => ({
 const exchanges: MessagesTabExchange[] = [
   {
     id: 'convo-1', listing_id: 'listing-1', buyer_id: 'them-1', seller_id: 'me',
+    created_at: '2026-07-01T09:00:00.000Z',
     listings: { title: 'The Hobbit', author: 'J.R.R. Tolkien' },
     buyer: { name: 'Neighbor A' }, seller: { name: 'Me' },
     messages: [
@@ -19,6 +20,7 @@ const exchanges: MessagesTabExchange[] = [
   },
   {
     id: 'convo-2', listing_id: 'listing-2', buyer_id: 'me', seller_id: 'them-2',
+    created_at: '2026-07-02T09:00:00.000Z',
     listings: { title: 'Sapiens', author: 'Yuval Noah Harari' },
     buyer: { name: 'Me' }, seller: { name: 'Neighbor B' },
     messages: [],
@@ -126,6 +128,58 @@ describe('MessagesTab', () => {
       <MessagesTab exchanges={exchanges} userId="me" isDemo={true} selectedId="convo-1" onSelectId={vi.fn()} />
     )
     expect(container.textContent).not.toContain('★')
+  })
+
+  it('lists conversations with the most recent message activity first', () => {
+    const orderedExchanges: MessagesTabExchange[] = [
+      {
+        id: 'convo-old', listing_id: 'listing-1', buyer_id: 'them-1', seller_id: 'me',
+        created_at: '2026-01-01T00:00:00.000Z',
+        listings: { title: 'Old Book', author: 'A' },
+        buyer: { name: 'Old Neighbor' }, seller: { name: 'Me' },
+        messages: [{ id: 'm1', body: 'hi', sender_id: 'them-1', created_at: '2026-01-01T00:05:00.000Z' }],
+      },
+      {
+        id: 'convo-new', listing_id: 'listing-2', buyer_id: 'them-2', seller_id: 'me',
+        created_at: '2026-07-01T00:00:00.000Z',
+        listings: { title: 'New Book', author: 'B' },
+        buyer: { name: 'New Neighbor' }, seller: { name: 'Me' },
+        messages: [{ id: 'm2', body: 'hey', sender_id: 'them-2', created_at: '2026-07-30T00:00:00.000Z' }],
+      },
+    ]
+    const { container } = render(
+      <MessagesTab exchanges={orderedExchanges} userId="me" isDemo={true} selectedId={null} onSelectId={vi.fn()} />
+    )
+    const oldIndex = container.textContent!.indexOf('Old Neighbor')
+    const newIndex = container.textContent!.indexOf('New Neighbor')
+    expect(newIndex).toBeGreaterThanOrEqual(0)
+    expect(newIndex).toBeLessThan(oldIndex)
+  })
+
+  it('falls back to the conversation\'s own created_at when it has no messages yet', () => {
+    const orderedExchanges: MessagesTabExchange[] = [
+      {
+        id: 'convo-old-empty', listing_id: 'listing-1', buyer_id: 'them-1', seller_id: 'me',
+        created_at: '2026-01-01T00:00:00.000Z',
+        listings: { title: 'Old Book', author: 'A' },
+        buyer: { name: 'Old Neighbor' }, seller: { name: 'Me' },
+        messages: [],
+      },
+      {
+        id: 'convo-new-empty', listing_id: 'listing-2', buyer_id: 'them-2', seller_id: 'me',
+        created_at: '2026-07-01T00:00:00.000Z',
+        listings: { title: 'New Book', author: 'B' },
+        buyer: { name: 'New Neighbor' }, seller: { name: 'Me' },
+        messages: [],
+      },
+    ]
+    const { container } = render(
+      <MessagesTab exchanges={orderedExchanges} userId="me" isDemo={true} selectedId={null} onSelectId={vi.fn()} />
+    )
+    const oldIndex = container.textContent!.indexOf('Old Neighbor')
+    const newIndex = container.textContent!.indexOf('New Neighbor')
+    expect(newIndex).toBeGreaterThanOrEqual(0)
+    expect(newIndex).toBeLessThan(oldIndex)
   })
 })
 
