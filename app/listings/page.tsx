@@ -189,7 +189,7 @@ export default async function ListingsPage({
       <form
         method="GET"
         action="/listings"
-        className="bg-white border-2 border-gray-100 shadow-[0_5px_0_#e5e7eb]"
+        className="md:block bg-white border-2 border-gray-100 shadow-[0_5px_0_#e5e7eb]"
         style={{ borderRadius: 24, padding: 24 }}
       >
         <h2 className="font-display text-[18px] text-bk-orange mb-5">🔍 Filters</h2>
