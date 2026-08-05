@@ -242,13 +242,22 @@ export default function MessagesTab({
                 type="button"
                 onClick={() => onSelectId(null)}
                 className="md:hidden font-extrabold text-bk-orange text-[20px] leading-none shrink-0"
-                style={{ background: 'none', border: 'none', cursor: 'pointer', marginRight: 4, padding: 0, fontFamily: 'inherit' }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', margin: '-8px 0 -8px -4px', padding: 8, fontFamily: 'inherit' }}
               >
                 ‹
               </button>
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <p style={{ fontWeight: 900, fontSize: 16, color: '#1a1a1a', lineHeight: 1.2 }}>{otherNameFor(convo, userId)}</p>
+                  <button
+                    type="button"
+                    data-testid="thread-title-back"
+                    onClick={() => onSelectId(null)}
+                    className="md:hidden"
+                    style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}
+                  >
+                    <p style={{ fontWeight: 900, fontSize: 16, color: '#1a1a1a', lineHeight: 1.2 }}>{otherNameFor(convo, userId)}</p>
+                  </button>
+                  <p className="hidden md:block" style={{ fontWeight: 900, fontSize: 16, color: '#1a1a1a', lineHeight: 1.2 }}>{otherNameFor(convo, userId)}</p>
                   {convo.seller_id !== userId && <StarRatingBadge rating={convo.sellerRating ?? null} sellerId={convo.seller_id} />}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
