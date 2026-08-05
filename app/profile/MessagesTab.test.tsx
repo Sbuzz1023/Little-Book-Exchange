@@ -81,6 +81,15 @@ describe('MessagesTab', () => {
     expect(onSelectId).toHaveBeenCalledWith(null)
   })
 
+  it('calls onSelectId(null) when the conversation title is clicked', () => {
+    const onSelectId = vi.fn()
+    const { getByTestId } = render(
+      <MessagesTab exchanges={exchanges} userId="me" isDemo={true} selectedId="convo-1" onSelectId={onSelectId} />
+    )
+    fireEvent.click(getByTestId('thread-title-back'))
+    expect(onSelectId).toHaveBeenCalledWith(null)
+  })
+
   it('demo mode: sending a message appends it locally without calling Supabase', async () => {
     const { container } = render(
       <MessagesTab exchanges={exchanges} userId="me" isDemo={true} selectedId="convo-1" onSelectId={vi.fn()} />
