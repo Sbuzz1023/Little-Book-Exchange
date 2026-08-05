@@ -25,4 +25,8 @@ describe('getListingAvailability', () => {
   it('is unavailable for a given-away listing', () => {
     expect(getListingAvailability('given', { isOwner: false, isRequester: false })).toBe('unavailable')
   })
+
+  it('is unavailable for a paused listing', () => {
+    expect(getListingAvailability('paused', { isOwner: false, isRequester: false })).toBe('unavailable')
+  })
 })

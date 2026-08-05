@@ -152,6 +152,7 @@ function statusStyle(status: string) {
   if (status === 'sold')    return { background: '#dbeafe', color: '#1d4ed8' }
   if (status === 'given')   return { background: '#f3e8ff', color: '#6b21a8' }
   if (status === 'pending') return { background: '#fffbeb', color: '#92400e' }
+  if (status === 'paused')  return { background: '#f3f4f6', color: '#4b5563' }
   return { background: '#dcfce7', color: '#166534' }
 }
 
@@ -159,6 +160,7 @@ function statusLabel(status: string) {
   if (status === 'sold')    return 'Sold'
   if (status === 'given')   return 'Given Away'
   if (status === 'pending') return 'Pending'
+  if (status === 'paused')  return 'Paused'
   return 'Active'
 }
 
@@ -275,88 +277,108 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
       </div>
 
       {/* ── MY LISTINGS ── */}
-      {activeTab === 'listings' && (
-        <div style={cardStyle}>
-          <div className="flex items-center justify-between mb-4">
-            <p className="font-bold text-[13px]" style={{ color: '#aaa' }}>
-              {listings.length} book{listings.length !== 1 ? 's' : ''} posted
-            </p>
-            <Link
-              href="/post"
-              className="text-white font-extrabold text-[13px] shadow-[0_3px_0_#0f766e]"
-              style={{ background: '#0d9488', padding: '9px 20px', borderRadius: 999 }}
-            >
-              + Post a Book
-            </Link>
-          </div>
+      {activeTab === 'listings' && (() => {
+        const active = listings.filter(l => l.status === 'active')
+        const paused = listings.filter(l => l.status === 'paused')
 
-          {listings.length === 0 ? (
-            <div className="text-center py-8 font-bold text-[14px]" style={{ color: '#aaa' }}>
-              No listings yet.{' '}
-              <Link href="/post" className="text-bk-orange font-extrabold hover:underline">Post your first book!</Link>
+        const ListingRow = ({ l, action }: { l: Listing; action: 'pause' | 'resume' }) => (
+          <div className="flex items-center gap-3" style={{ padding: '12px 0', borderBottom: '2px solid #f3f4f6' }}>
+            <div className="relative shrink-0 overflow-hidden"
+              style={{ width: 42, height: 42, borderRadius: 10, background: coverGradient(l.id) }}>
+              {l.photo_url ? (
+                <Image src={l.photo_url} alt={l.title} fill className="object-cover" />
+              ) : (
+                <span className="flex items-center justify-center w-full h-full text-[20px]">📚</span>
+              )}
             </div>
-          ) : (
-            <div>
-              {listings.map(l => (
-                <div key={l.id} className="flex items-center gap-3" style={{ padding: '12px 0', borderBottom: '2px solid #f3f4f6' }}>
-                  <div className="relative shrink-0 overflow-hidden"
-                    style={{ width: 42, height: 42, borderRadius: 10, background: coverGradient(l.id) }}>
-                    {l.photo_url ? (
-                      <Image src={l.photo_url} alt={l.title} fill className="object-cover" />
-                    ) : (
-                      <span className="flex items-center justify-center w-full h-full text-[20px]">📚</span>
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <Link href={`/listings/${l.id}`} className="font-black text-[14px] truncate block hover:text-bk-orange transition-colors">
-                      {l.title}
-                    </Link>
-                    <p className="font-semibold text-[12px]" style={{ color: '#aaa' }}>
-                      {l.author} · 1 credit · {l.condition}
-                    </p>
-                  </div>
-                  <span className="font-extrabold text-[11px] whitespace-nowrap shrink-0"
-                    style={{ padding: '3px 10px', borderRadius: 999, ...statusStyle(l.status) }}>
-                    {statusLabel(l.status)}
-                  </span>
-                  <Link href={`/listings/${l.id}/edit`}
-                    className="font-extrabold text-[11px] hover:opacity-80 shrink-0"
-                    style={{ color: '#888' }}>
-                    Edit
-                  </Link>
-                  <form action={updateListingStatus} className="flex gap-2 shrink-0">
-                    <input type="hidden" name="id" value={l.id} />
-                    {l.status === 'pending' ? (
-                      <button name="status" value="active"
-                        className="font-extrabold text-[11px] hover:opacity-80"
-                        style={{ background: 'none', border: 'none', color: '#16a34a', cursor: 'pointer', padding: 0 }}>
-                        Reset to Active
-                      </button>
-                    ) : l.status === 'active' ? (
-                      <button name="status" value="sold"
-                        className="font-extrabold text-[11px] hover:opacity-80"
-                        style={{ background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', padding: 0 }}>
-                        Mark Sold
-                      </button>
-                    ) : (
-                      <button name="status" value="active"
-                        className="font-extrabold text-[11px] hover:opacity-80"
-                        style={{ background: 'none', border: 'none', color: '#16a34a', cursor: 'pointer', padding: 0 }}>
-                        Re-list
-                      </button>
-                    )}
-                    <button name="status" value="delete"
-                      className="font-extrabold text-[11px] hover:opacity-80"
-                      style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', padding: 0 }}>
-                      Delete
-                    </button>
-                  </form>
+            <div className="flex-1 min-w-0">
+              <Link href={`/listings/${l.id}`} className="font-black text-[14px] truncate block hover:text-bk-orange transition-colors">
+                {l.title}
+              </Link>
+              <p className="font-semibold text-[12px]" style={{ color: '#aaa' }}>
+                {l.author} · 1 credit · {l.condition}
+              </p>
+            </div>
+            <span className="font-extrabold text-[11px] whitespace-nowrap shrink-0"
+              style={{ padding: '3px 10px', borderRadius: 999, ...statusStyle(l.status) }}>
+              {statusLabel(l.status)}
+            </span>
+            <Link href={`/listings/${l.id}/edit`}
+              className="font-extrabold text-[11px] hover:opacity-80 shrink-0"
+              style={{ color: '#888' }}>
+              Edit
+            </Link>
+            <form action={updateListingStatus} className="flex gap-2 shrink-0">
+              <input type="hidden" name="id" value={l.id} />
+              {action === 'pause' ? (
+                <button name="status" value="paused"
+                  className="font-extrabold text-[11px] hover:opacity-80"
+                  style={{ background: 'none', border: 'none', color: '#4b5563', cursor: 'pointer', padding: 0 }}>
+                  Pause
+                </button>
+              ) : (
+                <button name="status" value="active"
+                  className="font-extrabold text-[11px] hover:opacity-80"
+                  style={{ background: 'none', border: 'none', color: '#16a34a', cursor: 'pointer', padding: 0 }}>
+                  Resume
+                </button>
+              )}
+              <button name="status" value="delete"
+                className="font-extrabold text-[11px] hover:opacity-80"
+                style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', padding: 0 }}>
+                Delete
+              </button>
+            </form>
+          </div>
+        )
+
+        return (
+          <div className="flex flex-col" style={{ gap: 16 }}>
+            <div style={cardStyle}>
+              <div className="flex items-center justify-between mb-4">
+                <p className="font-bold text-[13px]" style={{ color: '#aaa' }}>
+                  {listings.length} book{listings.length !== 1 ? 's' : ''} posted
+                </p>
+                <Link
+                  href="/post"
+                  className="text-white font-extrabold text-[13px] shadow-[0_3px_0_#0f766e]"
+                  style={{ background: '#0d9488', padding: '9px 20px', borderRadius: 999 }}
+                >
+                  + Post a Book
+                </Link>
+              </div>
+
+              {listings.length === 0 ? (
+                <div className="text-center py-8 font-bold text-[14px]" style={{ color: '#aaa' }}>
+                  No listings yet.{' '}
+                  <Link href="/post" className="text-bk-orange font-extrabold hover:underline">Post your first book!</Link>
                 </div>
-              ))}
+              ) : active.length === 0 ? (
+                <div className="text-center py-8 font-bold text-[14px]" style={{ color: '#aaa' }}>
+                  No active listings.{' '}
+                  <Link href="/post" className="text-bk-orange font-extrabold hover:underline">Post a book!</Link>
+                </div>
+              ) : (
+                <div>
+                  {active.map(l => <ListingRow key={l.id} l={l} action="pause" />)}
+                </div>
+              )}
             </div>
-          )}
-        </div>
-      )}
+
+            {paused.length > 0 && (
+              <div style={cardStyle}>
+                <div className="font-extrabold text-[11px] mb-4"
+                  style={{ textTransform: 'uppercase', letterSpacing: '0.8px', padding: '7px 12px', borderRadius: 10, background: '#f3f4f6', color: '#4b5563', display: 'inline-block' }}>
+                  ⏸️ Paused ({paused.length})
+                </div>
+                <div>
+                  {paused.map(l => <ListingRow key={l.id} l={l} action="resume" />)}
+                </div>
+              </div>
+            )}
+          </div>
+        )
+      })()}
 
       {/* ── EXCHANGES ── */}
       {activeTab === 'exchanges' && (() => {

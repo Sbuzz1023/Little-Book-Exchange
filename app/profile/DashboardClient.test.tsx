@@ -111,3 +111,56 @@ describe('DashboardClient — notification badges and highlighting', () => {
     expect(container.textContent).toContain('History (0)')
   })
 })
+
+describe('DashboardClient — My Listings active/paused split', () => {
+  const activeListing = {
+    id: 'listing-active', title: 'Dune', author: 'Frank Herbert',
+    price: null, condition: 'good', status: 'active', photo_url: null,
+  }
+  const pausedListing = {
+    id: 'listing-paused', title: 'Neuromancer', author: 'William Gibson',
+    price: null, condition: 'fair', status: 'paused', photo_url: null,
+  }
+  const pendingListing = {
+    id: 'listing-pending', title: 'Snow Crash', author: 'Neal Stephenson',
+    price: null, condition: 'good', status: 'pending', photo_url: null,
+  }
+  const soldListing = {
+    id: 'listing-sold', title: 'The Hobbit', author: 'J.R.R. Tolkien',
+    price: null, condition: 'good', status: 'sold', photo_url: null,
+  }
+
+  it('shows an active listing with Pause and Delete, not Mark Sold or Re-list', () => {
+    render(<DashboardClient {...baseProps} listings={[activeListing]} exchanges={[]} defaultTab="listings" />)
+    expect(screen.getByText('Dune')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Pause' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Delete' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Mark Sold' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Re-list' })).not.toBeInTheDocument()
+  })
+
+  it('shows a paused listing in the Paused section with Resume and Delete', () => {
+    render(<DashboardClient {...baseProps} listings={[pausedListing]} exchanges={[]} defaultTab="listings" />)
+    expect(screen.getByText(/Paused \(1\)/)).toBeInTheDocument()
+    expect(screen.getByText('Neuromancer')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Resume' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Delete' })).toBeInTheDocument()
+  })
+
+  it('does not show pending or sold listings in My Listings at all', () => {
+    render(<DashboardClient {...baseProps} listings={[pendingListing, soldListing]} exchanges={[]} defaultTab="listings" />)
+    expect(screen.queryByText('Snow Crash')).not.toBeInTheDocument()
+    expect(screen.queryByText('The Hobbit')).not.toBeInTheDocument()
+    expect(screen.getByText(/No active listings/)).toBeInTheDocument()
+  })
+
+  it('omits the Paused section when there are no paused listings', () => {
+    render(<DashboardClient {...baseProps} listings={[activeListing]} exchanges={[]} defaultTab="listings" />)
+    expect(screen.queryByText(/Paused/)).not.toBeInTheDocument()
+  })
+
+  it('shows the true lifetime count in the header even when some listings are hidden from this tab', () => {
+    render(<DashboardClient {...baseProps} listings={[activeListing, soldListing]} exchanges={[]} defaultTab="listings" />)
+    expect(screen.getByText('2 books posted')).toBeInTheDocument()
+  })
+})
