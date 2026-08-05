@@ -223,7 +223,7 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
           return (
             <button
               key={t.id}
-              onClick={() => { setActiveTab(t.id); markTabRead(t.id) }}
+              onClick={() => { setActiveTab(t.id); if (t.id === 'messages') setSelectedConversationId(null); markTabRead(t.id) }}
               className="flex flex-col items-center text-center transition-all duration-150 hover:-translate-y-1"
               style={{
                 background: isActive ? t.color : t.bg,

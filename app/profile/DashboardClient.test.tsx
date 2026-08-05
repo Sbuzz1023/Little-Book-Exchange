@@ -111,6 +111,15 @@ describe('DashboardClient — notification badges and highlighting', () => {
     expect(container.textContent).toContain('Bought (0)')
     expect(container.textContent).toContain('History (0)')
   })
+
+  it('resets to the conversation list when the Messages tab is clicked while a conversation is open', () => {
+    render(
+      <DashboardClient {...baseProps} isDemo={true} exchanges={[pendingExchange]} defaultTab="listings" initialConversationId="convo-1" />
+    )
+    expect(screen.queryByTestId('thread-title-back')).not.toBeNull()
+    fireEvent.click(screen.getByText('Messages').closest('button')!)
+    expect(screen.queryByTestId('thread-title-back')).toBeNull()
+  })
 })
 
 describe('DashboardClient — My Listings active/paused split', () => {
