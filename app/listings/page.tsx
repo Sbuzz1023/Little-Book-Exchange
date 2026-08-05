@@ -181,7 +181,7 @@ export default async function ListingsPage({
     <div className="mx-auto px-4 py-6 md:px-8 md:py-9 flex flex-col md:flex-row md:gap-7 md:items-start" style={{ maxWidth: 1160 }}>
       {/* Sidebar / Filters */}
       <div className="w-full md:w-[240px] md:flex-shrink-0 md:sticky md:top-6 mb-4 md:mb-0">
-        <details open className="md:contents">
+        <details open={activeFilters.length > 0} className="md:contents">
           <summary className="md:hidden cursor-pointer list-none flex items-center justify-between bg-white border-2 border-gray-100 rounded-[16px] px-5 py-3 font-extrabold text-[14px] text-bk-orange shadow-[0_3px_0_#e5e7eb] mb-2">
             🔍 Filters {activeFilters.length > 0 ? `(${activeFilters.length} active)` : ''}
             <span className="text-[18px] font-black">⌄</span>
