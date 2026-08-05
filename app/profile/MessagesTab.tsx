@@ -12,6 +12,7 @@ export type MessagesTabExchange = {
   listing_id: string
   buyer_id: string
   seller_id: string
+  created_at: string
   listings: { title: string; author: string; photo_url?: string | null }
   buyer: { username?: string | null; name?: string | null }
   seller: { username?: string | null; name?: string | null }
@@ -28,6 +29,11 @@ function avatarColor(str: string) {
 
 function initial(name: string) {
   return (name ?? '?')[0].toUpperCase()
+}
+
+function lastActivity(convo: MessagesTabExchange, localMessages: Record<string, MessageRow[]>) {
+  const msgs = localMessages[convo.id] ?? convo.messages
+  return msgs.length > 0 ? msgs[msgs.length - 1].created_at : convo.created_at
 }
 
 function otherNameFor(convo: MessagesTabExchange, userId: string) {
@@ -76,6 +82,10 @@ export default function MessagesTab({
 
   const convo = exchanges.find(e => e.id === selectedId) ?? null
   const messages = convo ? (localMessages[convo.id] ?? convo.messages) : []
+
+  const sortedExchanges = [...exchanges].sort(
+    (a, b) => new Date(lastActivity(b, localMessages)).getTime() - new Date(lastActivity(a, localMessages)).getTime()
+  )
 
   async function selectConversation(id: string) {
     onSelectId(id)
@@ -159,7 +169,7 @@ export default function MessagesTab({
         className={`${inThread ? 'hidden md:flex' : 'flex'} md:w-[260px] md:shrink-0 w-full flex-col`}
         style={{ borderRight: '2px solid #f3f4f6', overflowY: 'auto', background: '#fff' }}
       >
-        {exchanges.length === 0 ? (
+        {sortedExchanges.length === 0 ? (
           <div className="flex-1 flex items-center justify-center text-center px-6 py-10 font-bold" style={{ color: '#ccc' }}>
             <div>
               <div className="text-4xl mb-3">💬</div>
@@ -167,7 +177,7 @@ export default function MessagesTab({
             </div>
           </div>
         ) : (
-          exchanges.map(ex => {
+          sortedExchanges.map(ex => {
             const otherName = otherNameFor(ex, userId)
             const msgs = localMessages[ex.id] ?? ex.messages
             const lastMsg = msgs[msgs.length - 1]
