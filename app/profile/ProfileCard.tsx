@@ -36,9 +36,9 @@ const inputClass = "w-full border-2 border-[#fed7aa] rounded-[12px] px-4 bg-crea
 
 function Field({ label, value }: { label: string; value?: string | null }) {
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex flex-col gap-1 min-w-0">
       <span style={labelStyle}>{label}</span>
-      <span className="font-black text-[18px] text-[#1a1a1a]">{value || '—'}</span>
+      <span className="font-black text-[18px] text-[#1a1a1a] break-words">{value || '—'}</span>
     </div>
   )
 }
