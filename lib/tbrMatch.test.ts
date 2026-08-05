@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { tbrMatchPattern } from './tbrMatch'
+import { tbrMatchPattern, isTooGenericToMatch } from './tbrMatch'
 
 describe('tbrMatchPattern', () => {
   it('does not match a substring buried inside another word', () => {
@@ -28,5 +28,31 @@ describe('tbrMatchPattern', () => {
     const regex = new RegExp(pattern, 'i')
     expect(regex.test('Learning C++')).toBe(true)
     expect(regex.test('Learning C')).toBe(false)
+  })
+})
+
+describe('isTooGenericToMatch', () => {
+  it('is true for a lone common filler word', () => {
+    // Reported bug: entering "the" incorrectly showed "The Illustrated Man" as available.
+    expect(isTooGenericToMatch('the')).toBe(true)
+    expect(isTooGenericToMatch('a')).toBe(true)
+    expect(isTooGenericToMatch('an')).toBe(true)
+    expect(isTooGenericToMatch('of')).toBe(true)
+  })
+
+  it('is case-insensitive and ignores surrounding whitespace', () => {
+    expect(isTooGenericToMatch('The')).toBe(true)
+    expect(isTooGenericToMatch('  the  ')).toBe(true)
+  })
+
+  it('is false for a real title or author, even a short one', () => {
+    expect(isTooGenericToMatch('Dune')).toBe(false)
+    expect(isTooGenericToMatch('It')).toBe(false)
+    expect(isTooGenericToMatch('Circe')).toBe(false)
+  })
+
+  it('is false for a multi-word phrase that merely contains a filler word', () => {
+    expect(isTooGenericToMatch('The Great Gatsby')).toBe(false)
+    expect(isTooGenericToMatch('Harry Potter')).toBe(false)
   })
 })

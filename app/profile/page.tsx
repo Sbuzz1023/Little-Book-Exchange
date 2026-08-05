@@ -8,7 +8,7 @@ import { submitReview } from '@/lib/actions/reviews'
 import { averageRating } from '@/lib/reviewAverages'
 import { removeSavedListing } from '@/lib/actions/savedListings'
 import { addTbrEntry, removeTbrEntry } from '@/lib/actions/tbrEntries'
-import { tbrMatchPattern } from '@/lib/tbrMatch'
+import { tbrMatchPattern, isTooGenericToMatch } from '@/lib/tbrMatch'
 import { unreadCounts as computeUnreadCounts, unreadEntityIds as computeUnreadEntityIds, type NotificationRow } from '@/lib/notifications'
 
 export default async function ProfilePage({
@@ -94,13 +94,22 @@ export default async function ProfilePage({
       const { data: tbr } = await supabase
         .from('tbr_entries').select('*').eq('user_id', user.id).order('created_at', { ascending: false })
       tbrEntries = await Promise.all((tbr ?? []).map(async (entry: any) => {
+        const titleUsable = !!entry.title && !isTooGenericToMatch(entry.title)
+        const authorUsable = !!entry.author && !isTooGenericToMatch(entry.author)
+        // A generic word (e.g. "the") is treated the same as a blank field — it's
+        // never enough on its own to justify a match. If nothing usable is left
+        // to search on, skip the query rather than run one with no real filters,
+        // which would return an arbitrary "match" for every other active listing.
+        if (!titleUsable && !authorUsable && !entry.city) {
+          return { ...entry, match: null }
+        }
         let query = supabase
           .from('listings')
           .select('id, title, author, city, profiles!inner(state)')
           .eq('status', 'active')
           .neq('user_id', user.id)
-        if (entry.title)  query = query.regexIMatch('title', tbrMatchPattern(entry.title))
-        if (entry.author) query = query.regexIMatch('author', tbrMatchPattern(entry.author))
+        if (titleUsable)  query = query.regexIMatch('title', tbrMatchPattern(entry.title))
+        if (authorUsable) query = query.regexIMatch('author', tbrMatchPattern(entry.author))
         if (entry.city)   query = query.regexIMatch('city', tbrMatchPattern(entry.city))
         if (entry.state)  query = query.eq('profiles.state', entry.state)
         const { data: match } = await query.limit(1).maybeSingle()
