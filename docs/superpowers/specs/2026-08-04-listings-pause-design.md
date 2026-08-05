@@ -39,18 +39,22 @@ No code changes. `getListings`'s query already does `.in('status', ['active', 'p
 
 ## 3. Listing detail page (`app/listings/[id]/page.tsx`)
 
-A non-owner who navigates directly to a paused listing's URL sees the same "No longer available" notice already used for `status === 'sold'` (added in the pending-transaction-lock feature) — reusing that existing copy/branch rather than adding new wording, since from an outsider's perspective a paused listing is equally unavailable.
+No code changes. The page doesn't branch on `listing.status` directly for this notice — it goes through the shared `getListingAvailability()` helper (`lib/listingAvailability.ts`):
 
-Concretely, the existing condition:
-```tsx
-if (listing.status === 'sold') { /* "No longer available" notice */ }
-```
-becomes:
-```tsx
-if (listing.status === 'sold' || listing.status === 'paused') { /* "No longer available" notice */ }
+```ts
+export function getListingAvailability(
+  status: ListingStatus,
+  viewer: { isOwner: boolean; isRequester: boolean }
+): ListingAvailability {
+  if (status === 'active') return 'active'
+  if (status === 'pending') return viewer.isOwner || viewer.isRequester ? 'pending-mine' : 'pending-locked'
+  return 'unavailable'
+}
 ```
 
-The owner's own view is unaffected — `isOwner` already bypasses these status-gated notices and shows the normal "Manage Listing" link regardless of status, same as today.
+Any status that isn't `'active'` or `'pending'` already falls through to `'unavailable'` — which is what today renders the "No longer available" notice (`avail === 'unavailable'` branch in the page). `'paused'` gets this behavior automatically once it exists as a value, the same way `'sold'`/`'given'` already do.
+
+The owner's own view is unaffected — `isOwner` already bypasses this and shows the normal "Manage Listing" link regardless of status, same as today.
 
 ---
 
@@ -96,6 +100,8 @@ No changes. `updateListingStatus` already accepts any `status` string from the s
 | File | Change |
 |---|---|
 | `supabase/schema.sql` | New migration: `listings.status` check constraint gains `'paused'` |
-| `app/listings/[id]/page.tsx` | Non-owner "No longer available" notice now also covers `status === 'paused'`, alongside existing `'sold'` |
+| `lib/types.ts` | `ListingStatus` union type gains `'paused'` |
 | `app/profile/DashboardClient.tsx` | My Listings splits into Active/Paused sections, excludes pending/sold/given; `statusStyle`/`statusLabel` gain a `paused` case; Mark Sold/Re-list/Reset-to-Active buttons removed from this tab in favor of Pause/Resume |
 | `app/profile/DashboardClient.test.tsx` | New tests for the Active/Paused split and status filtering |
+
+No changes needed to `app/listings/page.tsx` (Browse) or `app/listings/[id]/page.tsx` (detail) — both already treat any non-`active`/non-`pending` status correctly by construction (see Sections 2–3).
