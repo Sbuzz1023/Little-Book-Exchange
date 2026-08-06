@@ -89,15 +89,29 @@ export async function updateListing(listingId: string, formData: FormData) {
     ])
 
     const fields = parseListingForm(formData)
+    const isBundle = formData.get('is_bundle') === 'true'
+    const bundleBooks = isBundle ? parseBundleBooks(formData) : []
+    const bundleName = (formData.get('bundle_name') as string)?.trim() || null
 
     const { error } = await supabase.from('listings').update({
       ...fields,
       photo_url:   photo_url   ?? existing.photo_url,
       photo_url_2: photo_url_2 ?? existing.photo_url_2,
       photo_url_3: photo_url_3 ?? existing.photo_url_3,
+      is_bundle: isBundle && bundleBooks.length > 0,
+      bundle_name: isBundle && bundleBooks.length > 0 ? bundleName : null,
     }).eq('id', listingId).eq('user_id', user.id)
 
     if (error) redirect(`/listings/${listingId}/edit?error=${encodeURIComponent(error.message)}`)
+
+    await supabase.from('listing_books').delete().eq('listing_id', listingId)
+    if (isBundle && bundleBooks.length > 0) {
+      const { error: booksError } = await supabase.from('listing_books').insert(
+        bundleBooks.map((b, i) => ({ listing_id: listingId, title: b.title, author: b.author, position: i }))
+      )
+      if (booksError) console.error('Failed to update bundle books:', booksError)
+    }
+
     redirect('/profile?tab=listings')
   } catch (err: any) {
     if (err?.digest?.startsWith('NEXT_REDIRECT')) throw err

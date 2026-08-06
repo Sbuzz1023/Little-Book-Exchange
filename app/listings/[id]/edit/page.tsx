@@ -18,6 +18,13 @@ export default async function EditListingPage({
   if (!listing) notFound()
   if (listing.user_id !== user.id) redirect(`/listings/${params.id}`)
 
+  let bundleBooks: { title: string; author: string }[] = []
+  if (listing.is_bundle) {
+    const { data: books } = await supabase
+      .from('listing_books').select('title, author').eq('listing_id', listing.id).order('position', { ascending: true })
+    bundleBooks = books ?? []
+  }
+
   return (
     <div className="max-w-[600px] mx-auto px-4 py-6 md:px-8 md:py-10">
       <h1 className="font-display text-[30px] text-bk-orange mb-1">Edit Listing</h1>
@@ -39,6 +46,9 @@ export default async function EditListingPage({
           photo_url: listing.photo_url,
           photo_url_2: listing.photo_url_2,
           photo_url_3: listing.photo_url_3,
+          is_bundle: listing.is_bundle ?? false,
+          bundle_name: listing.bundle_name,
+          books: bundleBooks,
         }}
       />
     </div>
