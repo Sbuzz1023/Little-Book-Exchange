@@ -153,7 +153,7 @@ export default async function ListingDetailPage({ params, searchParams }: { para
       if (!u) redirect(`/auth/signin?redirect=/listings/${params.id}`)
 
       const { data: buyerProfile } = await supabase.from('profiles').select('credits').eq('id', u!.id).single()
-      if (!buyerProfile || buyerProfile.credits < listing.book_count) {
+      if (!buyerProfile || buyerProfile.credits < (listing.book_count ?? 1)) {
         redirect(`/listings/${params.id}?insufficient_credits=1`)
       }
 

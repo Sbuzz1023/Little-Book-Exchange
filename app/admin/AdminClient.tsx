@@ -240,7 +240,8 @@ function Dashboard({ users, pendingLocationReports, reviews }: { users: User[]; 
                 <div className="flex-1 min-w-0">
                   <div className="font-bold text-[13px] text-[#334155] truncate">{u.username}</div>
                   <div className="h-1.5 bg-[#f1f5f9] rounded-full mt-1 overflow-hidden">
-                    <div className="h-full bg-bk-orange rounded-full" style={{ width: `${(u.credits / users[0].credits * 100).toFixed(0)}%` }} />
+                    {/* `|| 1` keeps this from rendering NaN% when every user is at 0 credits — the state right after the credit-ledger migration first runs. */}
+                    <div className="h-full bg-bk-orange rounded-full" style={{ width: `${(u.credits / (users[0].credits || 1) * 100).toFixed(0)}%` }} />
                   </div>
                 </div>
                 <span className="font-extrabold text-[13px] text-bk-orange shrink-0">{u.credits} cr</span>
@@ -259,6 +260,7 @@ function UsersTab({ users, setUsers, toggleAdmin }: { users: User[]; setUsers: R
   const [search, setSearch] = useState('')
   const [editTarget, setEditTarget] = useState<User | null>(null)
   const [form, setForm] = useState<User | null>(null)
+  const [saveError, setSaveError] = useState<string | null>(null)
 
   const filtered = useMemo(() =>
     users.filter(u =>
@@ -267,13 +269,21 @@ function UsersTab({ users, setUsers, toggleAdmin }: { users: User[]; setUsers: R
       u.city.toLowerCase().includes(search.toLowerCase())
     ), [users, search])
 
-  function openEdit(u: User) { setEditTarget(u); setForm({ ...u }) }
+  function openEdit(u: User) { setEditTarget(u); setForm({ ...u }); setSaveError(null) }
 
   async function saveEdit() {
     if (!form) return
+    // Credits are the one field that actually persists (everything else in this
+    // modal is local-state-only by design). If the write fails, say so instead
+    // of showing the new balance as if it saved.
     if (editTarget && form.credits !== editTarget.credits) {
-      await adminUpdateUserCredits(form.id, form.credits)
+      const result = await adminUpdateUserCredits(form.id, form.credits)
+      if (!result.ok) {
+        setSaveError(result.error ?? 'Failed to update credits.')
+        return
+      }
     }
+    setSaveError(null)
     setUsers(prev => prev.map(u => u.id === form.id ? form : u))
     setEditTarget(null)
   }
@@ -413,6 +423,10 @@ function UsersTab({ users, setUsers, toggleAdmin }: { users: User[]; setUsers: R
                 <div className="text-[10px] font-bold text-[#94a3b8] uppercase">Reviews</div>
               </div>
             </div>
+
+            {saveError && (
+              <p data-testid="user-save-error" className="font-bold text-[12px] mb-3" style={{ color: '#e11d48' }}>{saveError}</p>
+            )}
 
             <div className="flex gap-3">
               <button onClick={() => setEditTarget(null)}

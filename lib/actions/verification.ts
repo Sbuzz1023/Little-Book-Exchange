@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { toE164 } from './toE164'
 
 export async function resendEmailConfirmation(): Promise<{ ok: boolean; error?: string }> {
   const supabase = createClient()
@@ -20,7 +21,7 @@ export async function sendPhoneOtp(formData: FormData): Promise<{ ok: boolean; e
   const phone = formData.get('phone') as string
   if (!phone) return { ok: false, error: 'Enter a phone number.' }
 
-  const { error } = await supabase.auth.updateUser({ phone })
+  const { error } = await supabase.auth.updateUser({ phone: toE164(phone) })
   if (error) return { ok: false, error: error.message }
   return { ok: true }
 }
@@ -34,7 +35,7 @@ export async function verifyPhoneOtp(formData: FormData): Promise<{ ok: boolean;
   const token = formData.get('token') as string
   if (!phone || !token) return { ok: false, error: 'Enter the code you received.' }
 
-  const { error } = await supabase.auth.verifyOtp({ phone, token, type: 'phone_change' })
+  const { error } = await supabase.auth.verifyOtp({ phone: toE164(phone), token, type: 'phone_change' })
   if (error) return { ok: false, error: error.message }
   return { ok: true }
 }

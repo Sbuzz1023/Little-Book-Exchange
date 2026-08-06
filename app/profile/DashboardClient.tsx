@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import ProfileCard from './ProfileCard'
@@ -177,10 +178,13 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
   const [activeTab, setActiveTab] = useState<Tab>(defaultTab ?? 'listings')
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(initialConversationId ?? null)
   const booksPosted = listings.reduce((sum, l: any) => sum + (l.book_count ?? 1), 0)
+  const router = useRouter()
   const [phoneStep, setPhoneStep] = useState<'idle' | 'code_sent'>('idle')
   const [phoneNumber, setPhoneNumber] = useState(profile?.phone ?? '')
   const [phoneCode, setPhoneCode] = useState('')
   const [phoneError, setPhoneError] = useState<string | null>(null)
+  const [emailResendMessage, setEmailResendMessage] = useState<string | null>(null)
+  const [emailResendOk, setEmailResendOk] = useState(false)
 
   async function markTabRead(tabId: Tab) {
     if (isDemo || !profile?.id) return
@@ -774,17 +778,26 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
             <div style={{ ...cardStyle, border: '2px solid #a7f3d0' }}>
               <h3 className="font-display text-[16px] mb-3" style={{ color: '#059669' }}><span aria-hidden="true">🎯</span> Earn Your First Credit</h3>
               <div className="flex flex-col" style={{ gap: 10 }}>
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-[13px]">{profile?.email_verified ? '✅' : '☐'} Verify email</span>
-                  {!profile?.email_verified && (
-                    <button
-                      type="button"
-                      onClick={() => resendEmailConfirmation()}
-                      className="font-extrabold text-[12px]"
-                      style={{ background: 'none', border: 'none', color: '#059669', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
-                    >
-                      Resend confirmation email
-                    </button>
+                <div>
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-[13px]">{profile?.email_verified ? '✅' : '☐'} Verify email</span>
+                    {!profile?.email_verified && (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const res = await resendEmailConfirmation()
+                          setEmailResendOk(res.ok)
+                          setEmailResendMessage(res.ok ? 'Confirmation email sent — check your inbox.' : (res.error ?? 'Failed to send confirmation email.'))
+                        }}
+                        className="font-extrabold text-[12px]"
+                        style={{ background: 'none', border: 'none', color: '#059669', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
+                      >
+                        Resend confirmation email
+                      </button>
+                    )}
+                  </div>
+                  {emailResendMessage && (
+                    <p className="font-bold text-[11px] mt-1" style={{ color: emailResendOk ? '#059669' : '#e11d48' }}>{emailResendMessage}</p>
                   )}
                 </div>
                 <div>
@@ -831,7 +844,13 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
                           fd.set('phone', phoneNumber)
                           fd.set('token', phoneCode)
                           const res = await verifyPhoneOtp(fd)
-                          if (res.ok) { setPhoneStep('idle'); setPhoneError(null); setPhoneCode('') }
+                          if (res.ok) {
+                            setPhoneStep('idle'); setPhoneError(null); setPhoneCode('')
+                            // The server-rendered `profile` prop still says phone_verified: false.
+                            // Without this the checklist row stays unchecked and the "Bonus earned"
+                            // card never appears until a manual reload.
+                            router.refresh()
+                          }
                           else setPhoneError(res.error ?? 'Invalid code.')
                         }}
                         className="font-extrabold text-[12px] self-start"

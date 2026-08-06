@@ -16,6 +16,14 @@ export const MOCK_PROFILE = {
   share_address: true,
   pickup_description: 'front porch',
   share_pickup: true,
+  // Demo mode has no real Supabase behind it, so the onboarding checklist's
+  // buttons (resend email / phone OTP) can't work — present the demo user as
+  // already verified and already paid the bonus rather than showing a
+  // permanently-badged Wallet tab and a checklist that can never complete.
+  credits: 3,
+  email_verified: true,
+  phone_verified: true,
+  onboarding_bonus_claimed: true,
 }
 
 export const MOCK_LISTINGS = [

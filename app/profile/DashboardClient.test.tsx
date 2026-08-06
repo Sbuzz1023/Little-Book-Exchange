@@ -1,10 +1,17 @@
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import DashboardClient from './DashboardClient'
 import { createClient } from '@/lib/supabase/client'
 
 vi.mock('@/lib/supabase/client', () => ({
   createClient: vi.fn(),
+}))
+
+// DashboardClient calls router.refresh() after a successful phone verification
+// so the server-rendered profile (and the bonus card) update in-session.
+const refreshMock = vi.fn()
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ refresh: refreshMock }),
 }))
 
 const baseProps = {
@@ -249,10 +256,51 @@ describe('DashboardClient — onboarding checklist', () => {
     fireEvent.click(screen.getByRole('button', { name: /Resend confirmation email/ }))
     expect(resend).toHaveBeenCalled()
   })
+
+  it('confirms a successful resend to the user', async () => {
+    const resend = vi.fn(() => Promise.resolve({ ok: true }))
+    render(<DashboardClient {...baseProps} exchanges={[]} transactions={[]} profile={unclaimedProfile} defaultTab="wallet" resendEmailConfirmation={resend} />)
+    fireEvent.click(screen.getByRole('button', { name: /Resend confirmation email/ }))
+    expect(await screen.findByText(/Confirmation email sent/)).toBeInTheDocument()
+  })
+
+  it('surfaces a failed resend instead of failing silently', async () => {
+    const resend = vi.fn(() => Promise.resolve({ ok: false, error: 'Rate limit exceeded.' }))
+    render(<DashboardClient {...baseProps} exchanges={[]} transactions={[]} profile={unclaimedProfile} defaultTab="wallet" resendEmailConfirmation={resend} />)
+    fireEvent.click(screen.getByRole('button', { name: /Resend confirmation email/ }))
+    expect(await screen.findByText('Rate limit exceeded.')).toBeInTheDocument()
+  })
 })
 
 describe('DashboardClient — phone verification', () => {
   const unverifiedProfile = { ...baseProps.profile, email_verified: true, phone_verified: false, onboarding_bonus_claimed: false, phone: '3125550100' }
+
+  beforeEach(() => { refreshMock.mockClear() })
+
+  it('refreshes the server-rendered profile after a successful verification', async () => {
+    const verifyOtp = vi.fn(() => Promise.resolve({ ok: true }))
+    render(<DashboardClient {...baseProps} exchanges={[]} transactions={[]} profile={unverifiedProfile}
+      defaultTab="wallet" resendEmailConfirmation={vi.fn()} sendPhoneOtp={vi.fn(() => Promise.resolve({ ok: true }))} verifyPhoneOtp={verifyOtp} />)
+
+    fireEvent.click(screen.getByRole('button', { name: /Verify Phone/ }))
+    fireEvent.change(await screen.findByPlaceholderText(/6-digit code/), { target: { value: '123456' } })
+    fireEvent.click(screen.getByRole('button', { name: /Confirm code/ }))
+
+    await waitFor(() => expect(refreshMock).toHaveBeenCalled())
+  })
+
+  it('does not refresh when verification fails', async () => {
+    const verifyOtp = vi.fn(() => Promise.resolve({ ok: false, error: 'Invalid code.' }))
+    render(<DashboardClient {...baseProps} exchanges={[]} transactions={[]} profile={unverifiedProfile}
+      defaultTab="wallet" resendEmailConfirmation={vi.fn()} sendPhoneOtp={vi.fn(() => Promise.resolve({ ok: true }))} verifyPhoneOtp={verifyOtp} />)
+
+    fireEvent.click(screen.getByRole('button', { name: /Verify Phone/ }))
+    fireEvent.change(await screen.findByPlaceholderText(/6-digit code/), { target: { value: '000000' } })
+    fireEvent.click(screen.getByRole('button', { name: /Confirm code/ }))
+
+    expect(await screen.findByText('Invalid code.')).toBeInTheDocument()
+    expect(refreshMock).not.toHaveBeenCalled()
+  })
 
   it('sends an OTP and then verifies it', async () => {
     const sendOtp = vi.fn(() => Promise.resolve({ ok: true }))
