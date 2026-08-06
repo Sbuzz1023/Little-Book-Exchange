@@ -199,6 +199,7 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
     if (id === 'exchanges') return unreadCounts.exchanges
     if (id === 'tbr') return unreadCounts.tbr
     if (id === 'messages') return unreadCounts.messages
+    if (id === 'wallet') return !profile?.onboarding_bonus_claimed ? 1 : 0
     return 0
   }
 

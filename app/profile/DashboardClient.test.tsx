@@ -70,6 +70,19 @@ describe('DashboardClient — notification badges and highlighting', () => {
     expect(messagesButton.querySelector('[data-testid="tab-badge"]')).toBeNull()
   })
 
+  it('shows a badge on the Wallet tab when onboarding_bonus_claimed is false', () => {
+    render(<DashboardClient {...baseProps} exchanges={[]} profile={{ ...baseProps.profile, onboarding_bonus_claimed: false }} defaultTab="listings" />)
+    const walletButton = screen.getByText('Wallet').closest('button')!
+    expect(walletButton.querySelector('[data-testid="tab-badge"]')).not.toBeNull()
+    expect(walletButton.textContent).toContain('1')
+  })
+
+  it('shows no badge on the Wallet tab when onboarding_bonus_claimed is true', () => {
+    render(<DashboardClient {...baseProps} exchanges={[]} profile={{ ...baseProps.profile, onboarding_bonus_claimed: true }} defaultTab="listings" />)
+    const walletButton = screen.getByText('Wallet').closest('button')!
+    expect(walletButton.querySelector('[data-testid="tab-badge"]')).toBeNull()
+  })
+
   it('highlights a seller\'s pending purchase request row', () => {
     const { container } = render(<DashboardClient {...baseProps} exchanges={[pendingExchange]} defaultTab="exchanges" />)
     const highlighted = container.querySelector('[data-testid="exchange-row-highlighted"]')
