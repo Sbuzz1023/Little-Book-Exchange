@@ -710,3 +710,137 @@ ALTER TABLE listings DROP CONSTRAINT IF EXISTS listings_status_check;
 ALTER TABLE listings ADD CONSTRAINT listings_status_check
   CHECK (status IN ('active', 'pending', 'sold', 'given', 'paused'));
 -- ──────────────────────────────────────────────────────────────────────────────
+
+-- ── Migration: credit ledger foundation ───────────────────────────────────────
+
+-- 1. Real balance + verification/bonus tracking on profiles
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS credits integer NOT NULL DEFAULT 0;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS email_verified boolean NOT NULL DEFAULT false;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS phone_verified boolean NOT NULL DEFAULT false;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS onboarding_bonus_claimed boolean NOT NULL DEFAULT false;
+
+-- 2. book_count defaults to 1 (today's single-book behavior). The separate
+-- bundle-listings feature populates it for multi-book listings later.
+ALTER TABLE listings ADD COLUMN IF NOT EXISTS book_count integer NOT NULL DEFAULT 1;
+
+-- 3. Transaction ledger
+create table if not exists credit_transactions (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references profiles(id) on delete cascade not null,
+  amount integer not null, -- positive = credited, negative = spent
+  reason text not null check (reason in ('purchase_spent', 'sale_earned', 'onboarding_bonus', 'admin_adjustment')),
+  listing_id uuid references listings(id) on delete set null,
+  conversation_id uuid references conversations(id) on delete set null,
+  created_at timestamptz default now()
+);
+
+alter table credit_transactions enable row level security;
+create policy "Users can view own transactions" on credit_transactions
+  for select using (auth.uid() = user_id);
+-- No insert/update/delete policy for `authenticated` — every row is written by
+-- security-definer trigger functions or the admin action, same pattern
+-- notifications already uses.
+
+-- 4. Sync Supabase Auth's own verification state onto profiles.
+create or replace function sync_verification_status()
+returns trigger as $$
+begin
+  update public.profiles
+  set email_verified = (new.email_confirmed_at is not null),
+      phone_verified  = (new.phone_confirmed_at is not null)
+  where id = new.id;
+  return new;
+end;
+$$ language plpgsql security definer;
+
+drop trigger if exists on_auth_user_verification_change on auth.users;
+create trigger on_auth_user_verification_change
+  after update of email_confirmed_at, phone_confirmed_at on auth.users
+  for each row execute procedure sync_verification_status();
+
+-- 5. Award the onboarding bonus the moment all three conditions are met.
+create or replace function maybe_award_onboarding_bonus(p_user_id uuid)
+returns void as $$
+declare
+  v_profile profiles%rowtype;
+  v_books integer;
+begin
+  select * into v_profile from profiles where id = p_user_id;
+  if v_profile.onboarding_bonus_claimed then return; end if;
+  if not (v_profile.email_verified and v_profile.phone_verified) then return; end if;
+
+  select coalesce(sum(book_count), 0) into v_books from listings where user_id = p_user_id;
+  if v_books < 3 then return; end if;
+
+  update profiles set credits = credits + 1, onboarding_bonus_claimed = true where id = p_user_id;
+  insert into credit_transactions (user_id, amount, reason) values (p_user_id, 1, 'onboarding_bonus');
+end;
+$$ language plpgsql security definer;
+
+create or replace function trg_award_bonus_on_verification()
+returns trigger as $$
+begin
+  if (new.email_verified and new.phone_verified) and
+     (old.email_verified is distinct from new.email_verified or old.phone_verified is distinct from new.phone_verified) then
+    perform maybe_award_onboarding_bonus(new.id);
+  end if;
+  return new;
+end;
+$$ language plpgsql security definer;
+
+drop trigger if exists award_bonus_on_verification on profiles;
+create trigger award_bonus_on_verification
+  after update of email_verified, phone_verified on profiles
+  for each row execute procedure trg_award_bonus_on_verification();
+
+create or replace function trg_award_bonus_on_listing()
+returns trigger as $$
+begin
+  perform maybe_award_onboarding_bonus(new.user_id);
+  return new;
+end;
+$$ language plpgsql security definer;
+
+drop trigger if exists award_bonus_on_listing on listings;
+create trigger award_bonus_on_listing
+  after insert on listings
+  for each row execute procedure trg_award_bonus_on_listing();
+
+-- 6. Retroactive backfill: sync existing auth.users verification state, then
+-- evaluate every existing user once. Safe to re-run.
+update profiles p set
+  email_verified = (u.email_confirmed_at is not null),
+  phone_verified  = (u.phone_confirmed_at is not null)
+from auth.users u where u.id = p.id;
+
+do $$
+declare v_id uuid;
+begin
+  for v_id in select id from profiles loop
+    perform maybe_award_onboarding_bonus(v_id);
+  end loop;
+end $$;
+
+-- 7. Move credits buyer -> seller the moment an exchange completes. Extends
+-- the existing completed-exchange trigger function (already fires
+-- `after update on conversations` — no trigger-registration change needed).
+create or replace function complete_exchange_marks_listing_sold()
+returns trigger as $$
+declare
+  v_book_count integer;
+begin
+  if new.exchange_status = 'completed' and old.exchange_status is distinct from 'completed' then
+    update listings set status = 'sold' where id = new.listing_id returning book_count into v_book_count;
+
+    update profiles set credits = credits - v_book_count where id = new.buyer_id;
+    update profiles set credits = credits + v_book_count where id = new.seller_id;
+
+    insert into credit_transactions (user_id, amount, reason, listing_id, conversation_id)
+    values (new.buyer_id, -v_book_count, 'purchase_spent', new.listing_id, new.id);
+    insert into credit_transactions (user_id, amount, reason, listing_id, conversation_id)
+    values (new.seller_id, v_book_count, 'sale_earned', new.listing_id, new.id);
+  end if;
+  return new;
+end;
+$$ language plpgsql security definer;
+-- ──────────────────────────────────────────────────────────────────────────────
