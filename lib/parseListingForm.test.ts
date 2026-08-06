@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseListingForm } from './parseListingForm'
+import { parseListingForm, parseBundleBooks } from './parseListingForm'
 
 function makeFormData(fields: Record<string, string>) {
   const fd = new FormData()
@@ -50,5 +50,63 @@ describe('parseListingForm', () => {
     expect(result.genre).toBe('Sci-Fi')
     expect(result.format).toBe('Hardcover')
     expect(result.pickup_description).toBe('side gate')
+  })
+})
+
+describe('parseBundleBooks', () => {
+  it('returns an empty array when book_rows is absent', () => {
+    const fd = makeFormData({})
+    expect(parseBundleBooks(fd)).toEqual([])
+  })
+
+  it('parses the given number of rows', () => {
+    const fd = new FormData()
+    fd.set('book_rows', '2')
+    fd.set('book_title_1', 'Chamber of Secrets')
+    fd.set('book_author_1', 'J.K. Rowling')
+    fd.set('book_title_2', 'Prisoner of Azkaban')
+    fd.set('book_author_2', 'J.K. Rowling')
+    expect(parseBundleBooks(fd)).toEqual([
+      { title: 'Chamber of Secrets', author: 'J.K. Rowling' },
+      { title: 'Prisoner of Azkaban', author: 'J.K. Rowling' },
+    ])
+  })
+
+  it('trims whitespace and drops a row where both fields are empty', () => {
+    const fd = new FormData()
+    fd.set('book_rows', '2')
+    fd.set('book_title_1', '  Chamber of Secrets  ')
+    fd.set('book_author_1', '  J.K. Rowling  ')
+    fd.set('book_title_2', '')
+    fd.set('book_author_2', '')
+    expect(parseBundleBooks(fd)).toEqual([
+      { title: 'Chamber of Secrets', author: 'J.K. Rowling' },
+    ])
+  })
+
+  it('keeps a row if only one of the two fields is filled in', () => {
+    const fd = new FormData()
+    fd.set('book_rows', '1')
+    fd.set('book_title_1', 'Chamber of Secrets')
+    fd.set('book_author_1', '')
+    expect(parseBundleBooks(fd)).toEqual([{ title: 'Chamber of Secrets', author: '' }])
+  })
+
+  it('caps at 20 rows regardless of what book_rows claims', () => {
+    const fd = new FormData()
+    fd.set('book_rows', '25')
+    for (let i = 1; i <= 25; i++) {
+      fd.set(`book_title_${i}`, `Book ${i}`)
+      fd.set(`book_author_${i}`, 'Author')
+    }
+    expect(parseBundleBooks(fd)).toHaveLength(20)
+  })
+
+  it('treats a non-numeric book_rows as zero', () => {
+    const fd = new FormData()
+    fd.set('book_rows', 'not-a-number')
+    fd.set('book_title_1', 'Chamber of Secrets')
+    fd.set('book_author_1', 'J.K. Rowling')
+    expect(parseBundleBooks(fd)).toEqual([])
   })
 })

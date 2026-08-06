@@ -25,3 +25,19 @@ export function parseListingForm(formData: FormData): ParsedListingForm {
     pickup_description: (formData.get('pickup_description') as string) || null,
   }
 }
+
+const MAX_BUNDLE_BOOKS = 20
+
+export function parseBundleBooks(formData: FormData): { title: string; author: string }[] {
+  const rawCount = parseInt((formData.get('book_rows') as string) || '0', 10)
+  const count = Math.min(Number.isFinite(rawCount) ? Math.max(rawCount, 0) : 0, MAX_BUNDLE_BOOKS)
+
+  const books: { title: string; author: string }[] = []
+  for (let i = 1; i <= count; i++) {
+    const title = ((formData.get(`book_title_${i}`) as string) || '').trim()
+    const author = ((formData.get(`book_author_${i}`) as string) || '').trim()
+    if (title === '' && author === '') continue
+    books.push({ title, author })
+  }
+  return books
+}
