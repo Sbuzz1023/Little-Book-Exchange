@@ -982,3 +982,71 @@ $$ language plpgsql security definer set search_path = public, pg_temp;
 
 grant execute on function admin_update_user_credits(uuid, integer) to authenticated;
 -- ──────────────────────────────────────────────────────────────────────────────
+
+-- ── Migration: bundle & series listings ───────────────────────────────────────
+
+ALTER TABLE listings ADD COLUMN IF NOT EXISTS is_bundle boolean NOT NULL DEFAULT false;
+ALTER TABLE listings ADD COLUMN IF NOT EXISTS bundle_name text;
+
+-- listings.title/author remain "book 1" — every existing single-book listing
+-- and every piece of code that already reads listing.title/listing.author is
+-- untouched. This table holds only the *additional* books in a bundle.
+create table if not exists listing_books (
+  id uuid default gen_random_uuid() primary key,
+  listing_id uuid references listings(id) on delete cascade not null,
+  title text not null,
+  author text not null,
+  position integer not null default 0,
+  created_at timestamptz default now()
+);
+
+alter table listing_books enable row level security;
+create policy "Listing books are viewable by everyone" on listing_books for select using (true);
+create policy "Owners can manage their listing's books" on listing_books
+  for all using (exists (select 1 from listings l where l.id = listing_id and l.user_id = auth.uid()));
+
+-- Keep listings.book_count in sync automatically, so nothing downstream —
+-- pricing, the credit-ledger onboarding "books posted" count, Browse/detail
+-- rendering — ever needs to join or count listing_books itself.
+create or replace function sync_listing_book_count()
+returns trigger as $$
+begin
+  update listings set book_count = 1 + (select count(*) from listing_books where listing_id = coalesce(new.listing_id, old.listing_id))
+  where id = coalesce(new.listing_id, old.listing_id);
+  return null;
+end;
+$$ language plpgsql security definer set search_path = public, pg_temp;
+
+drop trigger if exists on_listing_books_change on listing_books;
+create trigger on_listing_books_change
+  after insert or update or delete on listing_books
+  for each row execute procedure sync_listing_book_count();
+
+-- book_count is meant to be entirely derived from listing_books via the
+-- trigger above — never written directly by app code (createListing/
+-- updateListing never set it, per this feature's design). But "Users can
+-- update own listings" (auth.uid() = user_id, no column scoping — RLS can't
+-- scope to a column) lets a listing's owner PATCH book_count directly via the
+-- REST API to any value, independent of how many listing_books rows actually
+-- exist — letting a lister charge buyers for books that aren't itemized
+-- anywhere. Same shape of problem, same fix, as prevent_credit_self_grant:
+-- revert any direct (non-cascaded) write. The legitimate path is always
+-- nested inside a listing_books trigger (depth 2+ by the time it reaches
+-- this UPDATE); a raw client PATCH on listings hits this guard at depth 1.
+-- Unlike prevent_credit_self_grant there's no legitimate depth-1 writer to
+-- carve out here — nothing in this app ever sets book_count directly — so
+-- no bypass flag is needed.
+create or replace function prevent_book_count_self_edit()
+returns trigger as $$
+begin
+  if pg_trigger_depth() = 1 then
+    new.book_count := old.book_count;
+  end if;
+  return new;
+end;
+$$ language plpgsql security definer set search_path = public, pg_temp;
+
+drop trigger if exists prevent_book_count_self_edit_trigger on listings;
+create trigger prevent_book_count_self_edit_trigger before update on listings
+  for each row execute procedure prevent_book_count_self_edit();
+-- ──────────────────────────────────────────────────────────────────────────────
