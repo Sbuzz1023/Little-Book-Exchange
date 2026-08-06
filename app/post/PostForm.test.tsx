@@ -57,14 +57,14 @@ describe('PostForm — bundle toggle', () => {
     expect(screen.getByText('This bundle: 1 book · 1 credit')).toBeInTheDocument()
   })
 
-  it('adds a book row pre-filled from Book 1 when Add Another Book is clicked', () => {
+  it('adds a book row with author pre-filled from Book 1, title left blank, when Add Another Book is clicked', () => {
     render(<PostForm action={vi.fn()} />)
     fireEvent.change(screen.getByPlaceholderText('e.g. The Great Gatsby'), { target: { value: 'Dune' } })
     fireEvent.change(screen.getByPlaceholderText('e.g. F. Scott Fitzgerald'), { target: { value: 'Frank Herbert' } })
     fireEvent.click(screen.getByText('📚 List as a Bundle / Series'))
     fireEvent.click(screen.getByText('+ Add Another Book'))
 
-    expect(screen.getByPlaceholderText('Book title')).toHaveValue('Dune')
+    expect(screen.getByPlaceholderText('Title in series')).toHaveValue('')
     expect(screen.getByPlaceholderText('Author')).toHaveValue('Frank Herbert')
     expect(screen.getByText('This bundle: 2 books · 2 credits')).toBeInTheDocument()
   })
@@ -74,17 +74,19 @@ describe('PostForm — bundle toggle', () => {
     fireEvent.click(screen.getByText('📚 List as a Bundle / Series'))
     fireEvent.click(screen.getByText('+ Add Another Book'))
     fireEvent.click(screen.getByText('✕ Remove'))
-    expect(screen.queryByPlaceholderText('Book title')).not.toBeInTheDocument()
+    expect(screen.queryByPlaceholderText('Title in series')).not.toBeInTheDocument()
     expect(screen.getByText('This bundle: 1 book · 1 credit')).toBeInTheDocument()
   })
 
-  it('re-copies the current Book 1 title/author when Auto-fill is clicked again', () => {
+  it('re-copies the current Book 1 author when Auto-fill is clicked, leaving the row\'s own title untouched', () => {
     render(<PostForm action={vi.fn()} />)
     fireEvent.click(screen.getByText('📚 List as a Bundle / Series'))
     fireEvent.click(screen.getByText('+ Add Another Book'))
-    fireEvent.change(screen.getByPlaceholderText('e.g. The Great Gatsby'), { target: { value: 'Dune Messiah' } })
+    fireEvent.change(screen.getByPlaceholderText('Title in series'), { target: { value: 'Chamber of Secrets' } })
+    fireEvent.change(screen.getByPlaceholderText('e.g. F. Scott Fitzgerald'), { target: { value: 'J.K. Rowling' } })
     fireEvent.click(screen.getByText('✨ Auto-fill from Book 1'))
-    expect(screen.getByPlaceholderText('Book title')).toHaveValue('Dune Messiah')
+    expect(screen.getByPlaceholderText('Title in series')).toHaveValue('Chamber of Secrets')
+    expect(screen.getByPlaceholderText('Author')).toHaveValue('J.K. Rowling')
   })
 
   it('submits is_bundle=false and book_rows=0 hidden fields by default', () => {
@@ -97,7 +99,7 @@ describe('PostForm — bundle toggle', () => {
     const { container } = render(<PostForm action={vi.fn()} />)
     fireEvent.click(screen.getByText('📚 List as a Bundle / Series'))
     fireEvent.click(screen.getByText('+ Add Another Book'))
-    fireEvent.change(screen.getByPlaceholderText('Book title'), { target: { value: 'Chamber of Secrets' } })
+    fireEvent.change(screen.getByPlaceholderText('Title in series'), { target: { value: 'Chamber of Secrets' } })
 
     expect(container.querySelector('input[name="is_bundle"]')).toHaveValue('true')
     expect(container.querySelector('input[name="book_rows"]')).toHaveValue('1')
