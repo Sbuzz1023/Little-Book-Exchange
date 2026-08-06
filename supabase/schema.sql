@@ -795,6 +795,7 @@ begin
   insert into credit_transactions (user_id, amount, reason) values (p_user_id, 1, 'onboarding_bonus');
 end;
 $$ language plpgsql security definer set search_path = public, pg_temp;
+revoke execute on function maybe_award_onboarding_bonus(uuid) from public;
 
 create or replace function trg_award_bonus_on_verification()
 returns trigger as $$
