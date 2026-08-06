@@ -530,7 +530,7 @@ export default function PostForm({ city, action, error, initialValues, submitLab
         >
           <p className="text-[13px] font-bold mb-1" style={{ color: '#c2410c' }}>Your listing will appear as:</p>
           <p className="text-[12px] font-semibold" style={{ color: '#aaa' }}>
-            {title || 'Your Book'} · {author || 'Author'} · {genre} · {format} · {condition} condition · <span style={{ color: '#f97316', fontWeight: 800 }}>1 credit</span> · {city || 'your city'}
+            {title || 'Your Book'} · {author || 'Author'} · {genre} · {format} · {condition} condition · <span style={{ color: '#f97316', fontWeight: 800 }}>{isBundle ? `${books.length + 1} credit${books.length === 0 ? '' : 's'}` : '1 credit'}</span> · {city || 'your city'}
           </p>
         </div>
 

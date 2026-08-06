@@ -78,9 +78,16 @@ export async function updateListing(listingId: string, formData: FormData) {
     if (!user) redirect('/auth/signin')
 
     const { data: existing } = await supabase
-      .from('listings').select('photo_url, photo_url_2, photo_url_3')
+      .from('listings').select('photo_url, photo_url_2, photo_url_3, status')
       .eq('id', listingId).eq('user_id', user.id).single()
     if (!existing) redirect('/profile?tab=listings')
+
+    // A buyer has already requested this listing at its current price. Editing
+    // it now (adding bundle books, in particular) would change what they're
+    // charged at completion, since book_count is read live from the listing.
+    if (existing.status === 'pending') {
+      redirect(`/listings/${listingId}/edit?error=${encodeURIComponent('This listing has a pending purchase request and can\'t be edited right now.')}`)
+    }
 
     const [photo_url, photo_url_2, photo_url_3] = await Promise.all([
       uploadPhoto(supabase, user.id, formData, 'photo', 1),

@@ -125,6 +125,22 @@ describe('PostForm — bundle toggle', () => {
     expect(screen.getByText('This bundle: 21 books · 21 credits')).toBeInTheDocument()
   })
 
+  it('shows 1 credit in the preview line when the bundle toggle is off', () => {
+    render(<PostForm action={vi.fn()} />)
+    expect(screen.getByText('1 credit')).toBeInTheDocument()
+  })
+
+  it('shows the bundle total in the preview line while composing a bundle', () => {
+    render(<PostForm action={vi.fn()} />)
+    fireEvent.click(screen.getByText('📚 List as a Bundle / Series'))
+    expect(screen.getByText('1 credit')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByText('+ Add Another Book'))
+    fireEvent.click(screen.getByText('+ Add Another Book'))
+    expect(screen.getByText('3 credits')).toBeInTheDocument()
+    expect(screen.queryByText('1 credit')).not.toBeInTheDocument()
+  })
+
   it('pre-fills bundle state from initialValues (edit mode)', () => {
     render(
       <PostForm
