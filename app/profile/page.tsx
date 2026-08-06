@@ -10,7 +10,7 @@ import { removeSavedListing } from '@/lib/actions/savedListings'
 import { addTbrEntry, removeTbrEntry } from '@/lib/actions/tbrEntries'
 import { tbrMatchPattern, isTooGenericToMatch } from '@/lib/tbrMatch'
 import { unreadCounts as computeUnreadCounts, unreadEntityIds as computeUnreadEntityIds, type NotificationRow } from '@/lib/notifications'
-import { resendEmailConfirmation } from '@/lib/actions/verification'
+import { resendEmailConfirmation, sendPhoneOtp, verifyPhoneOtp } from '@/lib/actions/verification'
 
 export default async function ProfilePage({
   searchParams,
@@ -242,6 +242,8 @@ export default async function ProfilePage({
       unreadCounts={unreadCounts}
       unreadEntityIds={unreadEntityIds}
       resendEmailConfirmation={resendEmailConfirmation}
+      sendPhoneOtp={sendPhoneOtp}
+      verifyPhoneOtp={verifyPhoneOtp}
       isDemo={demo}
       initialConversationId={searchParams.conversation ?? null}
     />

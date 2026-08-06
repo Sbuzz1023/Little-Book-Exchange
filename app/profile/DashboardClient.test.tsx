@@ -30,6 +30,8 @@ const baseProps = {
   unreadCounts: { total: 2, exchanges: 1, tbr: 1, messages: 0 },
   unreadEntityIds: { message: [] as string[], decisionOrPickup: [] as string[], tbrMatch: ['tbr-1'] },
   resendEmailConfirmation: vi.fn(() => Promise.resolve({ ok: true })),
+  sendPhoneOtp: vi.fn(() => Promise.resolve({ ok: true })),
+  verifyPhoneOtp: vi.fn(() => Promise.resolve({ ok: true })),
 }
 
 const pendingExchange = {
@@ -233,5 +235,25 @@ describe('DashboardClient — onboarding checklist', () => {
     render(<DashboardClient {...baseProps} exchanges={[]} transactions={[]} profile={unclaimedProfile} defaultTab="wallet" resendEmailConfirmation={resend} />)
     fireEvent.click(screen.getByRole('button', { name: /Resend confirmation email/ }))
     expect(resend).toHaveBeenCalled()
+  })
+})
+
+describe('DashboardClient — phone verification', () => {
+  const unverifiedProfile = { ...baseProps.profile, email_verified: true, phone_verified: false, onboarding_bonus_claimed: false, phone: '3125550100' }
+
+  it('sends an OTP and then verifies it', async () => {
+    const sendOtp = vi.fn(() => Promise.resolve({ ok: true }))
+    const verifyOtp = vi.fn(() => Promise.resolve({ ok: true }))
+    render(<DashboardClient {...baseProps} exchanges={[]} transactions={[]} profile={unverifiedProfile}
+      defaultTab="wallet" resendEmailConfirmation={vi.fn()} sendPhoneOtp={sendOtp} verifyPhoneOtp={verifyOtp} />)
+
+    fireEvent.click(screen.getByRole('button', { name: /Verify Phone/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Send code/ }))
+    expect(sendOtp).toHaveBeenCalled()
+
+    const codeInput = await screen.findByPlaceholderText(/6-digit code/)
+    fireEvent.change(codeInput, { target: { value: '123456' } })
+    fireEvent.click(screen.getByRole('button', { name: /Confirm code/ }))
+    expect(verifyOtp).toHaveBeenCalled()
   })
 })

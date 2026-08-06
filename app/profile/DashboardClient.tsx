@@ -126,6 +126,8 @@ type Props = {
   unreadCounts: { total: number; exchanges: number; tbr: number; messages: number }
   unreadEntityIds: { message: string[]; decisionOrPickup: string[]; tbrMatch: string[] }
   resendEmailConfirmation: () => Promise<{ ok: boolean; error?: string }>
+  sendPhoneOtp: (formData: FormData) => Promise<{ ok: boolean; error?: string }>
+  verifyPhoneOtp: (formData: FormData) => Promise<{ ok: boolean; error?: string }>
 }
 
 const TABS = [
@@ -171,10 +173,14 @@ function statusLabel(status: string) {
   return 'Active'
 }
 
-export default function DashboardClient({ profile, listings, exchanges, savedListings, tbrEntries, transactions, updateAction, updateListingStatus, completeExchange, hideExchangeHistory, submitReview, confirmExchange, denyPurchase, cancelPurchase, removeSavedListing, addTbrEntry, removeTbrEntry, success, defaultTab, queryError, tbrError, isDemo, initialConversationId, unreadCounts, unreadEntityIds, resendEmailConfirmation }: Props) {
+export default function DashboardClient({ profile, listings, exchanges, savedListings, tbrEntries, transactions, updateAction, updateListingStatus, completeExchange, hideExchangeHistory, submitReview, confirmExchange, denyPurchase, cancelPurchase, removeSavedListing, addTbrEntry, removeTbrEntry, success, defaultTab, queryError, tbrError, isDemo, initialConversationId, unreadCounts, unreadEntityIds, resendEmailConfirmation, sendPhoneOtp, verifyPhoneOtp }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>(defaultTab ?? 'listings')
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(initialConversationId ?? null)
   const booksPosted = listings.reduce((sum, l: any) => sum + (l.book_count ?? 1), 0)
+  const [phoneStep, setPhoneStep] = useState<'idle' | 'code_sent'>('idle')
+  const [phoneNumber, setPhoneNumber] = useState(profile?.phone ?? '')
+  const [phoneCode, setPhoneCode] = useState('')
+  const [phoneError, setPhoneError] = useState<string | null>(null)
 
   async function markTabRead(tabId: Tab) {
     if (isDemo || !profile?.id) return
@@ -780,8 +786,61 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
                     </button>
                   )}
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-[13px]">{profile?.phone_verified ? '✅' : '☐'} Verify phone</span>
+                <div>
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-[13px]">{profile?.phone_verified ? '✅' : '☐'} Verify phone</span>
+                    {!profile?.phone_verified && phoneStep === 'idle' && (
+                      <button
+                        type="button"
+                        onClick={() => setPhoneStep('code_sent')}
+                        className="font-extrabold text-[12px]"
+                        style={{ background: 'none', border: 'none', color: '#059669', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
+                      >
+                        Verify Phone
+                      </button>
+                    )}
+                  </div>
+                  {!profile?.phone_verified && phoneStep === 'code_sent' && (
+                    <div className="mt-2 flex flex-col" style={{ gap: 6 }}>
+                      <input
+                        type="tel" value={phoneNumber} onChange={e => setPhoneNumber(e.target.value)}
+                        className="border-2 border-[#a7f3d0] rounded-lg px-2 py-1.5 font-bold text-[12px]"
+                      />
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const fd = new FormData()
+                          fd.set('phone', phoneNumber)
+                          const res = await sendPhoneOtp(fd)
+                          setPhoneError(res.ok ? null : (res.error ?? 'Failed to send code.'))
+                        }}
+                        className="font-extrabold text-[12px] self-start"
+                        style={{ background: '#059669', color: '#fff', border: 'none', borderRadius: 8, padding: '5px 12px', cursor: 'pointer', fontFamily: 'inherit' }}
+                      >
+                        Send code
+                      </button>
+                      <input
+                        type="text" placeholder="Enter 6-digit code" value={phoneCode} onChange={e => setPhoneCode(e.target.value)}
+                        className="border-2 border-[#a7f3d0] rounded-lg px-2 py-1.5 font-bold text-[12px]"
+                      />
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const fd = new FormData()
+                          fd.set('phone', phoneNumber)
+                          fd.set('token', phoneCode)
+                          const res = await verifyPhoneOtp(fd)
+                          if (res.ok) { setPhoneStep('idle'); setPhoneError(null); setPhoneCode('') }
+                          else setPhoneError(res.error ?? 'Invalid code.')
+                        }}
+                        className="font-extrabold text-[12px] self-start"
+                        style={{ background: '#059669', color: '#fff', border: 'none', borderRadius: 8, padding: '5px 12px', cursor: 'pointer', fontFamily: 'inherit' }}
+                      >
+                        Confirm code
+                      </button>
+                      {phoneError && <p className="font-bold text-[11px]" style={{ color: '#e11d48' }}>{phoneError}</p>}
+                    </div>
+                  )}
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-[13px]">{booksPosted >= 3 ? '✅' : '☐'} Books posted</span>
