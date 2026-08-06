@@ -2,6 +2,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { adminUpdateReview, adminDeleteReview } from '@/lib/actions/reviews'
+import { adminUpdateUserCredits } from '@/lib/actions/admin'
 import LocationsAdminTab from './LocationsAdminTab'
 
 const WEEKLY_ACTIVITY = [
@@ -268,8 +269,11 @@ function UsersTab({ users, setUsers, toggleAdmin }: { users: User[]; setUsers: R
 
   function openEdit(u: User) { setEditTarget(u); setForm({ ...u }) }
 
-  function saveEdit() {
+  async function saveEdit() {
     if (!form) return
+    if (editTarget && form.credits !== editTarget.credits) {
+      await adminUpdateUserCredits(form.id, form.credits)
+    }
     setUsers(prev => prev.map(u => u.id === form.id ? form : u))
     setEditTarget(null)
   }
@@ -565,7 +569,7 @@ export default function AdminClient() {
     const supabase = createClient()
     supabase
       .from('profiles')
-      .select('id, username, email, city, state, created_at, is_admin')
+      .select('id, username, email, city, state, created_at, is_admin, credits')
       .order('created_at', { ascending: false })
       .then(({ data }) => {
         if (!data) return
@@ -577,7 +581,7 @@ export default function AdminClient() {
           booksPosted: 0,
           booksSold: 0,
           booksBought: 0,
-          credits: 0,
+          credits: p.credits ?? 0,
           status: 'active',
           city: p.city || '',
           state: p.state || '',
