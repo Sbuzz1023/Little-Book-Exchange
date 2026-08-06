@@ -17,11 +17,12 @@ export async function adminUpdateUserCredits(userId: string, credits: number): P
   const { error } = await supabase.from('profiles').update({ credits }).eq('id', userId)
   if (error) return { ok: false, error: error.message }
 
-  await supabase.from('credit_transactions').insert({
+  const { error: insertError } = await supabase.from('credit_transactions').insert({
     user_id: userId,
     amount: delta,
     reason: 'admin_adjustment',
   })
 
+  if (insertError) return { ok: false, error: insertError.message }
   return { ok: true }
 }
