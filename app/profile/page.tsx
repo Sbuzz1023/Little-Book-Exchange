@@ -25,6 +25,7 @@ export default async function ProfilePage({
   let exchanges: any[] = []
   let savedListings: any[] = []
   let tbrEntries: any[] = []
+  let transactions: any[] = []
   let queryError: string | null = null
   let unreadCounts = { total: 0, exchanges: 0, tbr: 0, messages: 0 }
   let unreadEntityIds = { message: [] as string[], decisionOrPickup: [] as string[], tbrMatch: [] as string[] }
@@ -81,6 +82,11 @@ export default async function ProfilePage({
       ])
       profile = p
       listings = l ?? []
+
+      const { data: txRows } = await supabase
+        .from('credit_transactions').select('id, amount, reason, created_at')
+        .eq('user_id', user.id).order('created_at', { ascending: false })
+      transactions = txRows ?? []
 
       const { data: savedRows } = await supabase
         .from('saved_listings').select('listing_id').eq('user_id', user.id)
@@ -216,6 +222,7 @@ export default async function ProfilePage({
       exchanges={exchanges}
       savedListings={savedListings}
       tbrEntries={tbrEntries}
+      transactions={transactions}
       updateAction={updateProfile}
       updateListingStatus={updateListingStatus}
       completeExchange={completeExchange}

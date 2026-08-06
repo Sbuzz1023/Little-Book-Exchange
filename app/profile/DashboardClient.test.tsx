@@ -14,6 +14,7 @@ const baseProps = {
   tbrEntries: [
     { id: 'tbr-1', title: 'Dune', author: '', city: '', state: '', match: { id: 'listing-1', title: 'Dune' } },
   ],
+  transactions: [],
   updateAction: vi.fn(() => Promise.resolve()),
   updateListingStatus: vi.fn(() => Promise.resolve()),
   completeExchange: vi.fn(() => Promise.resolve()),
@@ -186,5 +187,23 @@ describe('DashboardClient — wallet balance', () => {
     const buyButton = screen.getByRole('button', { name: /Buy Credits/ })
     expect(buyButton).toBeDisabled()
     expect(buyButton.textContent).toMatch(/Coming soon/)
+  })
+})
+
+describe('DashboardClient — transaction history', () => {
+  const tx = [
+    { id: 't1', amount: -1, reason: 'purchase_spent', created_at: '2026-08-01T00:00:00.000Z' },
+    { id: 't2', amount: 1, reason: 'sale_earned', created_at: '2026-08-02T00:00:00.000Z' },
+  ]
+
+  it('renders real transactions when present', () => {
+    render(<DashboardClient {...baseProps} exchanges={[]} transactions={tx} defaultTab="wallet" />)
+    expect(screen.getByText(/Spent 1 credit/)).toBeInTheDocument()
+    expect(screen.getByText(/Earned 1 credit/)).toBeInTheDocument()
+  })
+
+  it('shows the empty state when there are no transactions', () => {
+    render(<DashboardClient {...baseProps} exchanges={[]} transactions={[]} defaultTab="wallet" />)
+    expect(screen.getByText('No transactions yet.')).toBeInTheDocument()
   })
 })

@@ -105,6 +105,7 @@ type Props = {
   exchanges: Exchange[]
   savedListings: SavedListing[]
   tbrEntries: TbrEntry[]
+  transactions: { id: string; amount: number; reason: string; created_at: string }[]
   updateAction: (formData: FormData) => Promise<void>
   updateListingStatus: (formData: FormData) => Promise<void>
   completeExchange: (formData: FormData) => Promise<void>
@@ -169,13 +170,7 @@ function statusLabel(status: string) {
   return 'Active'
 }
 
-const MOCK_TRANSACTIONS = [
-  { id: '1', type: 'purchase', desc: 'Bought 3 credits ($15.00)', amount: '+3', date: 'Jun 20, 2026', color: '#059669' },
-  { id: '2', type: 'spend',    desc: 'Claimed Harry Potter',      amount: '−1', date: 'Jun 21, 2026', color: '#e11d48' },
-  { id: '3', type: 'earn',     desc: 'Book claimed by neighbor',  amount: '+1', date: 'Jun 22, 2026', color: '#059669' },
-]
-
-export default function DashboardClient({ profile, listings, exchanges, savedListings, tbrEntries, updateAction, updateListingStatus, completeExchange, hideExchangeHistory, submitReview, confirmExchange, denyPurchase, cancelPurchase, removeSavedListing, addTbrEntry, removeTbrEntry, success, defaultTab, queryError, tbrError, isDemo, initialConversationId, unreadCounts, unreadEntityIds }: Props) {
+export default function DashboardClient({ profile, listings, exchanges, savedListings, tbrEntries, transactions, updateAction, updateListingStatus, completeExchange, hideExchangeHistory, submitReview, confirmExchange, denyPurchase, cancelPurchase, removeSavedListing, addTbrEntry, removeTbrEntry, success, defaultTab, queryError, tbrError, isDemo, initialConversationId, unreadCounts, unreadEntityIds }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>(defaultTab ?? 'listings')
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(initialConversationId ?? null)
 
@@ -803,28 +798,39 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
           {/* Transaction history */}
           <div style={cardStyle}>
             <h3 className="font-display text-[18px] mb-4" style={{ color: '#059669' }}>Transaction History</h3>
-            {MOCK_TRANSACTIONS.length === 0 ? (
+            {transactions.length === 0 ? (
               <div className="text-center py-8 font-bold text-[14px]" style={{ color: '#aaa' }}>
                 No transactions yet.
               </div>
             ) : (
               <div>
-                {MOCK_TRANSACTIONS.map((tx, i) => (
-                  <div key={tx.id} className="flex items-center gap-3"
-                    style={{ padding: '12px 0', borderBottom: i < MOCK_TRANSACTIONS.length - 1 ? '2px solid #f3f4f6' : 'none' }}>
-                    <div className="flex items-center justify-center shrink-0"
-                      style={{ width: 38, height: 38, borderRadius: 10, background: tx.color + '18', fontSize: 18 }}>
-                      {tx.type === 'purchase' ? '💳' : tx.type === 'earn' ? '🤝' : '⭐'}
+                {transactions.map((tx, i) => {
+                  const label =
+                    tx.reason === 'purchase_spent' ? `Spent ${Math.abs(tx.amount)} credit${Math.abs(tx.amount) === 1 ? '' : 's'}` :
+                    tx.reason === 'sale_earned'    ? `Earned ${tx.amount} credit${tx.amount === 1 ? '' : 's'} from a sale` :
+                    tx.reason === 'onboarding_bonus' ? 'Welcome bonus' :
+                    'Admin adjustment'
+                  const icon = tx.reason === 'purchase_spent' ? '💳' : tx.reason === 'sale_earned' ? '🤝' : '🎁'
+                  const color = tx.amount >= 0 ? '#059669' : '#e11d48'
+                  return (
+                    <div key={tx.id} className="flex items-center gap-3"
+                      style={{ padding: '12px 0', borderBottom: i < transactions.length - 1 ? '2px solid #f3f4f6' : 'none' }}>
+                      <div className="flex items-center justify-center shrink-0"
+                        style={{ width: 38, height: 38, borderRadius: 10, background: color + '18', fontSize: 18 }}>
+                        {icon}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-[13px] truncate">{label}</p>
+                        <p className="font-semibold text-[11px]" style={{ color: '#aaa' }}>
+                          {new Date(tx.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </p>
+                      </div>
+                      <span className="font-black text-[15px] shrink-0" style={{ color }}>
+                        {tx.amount >= 0 ? '+' : ''}{tx.amount}
+                      </span>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-bold text-[13px] truncate">{tx.desc}</p>
-                      <p className="font-semibold text-[11px]" style={{ color: '#aaa' }}>{tx.date}</p>
-                    </div>
-                    <span className="font-black text-[15px] shrink-0" style={{ color: tx.color }}>
-                      {tx.amount}
-                    </span>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             )}
           </div>
