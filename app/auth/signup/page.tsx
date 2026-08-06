@@ -38,7 +38,7 @@ export default function SignUpPage({
         }
         redirect(`/auth/signup?error=${encodeURIComponent(msg || 'Signup failed')}`)
       }
-      redirect('/')
+      redirect('/?welcome=1')
     } catch (err: any) {
       if (err?.digest?.startsWith('NEXT_REDIRECT')) throw err
       redirect(`/auth/signup?error=${encodeURIComponent('Unable to connect. Please try again later.')}`)

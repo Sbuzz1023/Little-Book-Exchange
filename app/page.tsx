@@ -1,10 +1,13 @@
 import ScallopDivider from '@/components/ScallopDivider'
 import HeroBookshelf from '@/components/HeroBookshelf'
+import WelcomeBonusModal from '@/components/WelcomeBonusModal'
 import Link from 'next/link'
 
 export default async function HomePage() {
   return (
     <>
+      <WelcomeBonusModal />
+
       {/* Hero */}
       <section className="bg-cream" style={{ padding: '48px 16px 72px' }}>
         <HeroBookshelf />
