@@ -29,6 +29,7 @@ const baseProps = {
   isDemo: false,
   unreadCounts: { total: 2, exchanges: 1, tbr: 1, messages: 0 },
   unreadEntityIds: { message: [] as string[], decisionOrPickup: [] as string[], tbrMatch: ['tbr-1'] },
+  resendEmailConfirmation: vi.fn(() => Promise.resolve({ ok: true })),
 }
 
 const pendingExchange = {
@@ -205,5 +206,32 @@ describe('DashboardClient — transaction history', () => {
   it('shows the empty state when there are no transactions', () => {
     render(<DashboardClient {...baseProps} exchanges={[]} transactions={[]} defaultTab="wallet" />)
     expect(screen.getByText('No transactions yet.')).toBeInTheDocument()
+  })
+})
+
+describe('DashboardClient — onboarding checklist', () => {
+  const unclaimedProfile = { ...baseProps.profile, email_verified: false, phone_verified: false, onboarding_bonus_claimed: false }
+
+  it('shows the checklist with books-posted progress when the bonus is unclaimed', () => {
+    render(<DashboardClient {...baseProps} exchanges={[]} transactions={[]} profile={unclaimedProfile}
+      listings={[{ id: 'l1', title: 'Dune', author: 'Herbert', condition: 'Good', status: 'active' }]}
+      defaultTab="wallet" resendEmailConfirmation={vi.fn()} />)
+    expect(screen.getByText('Earn Your First Credit')).toBeInTheDocument()
+    expect(screen.getByText('1/3')).toBeInTheDocument()
+  })
+
+  it('shows the bonus-earned message instead of the checklist once claimed', () => {
+    render(<DashboardClient {...baseProps} exchanges={[]} transactions={[]}
+      profile={{ ...unclaimedProfile, onboarding_bonus_claimed: true }}
+      defaultTab="wallet" resendEmailConfirmation={vi.fn()} />)
+    expect(screen.getByText(/Bonus earned/)).toBeInTheDocument()
+    expect(screen.queryByText('Earn Your First Credit')).not.toBeInTheDocument()
+  })
+
+  it('calls resendEmailConfirmation when the resend button is clicked', async () => {
+    const resend = vi.fn(() => Promise.resolve({ ok: true }))
+    render(<DashboardClient {...baseProps} exchanges={[]} transactions={[]} profile={unclaimedProfile} defaultTab="wallet" resendEmailConfirmation={resend} />)
+    fireEvent.click(screen.getByRole('button', { name: /Resend confirmation email/ }))
+    expect(resend).toHaveBeenCalled()
   })
 })

@@ -125,6 +125,7 @@ type Props = {
   initialConversationId?: string | null
   unreadCounts: { total: number; exchanges: number; tbr: number; messages: number }
   unreadEntityIds: { message: string[]; decisionOrPickup: string[]; tbrMatch: string[] }
+  resendEmailConfirmation: () => Promise<{ ok: boolean; error?: string }>
 }
 
 const TABS = [
@@ -170,9 +171,10 @@ function statusLabel(status: string) {
   return 'Active'
 }
 
-export default function DashboardClient({ profile, listings, exchanges, savedListings, tbrEntries, transactions, updateAction, updateListingStatus, completeExchange, hideExchangeHistory, submitReview, confirmExchange, denyPurchase, cancelPurchase, removeSavedListing, addTbrEntry, removeTbrEntry, success, defaultTab, queryError, tbrError, isDemo, initialConversationId, unreadCounts, unreadEntityIds }: Props) {
+export default function DashboardClient({ profile, listings, exchanges, savedListings, tbrEntries, transactions, updateAction, updateListingStatus, completeExchange, hideExchangeHistory, submitReview, confirmExchange, denyPurchase, cancelPurchase, removeSavedListing, addTbrEntry, removeTbrEntry, success, defaultTab, queryError, tbrError, isDemo, initialConversationId, unreadCounts, unreadEntityIds, resendEmailConfirmation }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>(defaultTab ?? 'listings')
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(initialConversationId ?? null)
+  const booksPosted = listings.reduce((sum, l: any) => sum + (l.book_count ?? 1), 0)
 
   async function markTabRead(tabId: Tab) {
     if (isDemo || !profile?.id) return
@@ -760,6 +762,39 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
       {/* ── WALLET ── */}
       {activeTab === 'wallet' && (
         <div className="flex flex-col" style={{ gap: 16 }}>
+
+          {!profile?.onboarding_bonus_claimed && (
+            <div style={{ ...cardStyle, border: '2px solid #a7f3d0' }}>
+              <h3 className="font-display text-[16px] mb-3" style={{ color: '#059669' }}><span aria-hidden="true">🎯</span> Earn Your First Credit</h3>
+              <div className="flex flex-col" style={{ gap: 10 }}>
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-[13px]">{profile?.email_verified ? '✅' : '☐'} Verify email</span>
+                  {!profile?.email_verified && (
+                    <button
+                      type="button"
+                      onClick={() => resendEmailConfirmation()}
+                      className="font-extrabold text-[12px]"
+                      style={{ background: 'none', border: 'none', color: '#059669', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
+                    >
+                      Resend confirmation email
+                    </button>
+                  )}
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-[13px]">{profile?.phone_verified ? '✅' : '☐'} Verify phone</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-[13px]">{booksPosted >= 3 ? '✅' : '☐'} Books posted</span>
+                  <span className="font-extrabold text-[12px]" style={{ color: '#aaa' }}>{Math.min(booksPosted, 3)}/3</span>
+                </div>
+              </div>
+            </div>
+          )}
+          {profile?.onboarding_bonus_claimed && (
+            <div style={{ ...cardStyle, border: '2px solid #a7f3d0', textAlign: 'center' }}>
+              <p className="font-black text-[14px]" style={{ color: '#059669' }}>🎉 Bonus earned — you got 1 free credit!</p>
+            </div>
+          )}
 
           {/* Balance card */}
           <div style={{ ...cardStyle, background: 'linear-gradient(135deg, #064e3b, #065f46)', border: '2px solid #059669', boxShadow: '0 6px 0 #047857' }}>
