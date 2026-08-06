@@ -24,6 +24,9 @@ export type Listing = {
   format?: string
   created_at: string
   profiles?: Profile
+  is_bundle?: boolean
+  bundle_name?: string | null
+  book_count?: number
 }
 
 export type Conversation = {

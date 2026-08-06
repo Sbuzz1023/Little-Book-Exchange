@@ -416,7 +416,7 @@ export default async function ListingsPage({
                         className="absolute text-white font-black"
                         style={{ top: 8, right: 8, padding: '3px 10px', borderRadius: 999, fontSize: 11, background: '#f97316' }}
                       >
-                        1 credit
+                        {l.is_bundle ? `${l.book_count ?? 1} credits` : '1 credit'}
                       </span>
                     ) : (
                       <span
@@ -436,7 +436,7 @@ export default async function ListingsPage({
                     )}
                   </div>
                   <div style={{ padding: '12px 14px' }}>
-                    <p className="font-black text-[13px] truncate mb-0.5">{l.title}</p>
+                    <p className="font-black text-[13px] truncate mb-0.5">{l.is_bundle ? (l.bundle_name || l.title) : l.title}</p>
                     <p className="text-[11px] font-semibold mb-2" style={{ color: '#aaa' }}>{l.author}</p>
                     {l.profiles?.username && (
                       <div className="flex items-center gap-1.5 mb-2">
@@ -452,7 +452,7 @@ export default async function ListingsPage({
                         {conditionLabel(l.condition)}
                       </span>
                       <span className="font-extrabold text-[10px]" style={{ color: '#f97316' }}>
-                        🪙 1 credit
+                        {l.is_bundle ? `📚 Bundle · ${l.book_count ?? 1} books · ${l.book_count ?? 1} credits` : '🪙 1 credit'}
                       </span>
                     </div>
                     {locked && (
