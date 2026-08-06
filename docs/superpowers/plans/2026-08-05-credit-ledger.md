@@ -842,6 +842,8 @@ Near the top of the component body, alongside the other `useState` calls:
 
 ```ts
   const [phoneStep, setPhoneStep] = useState<'idle' | 'code_sent'>('idle')
+  const [phoneNumber, setPhoneNumber] = useState(profile?.phone ?? '')
+  const [phoneCode, setPhoneCode] = useState('')
   const [phoneError, setPhoneError] = useState<string | null>(null)
 ```
 
@@ -875,14 +877,14 @@ With:
                   {!profile?.phone_verified && phoneStep === 'code_sent' && (
                     <div className="mt-2 flex flex-col" style={{ gap: 6 }}>
                       <input
-                        id="phone-otp-number" type="tel" defaultValue={profile?.phone ?? ''}
+                        type="tel" value={phoneNumber} onChange={e => setPhoneNumber(e.target.value)}
                         className="border-2 border-[#a7f3d0] rounded-lg px-2 py-1.5 font-bold text-[12px]"
                       />
                       <button
                         type="button"
                         onClick={async () => {
                           const fd = new FormData()
-                          fd.set('phone', (document.getElementById('phone-otp-number') as HTMLInputElement).value)
+                          fd.set('phone', phoneNumber)
                           const res = await sendPhoneOtp(fd)
                           setPhoneError(res.ok ? null : (res.error ?? 'Failed to send code.'))
                         }}
@@ -892,17 +894,17 @@ With:
                         Send code
                       </button>
                       <input
-                        id="phone-otp-code" type="text" placeholder="Enter 6-digit code"
+                        type="text" placeholder="Enter 6-digit code" value={phoneCode} onChange={e => setPhoneCode(e.target.value)}
                         className="border-2 border-[#a7f3d0] rounded-lg px-2 py-1.5 font-bold text-[12px]"
                       />
                       <button
                         type="button"
                         onClick={async () => {
                           const fd = new FormData()
-                          fd.set('phone', (document.getElementById('phone-otp-number') as HTMLInputElement).value)
-                          fd.set('token', (document.getElementById('phone-otp-code') as HTMLInputElement).value)
+                          fd.set('phone', phoneNumber)
+                          fd.set('token', phoneCode)
                           const res = await verifyPhoneOtp(fd)
-                          if (res.ok) { setPhoneStep('idle'); setPhoneError(null) }
+                          if (res.ok) { setPhoneStep('idle'); setPhoneError(null); setPhoneCode('') }
                           else setPhoneError(res.error ?? 'Invalid code.')
                         }}
                         className="font-extrabold text-[12px] self-start"
@@ -915,6 +917,8 @@ With:
                   )}
                 </div>
 ```
+
+(Controlled inputs via `phoneNumber`/`phoneCode` state, not `document.getElementById` — keeps this idiomatic React rather than manual DOM queries.)
 
 - [ ] **Step 5: Wire the props in `app/profile/page.tsx`**
 
