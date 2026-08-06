@@ -34,7 +34,7 @@ function conditionLabel(c: string) {
   return c
 }
 
-export default async function ListingDetailPage({ params, searchParams }: { params: { id: string }, searchParams: { requested?: string; purchase_failed?: string } }) {
+export default async function ListingDetailPage({ params, searchParams }: { params: { id: string }, searchParams: { requested?: string; purchase_failed?: string; insufficient_credits?: string } }) {
   let listing: any = null
   let user: any = null
   let myConvoStatus: string | null = null
@@ -151,6 +151,11 @@ export default async function ListingDetailPage({ params, searchParams }: { para
       const supabase = createSrv()
       const { data: { user: u } } = await supabase.auth.getUser()
       if (!u) redirect(`/auth/signin?redirect=/listings/${params.id}`)
+
+      const { data: buyerProfile } = await supabase.from('profiles').select('credits').eq('id', u!.id).single()
+      if (!buyerProfile || buyerProfile.credits < listing.book_count) {
+        redirect(`/listings/${params.id}?insufficient_credits=1`)
+      }
 
       const { data: locked } = await supabase.rpc('lock_listing_for_request', { p_listing_id: listing.id })
       if (!locked) {
@@ -298,6 +303,10 @@ export default async function ListingDetailPage({ params, searchParams }: { para
             ) : searchParams.purchase_failed === '1' ? (
               <div style={{ background: '#fef2f2', border: '2px solid #fca5a5', color: '#b91c1c', padding: '12px 22px', borderRadius: 16, fontWeight: 800, fontSize: 14 }}>
                 ❌ Purchase failed — please try again or message the seller.
+              </div>
+            ) : searchParams.insufficient_credits === '1' ? (
+              <div style={{ background: '#fef2f2', border: '2px solid #fca5a5', color: '#b91c1c', padding: '12px 22px', borderRadius: 16, fontWeight: 800, fontSize: 14 }}>
+                🪙 You don't have enough credits for this. Check your Wallet balance.
               </div>
             ) : (isPending || avail === 'pending-mine') ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'flex-end' }}>
