@@ -34,6 +34,9 @@ type Props = {
     photo_url: string | null
     photo_url_2: string | null
     photo_url_3: string | null
+    is_bundle?: boolean
+    bundle_name?: string | null
+    books?: { title: string; author: string }[]
   }
   submitLabel?: string
 }
@@ -150,6 +153,28 @@ export default function PostForm({ city, action, error, initialValues, submitLab
   const [photoPreview, setPhotoPreview] = useState<string | null>(initialValues?.photo_url ?? null)
   const [photo2Preview, setPhoto2Preview] = useState<string | null>(initialValues?.photo_url_2 ?? null)
   const [photo3Preview, setPhoto3Preview] = useState<string | null>(initialValues?.photo_url_3 ?? null)
+  const [isBundle, setIsBundle] = useState(initialValues?.is_bundle ?? false)
+  const [bundleName, setBundleName] = useState(initialValues?.bundle_name ?? '')
+  const [books, setBooks] = useState<{ title: string; author: string }[]>(initialValues?.books ?? [])
+
+  const MAX_BUNDLE_BOOKS = 20
+
+  function toggleBundle() {
+    setIsBundle(b => {
+      const next = !b
+      if (!next) { setBooks([]); setBundleName('') }
+      return next
+    })
+  }
+  function updateBook(i: number, next: { title: string; author: string }) {
+    setBooks(prev => prev.map((b, idx) => (idx === i ? next : b)))
+  }
+  function addBook() {
+    setBooks(prev => (prev.length >= MAX_BUNDLE_BOOKS ? prev : [...prev, { title, author }]))
+  }
+  function removeBook(i: number) {
+    setBooks(prev => prev.filter((_, idx) => idx !== i))
+  }
 
   function makePhotoHandler(setPreview: (url: string | null) => void) {
     return (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -164,6 +189,8 @@ export default function PostForm({ city, action, error, initialValues, submitLab
       <input type="hidden" name="genre" value={genre} />
       <input type="hidden" name="format" value={format} />
       <input type="hidden" name="price" value="1" />
+      <input type="hidden" name="is_bundle" value={isBundle ? 'true' : 'false'} />
+      <input type="hidden" name="book_rows" value={books.length} />
 
       <div
         className="bg-white border-2 border-gray-100 shadow-[0_8px_0_#e5e7eb] p-5 md:p-9"
@@ -236,6 +263,120 @@ export default function PostForm({ city, action, error, initialValues, submitLab
             />
           </div>
         </div>
+
+        {/* Bundle toggle */}
+        <div style={{ marginBottom: 18 }}>
+          <button
+            type="button"
+            onClick={toggleBundle}
+            style={{
+              width: '100%',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '14px 18px',
+              borderRadius: 14,
+              border: `2px solid ${isBundle ? '#f97316' : '#e5e7eb'}`,
+              background: isBundle ? '#fff7ed' : '#fff',
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+            }}
+          >
+            <span style={{ fontWeight: 900, fontSize: 14, color: isBundle ? '#c2410c' : '#555' }}>
+              📚 List as a Bundle / Series
+            </span>
+            <span
+              style={{
+                width: 44, height: 26, borderRadius: 999,
+                background: isBundle ? '#f97316' : '#e5e7eb',
+                position: 'relative', transition: 'background 0.15s', flexShrink: 0,
+              }}
+            >
+              <span
+                style={{
+                  position: 'absolute', top: 3, left: isBundle ? 21 : 3,
+                  width: 20, height: 20, borderRadius: '50%', background: '#fff',
+                  transition: 'left 0.15s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+                }}
+              />
+            </span>
+          </button>
+        </div>
+
+        {isBundle && (
+          <div style={{ marginBottom: 18, borderTop: '2px dashed #fed7aa', paddingTop: 16 }}>
+            <p style={{ fontSize: 11, fontWeight: 900, color: '#f97316', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 12 }}>
+              📚 Bundle Details
+            </p>
+            <div style={{ marginBottom: 18 }}>
+              <FieldLabel optional>Series / Bundle Name</FieldLabel>
+              <input
+                name="bundle_name"
+                value={bundleName}
+                onChange={e => setBundleName(e.target.value)}
+                placeholder="e.g. Harry Potter Complete Series"
+                style={inputStyle}
+              />
+            </div>
+
+            {books.map((book, i) => (
+              <div key={i} style={{ marginBottom: 14, padding: 14, border: '2px solid #fed7aa', borderRadius: 14, background: '#fffbf0' }}>
+                <div className="flex items-center justify-between" style={{ marginBottom: 10 }}>
+                  <span style={{ fontSize: 11, fontWeight: 900, color: '#aaa', textTransform: 'uppercase' }}>Book {i + 2}</span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => updateBook(i, { title, author })}
+                      style={{ background: 'none', border: 'none', color: '#f97316', fontWeight: 800, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}
+                    >
+                      ✨ Auto-fill from Book 1
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => removeBook(i)}
+                      style={{ background: 'none', border: 'none', color: '#e11d48', fontWeight: 800, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}
+                    >
+                      ✕ Remove
+                    </button>
+                  </div>
+                </div>
+                <div style={{ marginBottom: 10 }}>
+                  <input
+                    name={`book_title_${i + 1}`}
+                    value={book.title}
+                    onChange={e => updateBook(i, { title: e.target.value, author: book.author })}
+                    placeholder="Book title"
+                    style={inputStyle}
+                  />
+                </div>
+                <input
+                  name={`book_author_${i + 1}`}
+                  value={book.author}
+                  onChange={e => updateBook(i, { title: book.title, author: e.target.value })}
+                  placeholder="Author"
+                  style={inputStyle}
+                />
+              </div>
+            ))}
+
+            {books.length < MAX_BUNDLE_BOOKS && (
+              <button
+                type="button"
+                onClick={addBook}
+                style={{
+                  width: '100%', padding: '10px', borderRadius: 12,
+                  border: '2px dashed #fed7aa', background: '#fffbf0',
+                  color: '#f97316', fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit',
+                  marginBottom: 14,
+                }}
+              >
+                + Add Another Book
+              </button>
+            )}
+
+            <div style={{ background: '#fff7ed', border: '2px solid #fed7aa', borderRadius: 12, padding: '10px 16px', fontWeight: 900, fontSize: 13, color: '#c2410c' }}>
+              This bundle: {books.length + 1} book{books.length === 0 ? '' : 's'} · {books.length + 1} credit{books.length === 0 ? '' : 's'}
+            </div>
+          </div>
+        )}
 
         {/* Genre */}
         <SectionHeading emoji="🏷️" title="Genre *" />

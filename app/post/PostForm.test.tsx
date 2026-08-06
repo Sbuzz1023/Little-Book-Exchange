@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import { describe, it, expect, vi } from 'vitest'
 import PostForm from './PostForm'
 
@@ -41,5 +41,104 @@ describe('PostForm', () => {
     render(<PostForm action={vi.fn()} submitLabel="Save Changes" />)
     expect(screen.getByText('Save Changes')).toBeInTheDocument()
     expect(screen.queryByText('Post My Book →')).not.toBeInTheDocument()
+  })
+})
+
+describe('PostForm — bundle toggle', () => {
+  it('does not show the Bundle Details section by default', () => {
+    render(<PostForm action={vi.fn()} />)
+    expect(screen.queryByText('Series / Bundle Name')).not.toBeInTheDocument()
+  })
+
+  it('reveals Bundle Details when the toggle is clicked, defaulting to a 1-book/1-credit total', () => {
+    render(<PostForm action={vi.fn()} />)
+    fireEvent.click(screen.getByText('📚 List as a Bundle / Series'))
+    expect(screen.getByText('Series / Bundle Name')).toBeInTheDocument()
+    expect(screen.getByText('This bundle: 1 book · 1 credit')).toBeInTheDocument()
+  })
+
+  it('adds a book row pre-filled from Book 1 when Add Another Book is clicked', () => {
+    render(<PostForm action={vi.fn()} />)
+    fireEvent.change(screen.getByPlaceholderText('e.g. The Great Gatsby'), { target: { value: 'Dune' } })
+    fireEvent.change(screen.getByPlaceholderText('e.g. F. Scott Fitzgerald'), { target: { value: 'Frank Herbert' } })
+    fireEvent.click(screen.getByText('📚 List as a Bundle / Series'))
+    fireEvent.click(screen.getByText('+ Add Another Book'))
+
+    expect(screen.getByPlaceholderText('Book title')).toHaveValue('Dune')
+    expect(screen.getByPlaceholderText('Author')).toHaveValue('Frank Herbert')
+    expect(screen.getByText('This bundle: 2 books · 2 credits')).toBeInTheDocument()
+  })
+
+  it('removes a book row when its Remove button is clicked', () => {
+    render(<PostForm action={vi.fn()} />)
+    fireEvent.click(screen.getByText('📚 List as a Bundle / Series'))
+    fireEvent.click(screen.getByText('+ Add Another Book'))
+    fireEvent.click(screen.getByText('✕ Remove'))
+    expect(screen.queryByPlaceholderText('Book title')).not.toBeInTheDocument()
+    expect(screen.getByText('This bundle: 1 book · 1 credit')).toBeInTheDocument()
+  })
+
+  it('re-copies the current Book 1 title/author when Auto-fill is clicked again', () => {
+    render(<PostForm action={vi.fn()} />)
+    fireEvent.click(screen.getByText('📚 List as a Bundle / Series'))
+    fireEvent.click(screen.getByText('+ Add Another Book'))
+    fireEvent.change(screen.getByPlaceholderText('e.g. The Great Gatsby'), { target: { value: 'Dune Messiah' } })
+    fireEvent.click(screen.getByText('✨ Auto-fill from Book 1'))
+    expect(screen.getByPlaceholderText('Book title')).toHaveValue('Dune Messiah')
+  })
+
+  it('submits is_bundle=false and book_rows=0 hidden fields by default', () => {
+    const { container } = render(<PostForm action={vi.fn()} />)
+    expect(container.querySelector('input[name="is_bundle"]')).toHaveValue('false')
+    expect(container.querySelector('input[name="book_rows"]')).toHaveValue('0')
+  })
+
+  it('submits is_bundle=true, book_rows, and indexed book fields once populated', () => {
+    const { container } = render(<PostForm action={vi.fn()} />)
+    fireEvent.click(screen.getByText('📚 List as a Bundle / Series'))
+    fireEvent.click(screen.getByText('+ Add Another Book'))
+    fireEvent.change(screen.getByPlaceholderText('Book title'), { target: { value: 'Chamber of Secrets' } })
+
+    expect(container.querySelector('input[name="is_bundle"]')).toHaveValue('true')
+    expect(container.querySelector('input[name="book_rows"]')).toHaveValue('1')
+    expect(container.querySelector('input[name="book_title_1"]')).toHaveValue('Chamber of Secrets')
+  })
+
+  it('clears bundle data when the toggle is turned back off', () => {
+    render(<PostForm action={vi.fn()} />)
+    fireEvent.click(screen.getByText('📚 List as a Bundle / Series'))
+    fireEvent.click(screen.getByText('+ Add Another Book'))
+    fireEvent.click(screen.getByText('📚 List as a Bundle / Series'))
+    expect(screen.queryByText('Series / Bundle Name')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByText('📚 List as a Bundle / Series'))
+    expect(screen.getByText('This bundle: 1 book · 1 credit')).toBeInTheDocument()
+  })
+
+  it('hides Add Another Book once 20 additional books are added', () => {
+    render(<PostForm action={vi.fn()} />)
+    fireEvent.click(screen.getByText('📚 List as a Bundle / Series'))
+    for (let i = 0; i < 20; i++) {
+      fireEvent.click(screen.getByText('+ Add Another Book'))
+    }
+    expect(screen.queryByText('+ Add Another Book')).not.toBeInTheDocument()
+    expect(screen.getByText('This bundle: 21 books · 21 credits')).toBeInTheDocument()
+  })
+
+  it('pre-fills bundle state from initialValues (edit mode)', () => {
+    render(
+      <PostForm
+        action={vi.fn()}
+        initialValues={{
+          title: 'Sorcerer\'s Stone', author: 'J.K. Rowling', condition: 'Good', genre: 'Fiction', format: 'Paperback',
+          description: null, pickup_description: null, photo_url: null, photo_url_2: null, photo_url_3: null,
+          is_bundle: true, bundle_name: 'Harry Potter Series',
+          books: [{ title: 'Chamber of Secrets', author: 'J.K. Rowling' }],
+        }}
+      />
+    )
+    expect(screen.getByDisplayValue('Harry Potter Series')).toBeInTheDocument()
+    expect(screen.getByDisplayValue('Chamber of Secrets')).toBeInTheDocument()
+    expect(screen.getByText('This bundle: 2 books · 2 credits')).toBeInTheDocument()
   })
 })
