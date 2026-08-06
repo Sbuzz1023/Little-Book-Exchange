@@ -170,7 +170,7 @@ export default function PostForm({ city, action, error, initialValues, submitLab
     setBooks(prev => prev.map((b, idx) => (idx === i ? next : b)))
   }
   function addBook() {
-    setBooks(prev => (prev.length >= MAX_BUNDLE_BOOKS ? prev : [...prev, { title, author }]))
+    setBooks(prev => (prev.length >= MAX_BUNDLE_BOOKS ? prev : [...prev, { title: '', author }]))
   }
   function removeBook(i: number) {
     setBooks(prev => prev.filter((_, idx) => idx !== i))
@@ -324,7 +324,7 @@ export default function PostForm({ city, action, error, initialValues, submitLab
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
-                      onClick={() => updateBook(i, { title, author })}
+                      onClick={() => updateBook(i, { title: book.title, author })}
                       style={{ background: 'none', border: 'none', color: '#f97316', fontWeight: 800, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}
                     >
                       ✨ Auto-fill from Book 1
@@ -343,7 +343,7 @@ export default function PostForm({ city, action, error, initialValues, submitLab
                     name={`book_title_${i + 1}`}
                     value={book.title}
                     onChange={e => updateBook(i, { title: e.target.value, author: book.author })}
-                    placeholder="Book title"
+                    placeholder="Title in series"
                     style={inputStyle}
                   />
                 </div>
