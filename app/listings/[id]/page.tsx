@@ -48,6 +48,12 @@ export default async function ListingDetailPage({ params, searchParams }: { para
     ])
     listing = l
     user = u
+
+    if (listing?.is_bundle) {
+      const { data: books } = await supabase
+        .from('listing_books').select('title, author').eq('listing_id', listing.id).order('position', { ascending: true })
+      listing.books = books ?? []
+    }
     if (u) {
       const { data: c } = await supabase
         .from('conversations').select('exchange_status')
@@ -232,13 +238,15 @@ export default async function ListingDetailPage({ params, searchParams }: { para
               color: '#fff',
             }}
           >
-            1 credit
+            {listing.is_bundle ? `${listing.book_count ?? 1} credits` : '1 credit'}
           </span>
         </PhotoGallery>
 
         {/* Body */}
         <div className="p-5 md:p-8">
-          <h1 className="font-display text-[30px] mb-1" style={{ color: '#1a1a1a' }}>{listing.title}</h1>
+          <h1 className="font-display text-[30px] mb-1" style={{ color: '#1a1a1a' }}>
+            {listing.is_bundle ? (listing.bundle_name || listing.title) : listing.title}
+          </h1>
           <p className="font-bold text-[18px] mb-5" style={{ color: '#888' }}>by {listing.author}</p>
 
           {/* Badges */}
@@ -281,6 +289,24 @@ export default async function ListingDetailPage({ params, searchParams }: { para
             <p className="font-semibold leading-[1.7] mb-7 text-[15px] break-words" style={{ color: '#666' }}>
               {listing.description}
             </p>
+          )}
+
+          {listing.is_bundle && (
+            <div style={{ marginBottom: 28 }}>
+              <p className="font-display text-[16px] text-bk-orange mb-3">📚 Books in this Bundle</p>
+              <div className="flex flex-col" style={{ gap: 8 }}>
+                <div style={{ padding: '10px 14px', borderRadius: 12, background: '#fff7ed', border: '2px solid #fed7aa' }}>
+                  <span className="font-black text-[14px]">{listing.title}</span>
+                  <span className="font-semibold text-[13px]" style={{ color: '#888' }}> — {listing.author}</span>
+                </div>
+                {(listing.books ?? []).map((b: { title: string; author: string }, i: number) => (
+                  <div key={i} style={{ padding: '10px 14px', borderRadius: 12, background: '#fff7ed', border: '2px solid #fed7aa' }}>
+                    <span className="font-black text-[14px]">{b.title}</span>
+                    <span className="font-semibold text-[13px]" style={{ color: '#888' }}> — {b.author}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
 
           {/* Divider + footer */}
@@ -357,7 +383,7 @@ export default async function ListingDetailPage({ params, searchParams }: { para
                     className="font-extrabold text-base text-white shadow-[0_4px_0_#0f766e] hover:shadow-[0_2px_0_#0f766e] hover:translate-y-0.5 transition-all"
                     style={{ background: '#0d9488', padding: '14px 32px', borderRadius: 999, border: 'none', cursor: 'pointer' }}
                   >
-                    🪙 Purchase with 1 Credit
+                    {listing.is_bundle ? `🪙 Purchase Bundle for ${listing.book_count ?? 1} Credits` : '🪙 Purchase with 1 Credit'}
                   </button>
                 </form>
                 <form action={startConversation}>
