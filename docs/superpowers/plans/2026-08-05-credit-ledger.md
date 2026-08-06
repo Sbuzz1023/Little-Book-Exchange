@@ -1148,11 +1148,11 @@ describe('WelcomeBonusModal', () => {
     expect(screen.getByText(/[Pp]ost 3 books/)).toBeInTheDocument()
   })
 
-  it('clears the query param when dismissed', () => {
+  it('navigates to the wallet (replacing history, not pushing) when dismissed', () => {
     mockSearch = 'welcome=1'
     render(<WelcomeBonusModal />)
     fireEvent.click(screen.getByRole('button', { name: /Take me to my Wallet/ }))
-    expect(replaceMock).toHaveBeenCalledWith('/', { scroll: false })
+    expect(replaceMock).toHaveBeenCalledWith('/profile?tab=wallet')
   })
 })
 ```
@@ -1169,7 +1169,6 @@ Create `components/WelcomeBonusModal.tsx`:
 ```tsx
 'use client'
 
-import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 
 export default function WelcomeBonusModal() {
@@ -1177,10 +1176,6 @@ export default function WelcomeBonusModal() {
   const router = useRouter()
 
   if (searchParams.get('welcome') !== '1') return null
-
-  function dismiss() {
-    router.replace('/', { scroll: false })
-  }
 
   return (
     <div
@@ -1201,14 +1196,14 @@ export default function WelcomeBonusModal() {
           <p>☐ Verify phone</p>
           <p>☐ Post 3 books</p>
         </div>
-        <Link
-          href="/profile?tab=wallet"
-          onClick={dismiss}
+        <button
+          type="button"
+          onClick={() => router.replace('/profile?tab=wallet')}
           className="block w-full text-white font-black text-[15px]"
-          style={{ background: '#f97316', padding: 14, borderRadius: 14, textDecoration: 'none' }}
+          style={{ background: '#f97316', padding: 14, borderRadius: 14, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
         >
           Take me to my Wallet →
-        </Link>
+        </button>
       </div>
     </div>
   )
@@ -1249,7 +1244,7 @@ Expected: no output.
 
 - [ ] **Step 8: Manual verification**
 
-Run `npm run dev`, sign up a new test account, confirm the modal appears on the homepage immediately after redirect, confirm clicking "Take me to my Wallet →" navigates to `/profile?tab=wallet` and a refresh of `/` afterward no longer shows the modal.
+Run `npm run dev`, sign up a new test account, confirm the modal appears on the homepage immediately after redirect. Click "Take me to my Wallet →" and confirm it navigates to `/profile?tab=wallet`. Then navigate back to `/` (e.g. via the nav logo) and confirm the modal does not reappear, and confirm the browser's back button from `/profile?tab=wallet` does not return to a `?welcome=1` history entry (the replace navigation should have dropped it).
 
 - [ ] **Step 9: Commit**
 
