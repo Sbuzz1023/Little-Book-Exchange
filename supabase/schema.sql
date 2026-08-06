@@ -1005,6 +1005,12 @@ create policy "Listing books are viewable by everyone" on listing_books for sele
 create policy "Owners can manage their listing's books" on listing_books
   for all using (exists (select 1 from listings l where l.id = listing_id and l.user_id = auth.uid()));
 
+-- Postgres doesn't index FK columns automatically, and every lookup of a
+-- bundle's contents is `where listing_id = ?` — the detail page's fetch, the
+-- sync trigger's count(*), updateListing's wholesale delete, and the
+-- on-delete-cascade check when a listing is removed.
+create index if not exists listing_books_listing_id_idx on listing_books(listing_id);
+
 -- Keep listings.book_count in sync automatically, so nothing downstream —
 -- pricing, the credit-ledger onboarding "books posted" count, Browse/detail
 -- rendering — ever needs to join or count listing_books itself.
@@ -1018,6 +1024,16 @@ begin
     update listings set book_count = 1 + (select count(*) from listing_books where listing_id = old.listing_id)
     where id = old.listing_id;
   end if;
+
+  -- Re-evaluate the credit ledger's onboarding bonus now that book_count is
+  -- accurate. trg_award_bonus_on_listing fires `after insert on listings`,
+  -- which for a bundle is *before* its listing_books rows exist — at that
+  -- moment book_count is still 1, so a user whose first post is a single
+  -- 4-book bundle would show "4/3 books posted" on the Wallet checklist and
+  -- never receive the credit. maybe_award_onboarding_bonus short-circuits on
+  -- onboarding_bonus_claimed and re-checks all three conditions itself, so
+  -- calling it on every listing_books write is idempotent and cheap.
+  perform maybe_award_onboarding_bonus((select user_id from listings where id = coalesce(new.listing_id, old.listing_id)));
 
   return null;
 end;
@@ -1042,17 +1058,32 @@ create trigger on_listing_books_change
 -- Unlike prevent_credit_self_grant there's no legitimate depth-1 writer to
 -- carve out here — nothing in this app ever sets book_count directly — so
 -- no bypass flag is needed.
+--
+-- This covers INSERT as well as UPDATE: "Users can insert own listings"
+-- (auth.uid() = user_id) is equally unscoped by column, so without the INSERT
+-- branch a client could simply POST a brand-new listing with an inflated
+-- book_count (and is_bundle false, so no itemized list ever renders for the
+-- buyer to check) and the UPDATE-only guard would never fire. On INSERT the
+-- column is forced to 1 — createListing never sets book_count itself, so this
+-- costs nothing for a normal single-book post, and for a bundle the
+-- sync_listing_book_count trigger corrects it to the real value moments later
+-- when that listing's listing_books rows are inserted (a separate statement,
+-- reaching this table at trigger depth 2, which this guard still permits).
 create or replace function prevent_book_count_self_edit()
 returns trigger as $$
 begin
   if pg_trigger_depth() = 1 then
-    new.book_count := old.book_count;
+    if tg_op = 'INSERT' then
+      new.book_count := 1;
+    else
+      new.book_count := old.book_count;
+    end if;
   end if;
   return new;
 end;
 $$ language plpgsql security definer set search_path = public, pg_temp;
 
 drop trigger if exists prevent_book_count_self_edit_trigger on listings;
-create trigger prevent_book_count_self_edit_trigger before update on listings
+create trigger prevent_book_count_self_edit_trigger before insert or update on listings
   for each row execute procedure prevent_book_count_self_edit();
 -- ──────────────────────────────────────────────────────────────────────────────
