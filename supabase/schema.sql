@@ -1013,6 +1013,12 @@ returns trigger as $$
 begin
   update listings set book_count = 1 + (select count(*) from listing_books where listing_id = coalesce(new.listing_id, old.listing_id))
   where id = coalesce(new.listing_id, old.listing_id);
+
+  if new.listing_id is not null and old.listing_id is not null and new.listing_id is distinct from old.listing_id then
+    update listings set book_count = 1 + (select count(*) from listing_books where listing_id = old.listing_id)
+    where id = old.listing_id;
+  end if;
+
   return null;
 end;
 $$ language plpgsql security definer set search_path = public, pg_temp;
