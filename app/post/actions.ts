@@ -2,7 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { parseListingForm } from '@/lib/parseListingForm'
+import { parseListingForm, parseBundleBooks } from '@/lib/parseListingForm'
 
 async function uploadPhoto(
   supabase: ReturnType<typeof createClient>,
@@ -37,6 +37,9 @@ export async function createListing(formData: FormData) {
     ])
 
     const fields = parseListingForm(formData)
+    const isBundle = formData.get('is_bundle') === 'true'
+    const bundleBooks = isBundle ? parseBundleBooks(formData) : []
+    const bundleName = (formData.get('bundle_name') as string)?.trim() || null
 
     const { data: listing, error } = await supabase.from('listings').insert({
       user_id: user!.id,
@@ -45,10 +48,20 @@ export async function createListing(formData: FormData) {
       photo_url_2,
       photo_url_3,
       city: prof?.city ?? '',
+      is_bundle: isBundle && bundleBooks.length > 0,
+      bundle_name: isBundle && bundleBooks.length > 0 ? bundleName : null,
     }).select('id').single()
 
     if (error) redirect(`/post?error=${encodeURIComponent(error.message || 'Failed to post listing')}`)
     if (!listing) redirect('/post?error=No+listing+returned')
+
+    if (isBundle && bundleBooks.length > 0) {
+      const { error: booksError } = await supabase.from('listing_books').insert(
+        bundleBooks.map((b, i) => ({ listing_id: listing!.id, title: b.title, author: b.author, position: i }))
+      )
+      if (booksError) console.error('Failed to insert bundle books:', booksError)
+    }
+
     redirect(`/listings/${listing!.id}`)
   } catch (err: any) {
     if (err?.digest?.startsWith('NEXT_REDIRECT')) throw err
