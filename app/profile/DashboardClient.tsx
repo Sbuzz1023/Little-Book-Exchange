@@ -96,6 +96,10 @@ type Props = {
     pickup_description?: string | null
     share_pickup?: boolean | null
     created_at?: string | null
+    credits?: number | null
+    email_verified?: boolean | null
+    phone_verified?: boolean | null
+    onboarding_bonus_claimed?: boolean | null
   } | null
   listings: Listing[]
   exchanges: Exchange[]
@@ -768,7 +772,7 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
               Available Balance
             </p>
             <div className="flex items-end gap-3 mb-2">
-              <span className="font-display text-[48px] text-white leading-none">0</span>
+              <span className="font-display text-[48px] text-white leading-none">{profile?.credits ?? 0}</span>
               <span className="font-extrabold text-[18px] mb-1" style={{ color: 'rgba(255,255,255,0.7)' }}>credits</span>
             </div>
             <p className="font-semibold text-[12px] mb-5" style={{ color: 'rgba(255,255,255,0.5)' }}>
@@ -779,19 +783,20 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
               <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: 12, fontWeight: 700 }}>1 credit = 1 book</p>
             </div>
             <button
+              disabled
               className="font-extrabold text-[14px] w-full"
               style={{
-                background: '#10b981',
+                background: '#9ca3af',
                 color: '#fff',
                 border: 'none',
                 borderRadius: 12,
                 padding: '13px',
-                cursor: 'pointer',
+                cursor: 'not-allowed',
                 fontFamily: 'inherit',
-                boxShadow: '0 3px 0 #059669',
+                boxShadow: '0 3px 0 #6b7280',
               }}
             >
-              💳 Buy Credits — $5 each
+              💳 Buy Credits — Coming soon
             </button>
           </div>
 

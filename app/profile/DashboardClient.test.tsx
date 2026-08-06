@@ -174,3 +174,17 @@ describe('DashboardClient — My Listings active/paused split', () => {
     expect(screen.getByText('2 books posted')).toBeInTheDocument()
   })
 })
+
+describe('DashboardClient — wallet balance', () => {
+  it('shows the real credit balance instead of a hardcoded 0', () => {
+    render(<DashboardClient {...baseProps} exchanges={[]} profile={{ ...baseProps.profile, credits: 7 }} defaultTab="wallet" />)
+    expect(screen.getByText('7')).toBeInTheDocument()
+  })
+
+  it('disables the Buy Credits button with a Coming soon label', () => {
+    render(<DashboardClient {...baseProps} exchanges={[]} defaultTab="wallet" />)
+    const buyButton = screen.getByRole('button', { name: /Buy Credits/ })
+    expect(buyButton).toBeDisabled()
+    expect(buyButton.textContent).toMatch(/Coming soon/)
+  })
+})
