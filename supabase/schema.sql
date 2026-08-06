@@ -29,6 +29,10 @@ begin
   -- Must be schema-qualified: this trigger fires inside GoTrue's own
   -- transaction (as supabase_auth_admin), whose search_path doesn't
   -- include public, so the bare table name fails to resolve.
+  -- NOTE: the credit-ledger migration at the bottom of this file replaces this
+  -- function to also seed email_verified/phone_verified. Same convention as
+  -- complete_exchange_marks_listing_sold — the later create-or-replace wins on
+  -- a full-file run, and existing deployments get it by running that block.
   insert into public.profiles (id, email, username, city, state, phone, contact_preference, address, address_unit, share_address, pickup_description, share_pickup)
   values (
     new.id,
@@ -742,6 +746,13 @@ create policy "Users can view own transactions" on credit_transactions
 -- notifications already uses.
 
 -- 4. Sync Supabase Auth's own verification state onto profiles.
+-- Every function in this block pins `set search_path = public, pg_temp`:
+-- SECURITY DEFINER does NOT reset search_path, and this chain is reached from
+-- GoTrue's own transaction on auth.users, which runs as supabase_auth_admin —
+-- a role whose search_path does not include public, so unqualified table names
+-- would fail to resolve and abort GoTrue's transaction (i.e. the user's email
+-- or phone confirmation would fail outright). Same reason lock_listing_for_request
+-- pins it, and the same failure mode handle_new_user's comment documents.
 create or replace function sync_verification_status()
 returns trigger as $$
 begin
@@ -751,7 +762,7 @@ begin
   where id = new.id;
   return new;
 end;
-$$ language plpgsql security definer;
+$$ language plpgsql security definer set search_path = public, pg_temp;
 
 drop trigger if exists on_auth_user_verification_change on auth.users;
 create trigger on_auth_user_verification_change
@@ -772,10 +783,18 @@ begin
   select coalesce(sum(book_count), 0) into v_books from listings where user_id = p_user_id;
   if v_books < 3 then return; end if;
 
-  update profiles set credits = credits + 1, onboarding_bonus_claimed = true where id = p_user_id;
+  -- `and onboarding_bonus_claimed = false` makes the award atomic: the check
+  -- above and this update are separate statements, so two concurrent trigger
+  -- chains could both pass the check. The row lock this UPDATE takes means the
+  -- loser re-evaluates the predicate against the winner's committed row and
+  -- matches zero rows — so the second insert below is skipped too.
+  update profiles set credits = credits + 1, onboarding_bonus_claimed = true
+  where id = p_user_id and onboarding_bonus_claimed = false;
+  if not found then return; end if;
+
   insert into credit_transactions (user_id, amount, reason) values (p_user_id, 1, 'onboarding_bonus');
 end;
-$$ language plpgsql security definer;
+$$ language plpgsql security definer set search_path = public, pg_temp;
 
 create or replace function trg_award_bonus_on_verification()
 returns trigger as $$
@@ -786,7 +805,7 @@ begin
   end if;
   return new;
 end;
-$$ language plpgsql security definer;
+$$ language plpgsql security definer set search_path = public, pg_temp;
 
 drop trigger if exists award_bonus_on_verification on profiles;
 create trigger award_bonus_on_verification
@@ -799,7 +818,7 @@ begin
   perform maybe_award_onboarding_bonus(new.user_id);
   return new;
 end;
-$$ language plpgsql security definer;
+$$ language plpgsql security definer set search_path = public, pg_temp;
 
 drop trigger if exists award_bonus_on_listing on listings;
 create trigger award_bonus_on_listing
@@ -808,14 +827,24 @@ create trigger award_bonus_on_listing
 
 -- 6. Retroactive backfill: sync existing auth.users verification state, then
 -- evaluate every existing user once. Safe to re-run.
-update profiles p set
-  email_verified = (u.email_confirmed_at is not null),
-  phone_verified  = (u.phone_confirmed_at is not null)
-from auth.users u where u.id = p.id;
-
 do $$
 declare v_id uuid;
 begin
+  -- Both writes below are direct, top-level writes to profiles' credit and
+  -- verification columns, so the prevent_credit_self_grant guard added at the
+  -- bottom of this file would revert them (it only trusts writes nested inside
+  -- another trigger's cascade). Set the same transaction-local bypass flag
+  -- admin_update_user_credits uses. On the very first run the guard doesn't
+  -- exist yet and this is a harmless no-op; it matters when re-running this
+  -- block on a database that already has the guard. Wrapped in a DO block so
+  -- the flag and the writes are guaranteed to share one transaction.
+  perform set_config('app.bypass_credit_guard', 'true', true);
+
+  update profiles p set
+    email_verified = (u.email_confirmed_at is not null),
+    phone_verified  = (u.phone_confirmed_at is not null)
+  from auth.users u where u.id = p.id;
+
   for v_id in select id from profiles loop
     perform maybe_award_onboarding_bonus(v_id);
   end loop;
@@ -842,5 +871,113 @@ begin
   end if;
   return new;
 end;
-$$ language plpgsql security definer;
+$$ language plpgsql security definer set search_path = public, pg_temp;
+
+-- 8. The Wallet tab's transaction history is exactly
+-- `where user_id = ? order by created_at desc` — index it, same as the
+-- equivalent notifications indexes above.
+create index if not exists credit_transactions_user_created_idx
+  on credit_transactions(user_id, created_at desc);
+
+-- 9. Seed email_verified/phone_verified at signup. sync_verification_status
+-- only fires on UPDATE of auth.users; with GoTrue auto-confirm enabled,
+-- email_confirmed_at is already set at INSERT time and no UPDATE ever follows,
+-- which would leave email_verified false forever and make the onboarding bonus
+-- permanently unreachable for that user. Body is otherwise identical to the
+-- original definition at the top of this file (replaced here, same convention
+-- as complete_exchange_marks_listing_sold above).
+create or replace function handle_new_user()
+returns trigger as $$
+begin
+  -- Must be schema-qualified: this trigger fires inside GoTrue's own
+  -- transaction (as supabase_auth_admin), whose search_path doesn't
+  -- include public, so the bare table name fails to resolve.
+  insert into public.profiles (id, email, username, city, state, phone, contact_preference, address, address_unit, share_address, pickup_description, share_pickup, email_verified, phone_verified)
+  values (
+    new.id,
+    new.email,
+    coalesce(new.raw_user_meta_data->>'username', ''),
+    coalesce(new.raw_user_meta_data->>'city', ''),
+    coalesce(new.raw_user_meta_data->>'state', ''),
+    coalesce(new.raw_user_meta_data->>'phone', ''),
+    coalesce(new.raw_user_meta_data->>'contact_preference', 'email'),
+    coalesce(new.raw_user_meta_data->>'address', ''),
+    coalesce(new.raw_user_meta_data->>'address_unit', ''),
+    coalesce((new.raw_user_meta_data->>'share_address')::boolean, true),
+    coalesce(new.raw_user_meta_data->>'pickup_description', ''),
+    coalesce((new.raw_user_meta_data->>'share_pickup')::boolean, true),
+    (new.email_confirmed_at is not null),
+    (new.phone_confirmed_at is not null)
+  );
+  return new;
+end;
+$$ language plpgsql security definer set search_path = public, pg_temp;
+-- (trigger on_auth_user_created is unchanged — already fires after insert on auth.users)
+-- ──────────────────────────────────────────────────────────────────────────────
+
+-- ── Migration: prevent client self-grant of credit/verification columns ──────
+-- Same problem, same fix shape as prevent_is_admin_self_grant above: RLS can't
+-- be scoped to a column, and "Users can update own profile" (auth.uid() = id)
+-- lets any authenticated user PATCH their own credits/verification flags
+-- directly via the REST API. This guard reverts those four columns on any
+-- write that isn't nested inside another trigger's cascade (pg_trigger_depth()
+-- > 1 covers every legitimate internal writer: sync_verification_status,
+-- trg_award_bonus_on_verification, trg_award_bonus_on_listing, and
+-- complete_exchange_marks_listing_sold all reach this UPDATE from inside
+-- another trigger). The one legitimate depth-1 writer is
+-- admin_update_user_credits, which sets a transaction-local bypass flag
+-- immediately before its own UPDATE — see that function below. (The one-time
+-- backfill in the migration above sets the same flag too, so re-running that
+-- block on a database that already has this guard still works.)
+create or replace function prevent_credit_self_grant()
+returns trigger as $$
+begin
+  if pg_trigger_depth() = 1
+     and coalesce(current_setting('app.bypass_credit_guard', true), 'false') <> 'true' then
+    new.credits                  := old.credits;
+    new.email_verified           := old.email_verified;
+    new.phone_verified           := old.phone_verified;
+    new.onboarding_bonus_claimed := old.onboarding_bonus_claimed;
+  end if;
+  return new;
+end;
+$$ language plpgsql security definer set search_path = public, pg_temp;
+
+drop trigger if exists prevent_credit_self_grant_trigger on profiles;
+create trigger prevent_credit_self_grant_trigger before update on profiles
+  for each row execute procedure prevent_credit_self_grant();
+
+-- Admin credit adjustment: SECURITY DEFINER so it can write profiles/
+-- credit_transactions despite their RLS, but only after verifying the caller
+-- is an admin itself (the authoritative check — requireAdmin in the calling
+-- TS action is a fast-path/UX guard only, not the security boundary).
+create or replace function admin_update_user_credits(p_user_id uuid, p_credits integer)
+returns boolean as $$
+declare
+  v_before integer;
+  v_delta integer;
+begin
+  if not exists (select 1 from profiles where id = auth.uid() and is_admin = true) then
+    raise exception 'Not authorized.';
+  end if;
+
+  select credits into v_before from profiles where id = p_user_id;
+  if v_before is null then
+    raise exception 'User not found.';
+  end if;
+
+  v_delta := p_credits - v_before;
+  if v_delta = 0 then
+    return true;
+  end if;
+
+  perform set_config('app.bypass_credit_guard', 'true', true);
+  update profiles set credits = p_credits where id = p_user_id;
+
+  insert into credit_transactions (user_id, amount, reason) values (p_user_id, v_delta, 'admin_adjustment');
+  return true;
+end;
+$$ language plpgsql security definer set search_path = public, pg_temp;
+
+grant execute on function admin_update_user_credits(uuid, integer) to authenticated;
 -- ──────────────────────────────────────────────────────────────────────────────

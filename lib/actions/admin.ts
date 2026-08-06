@@ -3,26 +3,20 @@
 import { createClient } from '@/lib/supabase/server'
 import { requireAdmin } from './libraryLocations'
 
+// The balance write and the ledger insert both happen inside the
+// admin_update_user_credits RPC, not here: this action uses the anon-key +
+// session-cookie client, so RLS applies to it. A direct `profiles` update would
+// silently match zero rows when an admin edits *another* user (an RLS-filtered
+// update raises no error), and a direct `credit_transactions` insert is
+// rejected outright — that table is SELECT-only for `authenticated`.
+// requireAdmin below is kept as a fast, friendly failure; the RPC's own
+// is_admin check is the actual security boundary.
 export async function adminUpdateUserCredits(userId: string, credits: number): Promise<{ ok: boolean; error?: string }> {
   const supabase = createClient()
   const admin = await requireAdmin(supabase)
   if (!admin.ok) return { ok: false, error: admin.error }
 
-  const { data: before } = await supabase.from('profiles').select('credits').eq('id', userId).single()
-  if (!before) return { ok: false, error: 'User not found.' }
-
-  const delta = credits - before.credits
-  if (delta === 0) return { ok: true }
-
-  const { error } = await supabase.from('profiles').update({ credits }).eq('id', userId)
+  const { error } = await supabase.rpc('admin_update_user_credits', { p_user_id: userId, p_credits: credits })
   if (error) return { ok: false, error: error.message }
-
-  const { error: insertError } = await supabase.from('credit_transactions').insert({
-    user_id: userId,
-    amount: delta,
-    reason: 'admin_adjustment',
-  })
-
-  if (insertError) return { ok: false, error: insertError.message }
   return { ok: true }
 }
