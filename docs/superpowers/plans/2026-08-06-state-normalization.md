@@ -26,7 +26,7 @@
 **Interfaces:**
 - Produces: `US_STATES: { code: string; name: string }[]` — exported constant, 50 states + DC, sorted alphabetically by `name`. Consumed by Task 2's `StateSelect`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `lib/usStates.test.ts`:
 
@@ -62,12 +62,12 @@ describe('US_STATES', () => {
 })
 ```
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [x] **Step 2: Run the test to verify it fails**
 
 Run: `npx vitest run lib/usStates.test.ts`
 Expected: FAIL — `Cannot find module './usStates'` (file doesn't exist yet).
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 Create `lib/usStates.ts`:
 
@@ -134,12 +134,12 @@ export const US_STATES: UsState[] = [
 ]
 ```
 
-- [ ] **Step 4: Run the test to verify it passes**
+- [x] **Step 4: Run the test to verify it passes**
 
 Run: `npx vitest run lib/usStates.test.ts`
 Expected: PASS (5 tests)
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add lib/usStates.ts lib/usStates.test.ts
@@ -158,7 +158,7 @@ git commit -m "feat: add US_STATES shared state list"
 - Consumes: `US_STATES` from `lib/usStates.ts` (Task 1).
 - Produces: `StateSelect` default export, props `{ name: string; defaultValue?: string; required?: boolean; placeholder: string; className?: string; style?: React.CSSProperties }`. Consumed by Tasks 3, 4, 5.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `components/StateSelect.test.tsx`:
 
@@ -208,12 +208,12 @@ describe('StateSelect', () => {
 })
 ```
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [x] **Step 2: Run the test to verify it fails**
 
 Run: `npx vitest run components/StateSelect.test.tsx`
 Expected: FAIL — `Cannot find module './StateSelect'` (file doesn't exist yet).
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 Create `components/StateSelect.tsx`:
 
@@ -252,12 +252,12 @@ export default function StateSelect({ name, defaultValue, required, placeholder,
 }
 ```
 
-- [ ] **Step 4: Run the test to verify it passes**
+- [x] **Step 4: Run the test to verify it passes**
 
 Run: `npx vitest run components/StateSelect.test.tsx`
 Expected: PASS (6 tests)
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add components/StateSelect.tsx components/StateSelect.test.tsx
@@ -274,7 +274,7 @@ git commit -m "feat: add StateSelect dropdown component"
 **Interfaces:**
 - Consumes: `StateSelect` from `components/StateSelect.tsx` (Task 2).
 
-- [ ] **Step 1: Add the import**
+- [x] **Step 1: Add the import**
 
 In `app/auth/signup/page.tsx`, change:
 
@@ -295,7 +295,7 @@ import ShareToggle from '@/components/ShareToggle'
 import StateSelect from '@/components/StateSelect'
 ```
 
-- [ ] **Step 2: Replace the free-text state input**
+- [x] **Step 2: Replace the free-text state input**
 
 In the same file, change:
 
@@ -319,12 +319,12 @@ to:
           </div>
 ```
 
-- [ ] **Step 3: Run the full test suite to confirm no regressions**
+- [x] **Step 3: Run the full test suite to confirm no regressions**
 
 Run: `npx vitest run`
 Expected: PASS, same count as before this task (this file has no existing test suite of its own — this step is the only automated check for it).
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add app/auth/signup/page.tsx
@@ -341,7 +341,7 @@ git commit -m "feat: use StateSelect dropdown on signup"
 **Interfaces:**
 - Consumes: `StateSelect` from `components/StateSelect.tsx` (Task 2).
 
-- [ ] **Step 1: Add the import**
+- [x] **Step 1: Add the import**
 
 In `app/profile/ProfileCard.tsx`, change:
 
@@ -362,7 +362,7 @@ import ShareToggle from '@/components/ShareToggle'
 import StateSelect from '@/components/StateSelect'
 ```
 
-- [ ] **Step 2: Replace the free-text state input**
+- [x] **Step 2: Replace the free-text state input**
 
 In the same file, change:
 
@@ -386,12 +386,12 @@ to:
 
 View mode (the `<Field label="State" value={profile?.state} />` a few lines down) is unchanged — it just displays whatever's stored.
 
-- [ ] **Step 3: Run the full test suite to confirm no regressions**
+- [x] **Step 3: Run the full test suite to confirm no regressions**
 
 Run: `npx vitest run`
 Expected: PASS, same count as before this task (this file has no existing test suite of its own — this step is the only automated check for it).
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add app/profile/ProfileCard.tsx
@@ -409,7 +409,7 @@ git commit -m "feat: use StateSelect dropdown on profile edit"
 **Interfaces:**
 - Consumes: `StateSelect` from `components/StateSelect.tsx` (Task 2).
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 In `app/profile/DashboardClient.test.tsx`, add this test inside the existing `describe('DashboardClient — notification badges and highlighting', ...)` block (it already has `beforeEach`/`it` blocks — add alongside them, e.g. right after the `'shows the tbr unread count as a badge on the TBR tab'` test):
 
@@ -423,12 +423,12 @@ In `app/profile/DashboardClient.test.tsx`, add this test inside the existing `de
   })
 ```
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [x] **Step 2: Run the test to verify it fails**
 
 Run: `npx vitest run app/profile/DashboardClient.test.tsx`
 Expected: FAIL — no `combobox` role exists yet on the TBR tab (the field is still a text `<input>`).
 
-- [ ] **Step 3: Add the import**
+- [x] **Step 3: Add the import**
 
 In `app/profile/DashboardClient.tsx`, change:
 
@@ -461,7 +461,7 @@ import { createClient } from '@/lib/supabase/client'
 import StateSelect from '@/components/StateSelect'
 ```
 
-- [ ] **Step 4: Replace the free-text state input in the TBR add form**
+- [x] **Step 4: Replace the free-text state input in the TBR add form**
 
 In the same file, change:
 
@@ -479,17 +479,17 @@ to:
               style={{ padding: '9px 12px', minWidth: 100 }} />
 ```
 
-- [ ] **Step 5: Run the test to verify it passes**
+- [x] **Step 5: Run the test to verify it passes**
 
 Run: `npx vitest run app/profile/DashboardClient.test.tsx`
 Expected: PASS (all tests in this file, including the new one)
 
-- [ ] **Step 6: Run the full test suite to confirm no regressions**
+- [x] **Step 6: Run the full test suite to confirm no regressions**
 
 Run: `npx vitest run`
 Expected: PASS
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add app/profile/DashboardClient.tsx app/profile/DashboardClient.test.tsx
@@ -506,7 +506,7 @@ git commit -m "feat: use StateSelect dropdown on the TBR add form"
 **Interfaces:**
 - None — self-contained logic fix, no new exports.
 
-- [ ] **Step 1: Fix the grouping key**
+- [x] **Step 1: Fix the grouping key**
 
 In `app/admin/AdminClient.tsx`, change:
 
@@ -549,12 +549,12 @@ to:
 
 This was previously always falling through to grouping by city (`u.city` never contains a comma, so `parts[1]` was always `undefined`) — it never read the real `state` field at all. Now that `state` is consistently a 2-letter code (Tasks 3–5, plus the Task 7 backfill), grouping by it directly is meaningful.
 
-- [ ] **Step 2: Run the full test suite to confirm no regressions**
+- [x] **Step 2: Run the full test suite to confirm no regressions**
 
 Run: `npx vitest run`
 Expected: PASS (this file has no existing test suite of its own — this step is the only automated check for it)
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add app/admin/AdminClient.tsx
@@ -571,7 +571,7 @@ git commit -m "fix: admin Locations chart groups by the real state field"
 **Interfaces:**
 - None — one-time SQL script, not application code.
 
-- [ ] **Step 1: Append the migration block**
+- [x] **Step 1: Append the migration block**
 
 Append this to the end of `supabase/schema.sql` (after the final `-- ──...──` divider line that currently ends the file):
 
@@ -657,7 +657,7 @@ where lower(trim(tbr_entries.state)) = m.input
 
 `state_map` is a temporary table (`on commit drop`, scoped to the transaction/session) so the mapping is written once and both `UPDATE`s share it — avoiding a second copy of the same 51-state list. Run this whole block as one paste in the Supabase SQL Editor (the two `UPDATE`s must run in the same session as the `CREATE TEMPORARY TABLE`, since temp tables aren't visible across separate connections).
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add supabase/schema.sql
@@ -678,17 +678,17 @@ This step is not run by an automated test — it modifies real data. Do it once,
 
 **Files:** None — verification only.
 
-- [ ] **Step 1: Run the full test suite**
+- [x] **Step 1: Run the full test suite**
 
 Run: `npx vitest run`
 Expected: PASS, all tests green (prior suite count + the new tests from Tasks 1, 2, and 5).
 
-- [ ] **Step 2: Typecheck**
+- [x] **Step 2: Typecheck**
 
 Run: `npx tsc --noEmit`
 Expected: No new errors introduced by this plan's changes. (This repo has a handful of pre-existing, unrelated errors — e.g. in `app/profile/HistorySection.test.tsx` and files using `[...new Set(...)]` — confirm the error list is unchanged from `git stash`'s baseline, not that it's empty.)
 
-- [ ] **Step 3: Confirm no code changes remain uncommitted**
+- [x] **Step 3: Confirm no code changes remain uncommitted**
 
 Run: `git status -s`
 Expected: Clean (aside from any files unrelated to this plan, e.g. `.claude/`).
