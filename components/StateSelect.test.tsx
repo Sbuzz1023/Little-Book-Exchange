@@ -14,6 +14,11 @@ describe('StateSelect', () => {
     expect(screen.getByRole('option', { name: 'Any state' })).toHaveValue('')
   })
 
+  it('exposes the placeholder as the accessible name', () => {
+    render(<StateSelect name="state" placeholder="Select a state" />)
+    expect(screen.getByRole('combobox', { name: 'Select a state' })).toBeInTheDocument()
+  })
+
   it('preselects the defaultValue', () => {
     render(<StateSelect name="state" defaultValue="IL" placeholder="Select a state" />)
     expect(screen.getByRole('combobox')).toHaveValue('IL')

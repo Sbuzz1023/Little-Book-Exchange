@@ -1100,6 +1100,10 @@ create trigger prevent_book_count_self_edit_trigger before insert or update on l
 -- fix, not an ongoing function. Anything not recognized below (typos,
 -- blank, non-US values) is left untouched rather than guessed at — those
 -- rows are visible afterward in the admin Users tab for manual fixing.
+-- Must be run as a single unit (all statements in one transaction) — the
+-- `on commit drop` temp table below only survives to the final UPDATE if
+-- CREATE/INSERT/UPDATE/UPDATE all share one transaction block.
+begin;
 create temporary table state_map (input text, code text) on commit drop;
 insert into state_map (input, code) values
   ('alabama','AL'), ('al','AL'),
@@ -1163,4 +1167,5 @@ update tbr_entries set state = m.code
 from state_map m
 where lower(trim(tbr_entries.state)) = m.input
   and tbr_entries.state <> m.code;
+commit;
 -- ──────────────────────────────────────────────────────────────────────────────

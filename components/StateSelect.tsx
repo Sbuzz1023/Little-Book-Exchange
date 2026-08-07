@@ -20,6 +20,7 @@ export default function StateSelect({ name, defaultValue, required, placeholder,
       name={name}
       defaultValue={defaultValue ?? ''}
       required={required}
+      aria-label={placeholder}
       className={className}
       style={style}
     >
