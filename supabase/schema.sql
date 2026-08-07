@@ -1087,3 +1087,80 @@ drop trigger if exists prevent_book_count_self_edit_trigger on listings;
 create trigger prevent_book_count_self_edit_trigger before insert or update on listings
   for each row execute procedure prevent_book_count_self_edit();
 -- ──────────────────────────────────────────────────────────────────────────────
+
+-- ── Migration: normalize existing state values to 2-letter codes ──────────────
+-- Run this block in Supabase SQL Editor:
+-- One-time backfill. profiles.state and tbr_entries.state used to be free
+-- text (e.g. "California", "ca", "CA" all meant the same state but were
+-- stored as different strings) — this broke both admin location grouping
+-- and the exact-match comparison against profiles.state in
+-- notify_tbr_matches() (see that function, further up this file). New
+-- entries now come from a fixed <select> of 2-letter codes
+-- (components/StateSelect.tsx / lib/usStates.ts), so this is a one-time
+-- fix, not an ongoing function. Anything not recognized below (typos,
+-- blank, non-US values) is left untouched rather than guessed at — those
+-- rows are visible afterward in the admin Users tab for manual fixing.
+create temporary table state_map (input text, code text) on commit drop;
+insert into state_map (input, code) values
+  ('alabama','AL'), ('al','AL'),
+  ('alaska','AK'), ('ak','AK'),
+  ('arizona','AZ'), ('az','AZ'),
+  ('arkansas','AR'), ('ar','AR'),
+  ('california','CA'), ('ca','CA'),
+  ('colorado','CO'), ('co','CO'),
+  ('connecticut','CT'), ('ct','CT'),
+  ('delaware','DE'), ('de','DE'),
+  ('district of columbia','DC'), ('washington dc','DC'), ('washington d.c.','DC'), ('dc','DC'),
+  ('florida','FL'), ('fl','FL'),
+  ('georgia','GA'), ('ga','GA'),
+  ('hawaii','HI'), ('hi','HI'),
+  ('idaho','ID'), ('id','ID'),
+  ('illinois','IL'), ('il','IL'),
+  ('indiana','IN'), ('in','IN'),
+  ('iowa','IA'), ('ia','IA'),
+  ('kansas','KS'), ('ks','KS'),
+  ('kentucky','KY'), ('ky','KY'),
+  ('louisiana','LA'), ('la','LA'),
+  ('maine','ME'), ('me','ME'),
+  ('maryland','MD'), ('md','MD'),
+  ('massachusetts','MA'), ('ma','MA'),
+  ('michigan','MI'), ('mi','MI'),
+  ('minnesota','MN'), ('mn','MN'),
+  ('mississippi','MS'), ('ms','MS'),
+  ('missouri','MO'), ('mo','MO'),
+  ('montana','MT'), ('mt','MT'),
+  ('nebraska','NE'), ('ne','NE'),
+  ('nevada','NV'), ('nv','NV'),
+  ('new hampshire','NH'), ('nh','NH'),
+  ('new jersey','NJ'), ('nj','NJ'),
+  ('new mexico','NM'), ('nm','NM'),
+  ('new york','NY'), ('ny','NY'),
+  ('north carolina','NC'), ('nc','NC'),
+  ('north dakota','ND'), ('nd','ND'),
+  ('ohio','OH'), ('oh','OH'),
+  ('oklahoma','OK'), ('ok','OK'),
+  ('oregon','OR'), ('or','OR'),
+  ('pennsylvania','PA'), ('pa','PA'),
+  ('rhode island','RI'), ('ri','RI'),
+  ('south carolina','SC'), ('sc','SC'),
+  ('south dakota','SD'), ('sd','SD'),
+  ('tennessee','TN'), ('tn','TN'),
+  ('texas','TX'), ('tx','TX'),
+  ('utah','UT'), ('ut','UT'),
+  ('vermont','VT'), ('vt','VT'),
+  ('virginia','VA'), ('va','VA'),
+  ('washington','WA'), ('wa','WA'),
+  ('west virginia','WV'), ('wv','WV'),
+  ('wisconsin','WI'), ('wi','WI'),
+  ('wyoming','WY'), ('wy','WY');
+
+update profiles set state = m.code
+from state_map m
+where lower(trim(profiles.state)) = m.input
+  and profiles.state <> m.code;
+
+update tbr_entries set state = m.code
+from state_map m
+where lower(trim(tbr_entries.state)) = m.input
+  and tbr_entries.state <> m.code;
+-- ──────────────────────────────────────────────────────────────────────────────
