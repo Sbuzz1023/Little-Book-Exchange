@@ -58,3 +58,7 @@ export const US_STATES: UsState[] = [
   { code: 'WI', name: 'Wisconsin' },
   { code: 'WY', name: 'Wyoming' },
 ]
+
+export function isValidStateCode(code: string): boolean {
+  return US_STATES.some(s => s.code === code)
+}

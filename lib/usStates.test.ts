@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { US_STATES } from './usStates'
+import { US_STATES, isValidStateCode } from './usStates'
 
 describe('US_STATES', () => {
   it('has 50 states plus the District of Columbia', () => {
@@ -25,5 +25,31 @@ describe('US_STATES', () => {
 
   it('includes the District of Columbia mapped to DC', () => {
     expect(US_STATES.find(s => s.name === 'District of Columbia')).toEqual({ code: 'DC', name: 'District of Columbia' })
+  })
+})
+
+describe('isValidStateCode', () => {
+  it('returns true for a valid state code', () => {
+    expect(isValidStateCode('CA')).toBe(true)
+  })
+
+  it('returns true for DC', () => {
+    expect(isValidStateCode('DC')).toBe(true)
+  })
+
+  it('returns false for an empty string', () => {
+    expect(isValidStateCode('')).toBe(false)
+  })
+
+  it('returns false for a lowercase code', () => {
+    expect(isValidStateCode('ca')).toBe(false)
+  })
+
+  it('returns false for a full state name', () => {
+    expect(isValidStateCode('California')).toBe(false)
+  })
+
+  it('returns false for a two-letter code that is not a real state', () => {
+    expect(isValidStateCode('ZZ')).toBe(false)
   })
 })
