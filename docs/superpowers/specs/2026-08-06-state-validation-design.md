@@ -115,13 +115,17 @@ session can never trigger one.
   and running the full suite, consistent with how those files were already
   handled.
 - No automated test for the DB constraint (same reasoning as the backfill
-  migration) — manual verification: after applying it, attempt a raw update
-  with a bad value via the Supabase SQL Editor and confirm it's rejected.
+  migration) — manual, non-destructive verification: after applying it,
+  query `pg_constraint` for both constraint names and confirm
+  `convalidated = true`. (An earlier draft of this verification wrote a bad
+  value directly to a real row to confirm rejection — destructive in
+  exactly the failure case it was meant to catch, if the constraint turned
+  out not to be active. Caught during the final review; see the migration
+  block in `supabase/schema.sql` and the plan's Task 5 for the corrected,
+  non-destructive check.)
 
 ## Out of scope
 
-- Retroactively validating (`VALIDATE CONSTRAINT`) once old stragglers are
-  cleaned up — a manual step for later, not part of this change.
 - Building any UI to catch or display a DB constraint violation — the app
   layer is expected to prevent this from ever reaching the DB.
 - Extending the constraint to exact-match all 51 codes instead of the

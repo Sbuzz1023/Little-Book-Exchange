@@ -4,14 +4,14 @@
 
 **Goal:** A value that isn't one of the 51 valid state codes can never end up stored in `profiles.state` or `tbr_entries.state` again, regardless of which code path writes it — closing the gap flagged as finding #2 in the state-normalization feature's final review.
 
-**Architecture:** A pure `isValidStateCode()` helper (`lib/usStates.ts`) backs a one-line coercion added to each of the three write paths (`updateProfile`, `addTbrEntry`, `signUp`) — invalid input becomes `''`, the existing "no state" value every path already understands. A `NOT VALID` `CHECK` constraint on both `profiles.state` and `tbr_entries.state` is the permanent database-level backstop.
+**Architecture:** A pure `isValidStateCode()` helper (`lib/usStates.ts`) backs a one-line coercion added to each of the three write paths (`updateProfile`, `addTbrEntry`, `signUp`) — invalid input becomes `''`, the existing "no state" value every path already understands. A validated `CHECK` constraint on both `profiles.state` and `tbr_entries.state` (added after a one-time cleanup of any non-conforming legacy rows) is the permanent database-level backstop.
 
 **Tech Stack:** Next.js 14 (App Router), React 18, TypeScript, Vitest, Supabase/Postgres.
 
 ## Global Constraints
 
 - On invalid input, coerce to `''` silently — never reject/show an error. This path is unreachable through the `<StateSelect>` dropdown; it only matters for a hand-crafted request, so there's no user to show an error to (per approved spec).
-- The DB constraint is a *format* check (`^[A-Z]{2}$`), not an exact match against all 51 codes, added `NOT VALID` — it must not require existing non-conforming rows to be fixed first (per approved spec).
+- The DB constraint is a *format* check (`^[A-Z]{2}$`), not an exact match against all 51 codes. It must be added validated, not `NOT VALID` — `NOT VALID` only skips the initial verification scan, not per-row enforcement on every future `UPDATE`, which would make any pre-existing non-conforming row permanently un-updatable (this was caught and fixed during the final review; see Task 5). Any non-conforming legacy rows are measured and blanked before the constraint is added, so it applies cleanly with no follow-up validation step needed.
 - No new test files for `app/profile/actions.ts`, `lib/actions/tbrEntries.ts`, or `app/auth/signup/page.tsx` — this repo has no precedent for mocking the Supabase server client in a test, and none of these three files has a test file today. Full logic coverage lives in `isValidStateCode()`'s tests; the three call sites are thin, one-line changes verified by the full suite (per approved spec).
 - Code style: no semicolons, single quotes, 2-space indent (TS/TSX); SQL matches the style of the existing migration blocks already in `supabase/schema.sql`.
 
@@ -393,7 +393,7 @@ Expected: PASS (SQL-only change; this is the standard check applied to every tas
 
 ```bash
 git add supabase/schema.sql
-git commit -m "feat: add NOT VALID state-format CHECK constraints"
+git commit -m "feat: add validated state-format CHECK constraints"
 ```
 
 - [ ] **Step 4: Run the migration against the real database (manual, not automated)**
@@ -401,7 +401,7 @@ git commit -m "feat: add NOT VALID state-format CHECK constraints"
 This step is not run by an automated test — it modifies real schema. **This is a hard deploy gate, not an optional follow-up:** RLS does not restrict which columns a signed-in user's own browser session may write directly, so until this migration runs, the app-layer guard from Tasks 1-4 is the *only* thing stopping bad data — any user can bypass it entirely via a direct client call (e.g. the browser console). Run this promptly after Tasks 1-4 are deployed, not "whenever convenient":
 
 1. Open the Supabase project's SQL Editor.
-2. Paste and run the new migration block from `supabase/schema.sql` (the block between the `-- ── Migration: enforce state format at the database level...` header and its closing divider). It's a measure → blank → add-validated sequence (see the block's own comments) followed by two independent `alter table` statements — no temp table, no cross-statement transaction dependency (same lesson as the earlier backfill migration's fix).
+2. If you want to see which rows (if any) are about to be blanked, run just the two `select` statements at the top of the migration block first, on their own — the Supabase SQL Editor only surfaces the last statement's result set for a multi-statement paste, so their output is otherwise invisible once you run the whole block. Then paste and run the full migration block from `supabase/schema.sql` (the block between the `-- ── Migration: enforce state format at the database level...` header and its closing divider). It's a measure → blank → add-validated sequence (see the block's own comments) followed by two independent `alter table` statements — no temp table, no cross-statement transaction dependency (same lesson as the earlier backfill migration's fix).
 3. Verify the constraints exist and are validated (non-destructive — no write to any real row):
 ```sql
 select conname, convalidated, pg_get_constraintdef(oid)
