@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import ShareToggle from '@/components/ShareToggle'
+import StateSelect from '@/components/StateSelect'
 
 type Props = {
   profile: {
@@ -102,7 +103,7 @@ export default function ProfileCard({ profile, updateAction, success }: Props) {
             </div>
             <div>
               <EditLabel>State</EditLabel>
-              <input name="state" defaultValue={profile?.state ?? ''} required
+              <StateSelect name="state" defaultValue={profile?.state ?? ''} required placeholder="Select a state"
                 className={inputClass} style={{ padding: '12px 16px' }} />
             </div>
             <div>
