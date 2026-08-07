@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import ContactToggle from './ContactToggle'
 import ShareToggle from '@/components/ShareToggle'
+import StateSelect from '@/components/StateSelect'
 
 export default function SignUpPage({
   searchParams,
@@ -88,7 +89,7 @@ export default function SignUpPage({
           {/* State */}
           <div>
             <label className="block mb-1.5" style={labelStyle}>State{req}</label>
-            <input name="state" type="text" placeholder="e.g. IL" required
+            <StateSelect name="state" required placeholder="Select a state"
               className={inputClass} style={inputStyle} />
           </div>
 
