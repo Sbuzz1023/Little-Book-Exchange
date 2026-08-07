@@ -8,6 +8,7 @@ import ProfileCard from './ProfileCard'
 import MessagesTab from './MessagesTab'
 import HistorySection, { type HistoryExchange } from './HistorySection'
 import { createClient } from '@/lib/supabase/client'
+import StateSelect from '@/components/StateSelect'
 
 type Tab = 'listings' | 'exchanges' | 'tbr' | 'saved' | 'wallet' | 'account' | 'messages'
 
@@ -635,7 +636,7 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
             <input name="city" placeholder="City (optional)..."
               className="flex-1 border-2 border-[#ddd6fe] rounded-[12px] font-bold text-[13px] bg-[#f5f3ff]"
               style={{ padding: '9px 12px', minWidth: 100 }} />
-            <input name="state" placeholder="State (optional)..."
+            <StateSelect name="state" placeholder="Any state"
               className="flex-1 border-2 border-[#ddd6fe] rounded-[12px] font-bold text-[13px] bg-[#f5f3ff]"
               style={{ padding: '9px 12px', minWidth: 100 }} />
             <button type="submit" className="text-white font-extrabold text-[13px]"

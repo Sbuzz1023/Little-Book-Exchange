@@ -65,6 +65,14 @@ describe('DashboardClient — notification badges and highlighting', () => {
     expect(tbrButton.textContent).toContain('1')
   })
 
+  it('offers a state dropdown (not free text) on the TBR add form, with "any state" as the default', () => {
+    render(<DashboardClient {...baseProps} exchanges={[]} defaultTab="tbr" />)
+    // The TBR add form's state field is the only <select> rendered on this tab.
+    expect(screen.getByRole('combobox')).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'Any state' })).toHaveValue('')
+    expect(screen.getByRole('option', { name: 'IL — Illinois' })).toBeInTheDocument()
+  })
+
   it('shows the exchanges unread count as a badge on the Exchanges tab', () => {
     render(<DashboardClient {...baseProps} exchanges={[pendingExchange]} defaultTab="listings" />)
     const exchangesButton = screen.getByText('Exchanges').closest('button')!
