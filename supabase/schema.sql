@@ -1235,23 +1235,48 @@ where lower(trim(tbr_entries.state)) = m.input
 -- Backstop for the state-normalization work above: the app layer (signup,
 -- profile edit, TBR add — see isValidStateCode() in lib/usStates.ts) now
 -- rejects anything that isn't one of the 51 valid state codes before ever
--- writing it, but that's an app-layer guarantee, not a data-layer one.
--- This constraint makes it permanent: no future write, from any code path,
--- can put a non-conforming value in either column again.
+-- writing it, but that's an app-layer guarantee, not a data-layer one — and
+-- RLS does not restrict which columns a signed-in user's own browser
+-- session can write (see "Users can update own profile" / "Users can add
+-- tbr entries" policies above), so a direct client call bypassing the app
+-- entirely can still write anything until this constraint exists. This is
+-- not insurance against a hypothetical regression — until this block runs,
+-- it is the only control on that direct-write path.
 --
--- NOT VALID is deliberate: the state-normalization backfill (the migration
--- above this one) intentionally left a handful of old, unrecognized rows
--- as free text rather than guessing at them. A normal CHECK validates
--- every existing row immediately and would fail because of those
--- stragglers. NOT VALID applies the constraint to every write from this
--- point forward without requiring old rows to already comply. Once an
--- admin cleans up the remaining stragglers (visible in the admin Users
--- tab), this can be closed out later — not part of this migration — with:
---   alter table profiles validate constraint profiles_state_format;
---   alter table tbr_entries validate constraint tbr_entries_state_format;
-alter table profiles add constraint profiles_state_format
-  check (state = '' or state ~ '^[A-Z]{2}$') not valid;
+-- This is validated up front, not added NOT VALID: NOT VALID only skips
+-- the one-time verification scan at creation — every subsequent INSERT
+-- and UPDATE is still checked per-row, including updates that don't touch
+-- `state`. Adding it NOT VALID on top of the known-remaining unmapped
+-- legacy rows (left as free text by the backfill migration above,
+-- deliberately not guessed at) would make every one of those rows
+-- un-updatable forever after — silently breaking, among other things,
+-- email/phone verification (sync_verification_status(), no exception
+-- handler, runs inside GoTrue's own transaction) and exchange completion
+-- (complete_exchange_marks_listing_sold()) for those users.
+--
+-- So: measure first, blank whatever doesn't conform (the app already
+-- treats '' as "no state" everywhere — this loses no information the app
+-- itself wouldn't already discard on that user's next profile save), then
+-- add the constraints validated.
 
+-- 1. Measure — inspect before blanking if you want a record of what's there.
+select id, state from profiles    where state <> '' and state !~ '^[A-Z]{2}$';
+select id, state from tbr_entries where state <> '' and state !~ '^[A-Z]{2}$';
+
+-- 2. Blank anything that doesn't conform to "empty or two uppercase letters".
+update profiles    set state = '' where state <> '' and state !~ '^[A-Z]{2}$';
+update tbr_entries set state = '' where state <> '' and state !~ '^[A-Z]{2}$';
+
+-- 3. Add the constraints validated — every row already complies at this
+--    point, so this is instant and there is no follow-up validate step.
+--    The drop-if-exists preamble matches this file's existing
+--    drop-trigger-if-exists convention and makes this block safely
+--    re-runnable.
+alter table profiles drop constraint if exists profiles_state_format;
+alter table profiles add constraint profiles_state_format
+  check (state = '' or state ~ '^[A-Z]{2}$');
+
+alter table tbr_entries drop constraint if exists tbr_entries_state_format;
 alter table tbr_entries add constraint tbr_entries_state_format
-  check (state = '' or state ~ '^[A-Z]{2}$') not valid;
+  check (state = '' or state ~ '^[A-Z]{2}$');
 -- ──────────────────────────────────────────────────────────────────────────────

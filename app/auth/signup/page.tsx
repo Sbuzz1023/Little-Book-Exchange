@@ -15,7 +15,7 @@ export default function SignUpPage({
     try {
       const { createClient } = await import('@/lib/supabase/server')
       const supabase = createClient()
-      const rawState = formData.get('state') as string
+      const rawState = (formData.get('state') as string) ?? ''
       const state = isValidStateCode(rawState) ? rawState : ''
       const { error } = await supabase.auth.signUp({
         email: formData.get('email') as string,

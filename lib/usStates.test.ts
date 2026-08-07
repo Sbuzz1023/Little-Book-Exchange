@@ -52,4 +52,12 @@ describe('isValidStateCode', () => {
   it('returns false for a two-letter code that is not a real state', () => {
     expect(isValidStateCode('ZZ')).toBe(false)
   })
+
+  it('returns false for null', () => {
+    expect(isValidStateCode(null)).toBe(false)
+  })
+
+  it('returns false for undefined', () => {
+    expect(isValidStateCode(undefined)).toBe(false)
+  })
 })

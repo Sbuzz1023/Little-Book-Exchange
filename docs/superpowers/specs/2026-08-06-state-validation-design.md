@@ -81,10 +81,14 @@ An admin can fix the remaining stragglers via the Users tab at their own
 pace and then run `alter table ... validate constraint ...` later to close
 the loop — not part of this change.
 
-Since the app layer already coerces bad input before ever attempting a
-write, this constraint should never actually fire during normal operation —
-it's insurance against a future code change reintroducing the app-layer gap
-or a direct/manual write, not something the UI needs to catch or display.
+The app layer prevents a normal user from ever triggering this constraint
+through the UI. But RLS does not restrict which columns a signed-in user's
+own browser session may write directly (bypassing the app entirely, e.g. via
+the browser console) — so until this constraint is on the database, it is the
+only control on that direct-write path, not merely insurance against a
+hypothetical future regression. Nothing in the UI needs to catch or display a
+constraint violation, since the app layer's own coercion means a normal user
+session can never trigger one.
 
 ## Testing
 
