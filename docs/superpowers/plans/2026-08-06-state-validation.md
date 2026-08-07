@@ -1,0 +1,401 @@
+# Server/DB-Side State Validation Implementation Plan
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+**Goal:** A value that isn't one of the 51 valid state codes can never end up stored in `profiles.state` or `tbr_entries.state` again, regardless of which code path writes it — closing the gap flagged as finding #2 in the state-normalization feature's final review.
+
+**Architecture:** A pure `isValidStateCode()` helper (`lib/usStates.ts`) backs a one-line coercion added to each of the three write paths (`updateProfile`, `addTbrEntry`, `signUp`) — invalid input becomes `''`, the existing "no state" value every path already understands. A `NOT VALID` `CHECK` constraint on both `profiles.state` and `tbr_entries.state` is the permanent database-level backstop.
+
+**Tech Stack:** Next.js 14 (App Router), React 18, TypeScript, Vitest, Supabase/Postgres.
+
+## Global Constraints
+
+- On invalid input, coerce to `''` silently — never reject/show an error. This path is unreachable through the `<StateSelect>` dropdown; it only matters for a hand-crafted request, so there's no user to show an error to (per approved spec).
+- The DB constraint is a *format* check (`^[A-Z]{2}$`), not an exact match against all 51 codes, added `NOT VALID` — it must not require existing non-conforming rows to be fixed first (per approved spec).
+- No new test files for `app/profile/actions.ts`, `lib/actions/tbrEntries.ts`, or `app/auth/signup/page.tsx` — this repo has no precedent for mocking the Supabase server client in a test, and none of these three files has a test file today. Full logic coverage lives in `isValidStateCode()`'s tests; the three call sites are thin, one-line changes verified by the full suite (per approved spec).
+- Code style: no semicolons, single quotes, 2-space indent (TS/TSX); SQL matches the style of the existing migration blocks already in `supabase/schema.sql`.
+
+---
+
+### Task 1: `isValidStateCode` helper
+
+**Files:**
+- Modify: `lib/usStates.ts` (append the function)
+- Modify: `lib/usStates.test.ts` (append the tests)
+
+**Interfaces:**
+- Produces: `isValidStateCode(code: string): boolean` — exported function. Consumed by Tasks 2, 3, 4.
+
+- [ ] **Step 1: Write the failing tests**
+
+In `lib/usStates.test.ts`, add this new `describe` block at the end of the file (after the existing `describe('US_STATES', ...)` block):
+
+```ts
+describe('isValidStateCode', () => {
+  it('returns true for a valid state code', () => {
+    expect(isValidStateCode('CA')).toBe(true)
+  })
+
+  it('returns true for DC', () => {
+    expect(isValidStateCode('DC')).toBe(true)
+  })
+
+  it('returns false for an empty string', () => {
+    expect(isValidStateCode('')).toBe(false)
+  })
+
+  it('returns false for a lowercase code', () => {
+    expect(isValidStateCode('ca')).toBe(false)
+  })
+
+  it('returns false for a full state name', () => {
+    expect(isValidStateCode('California')).toBe(false)
+  })
+
+  it('returns false for a two-letter code that is not a real state', () => {
+    expect(isValidStateCode('ZZ')).toBe(false)
+  })
+})
+```
+
+Update the import at the top of the file from:
+
+```ts
+import { describe, it, expect } from 'vitest'
+import { US_STATES } from './usStates'
+```
+
+to:
+
+```ts
+import { describe, it, expect } from 'vitest'
+import { US_STATES, isValidStateCode } from './usStates'
+```
+
+- [ ] **Step 2: Run the tests to verify they fail**
+
+Run: `npx vitest run lib/usStates.test.ts`
+Expected: FAIL — `isValidStateCode is not a function` (doesn't exist yet).
+
+- [ ] **Step 3: Write the implementation**
+
+In `lib/usStates.ts`, append this after the `US_STATES` array (after its closing `]`):
+
+```ts
+
+export function isValidStateCode(code: string): boolean {
+  return US_STATES.some(s => s.code === code)
+}
+```
+
+- [ ] **Step 4: Run the tests to verify they pass**
+
+Run: `npx vitest run lib/usStates.test.ts`
+Expected: PASS (11 tests — 5 existing + 6 new)
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add lib/usStates.ts lib/usStates.test.ts
+git commit -m "feat: add isValidStateCode helper"
+```
+
+---
+
+### Task 2: Coerce invalid state in `updateProfile`
+
+**Files:**
+- Modify: `app/profile/actions.ts:1-25`
+
+**Interfaces:**
+- Consumes: `isValidStateCode` from `lib/usStates.ts` (Task 1).
+
+- [ ] **Step 1: Add the import and the coercion**
+
+In `app/profile/actions.ts`, change:
+
+```ts
+'use server'
+
+import { createClient } from '@/lib/supabase/server'
+import { redirect } from 'next/navigation'
+import { buildConfirmationMessage } from '@/lib/buildConfirmationMessage'
+
+export async function updateProfile(formData: FormData) {
+  const supabase = createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/auth/signin')
+  await supabase.from('profiles').update({
+    city:               formData.get('city')                as string,
+    state:              formData.get('state')               as string,
+    phone:              formData.get('phone')               as string,
+```
+
+to:
+
+```ts
+'use server'
+
+import { createClient } from '@/lib/supabase/server'
+import { redirect } from 'next/navigation'
+import { buildConfirmationMessage } from '@/lib/buildConfirmationMessage'
+import { isValidStateCode } from '@/lib/usStates'
+
+export async function updateProfile(formData: FormData) {
+  const supabase = createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/auth/signin')
+  const rawState = (formData.get('state') as string) ?? ''
+  const state = isValidStateCode(rawState) ? rawState : ''
+  await supabase.from('profiles').update({
+    city:               formData.get('city')                as string,
+    state,
+    phone:              formData.get('phone')               as string,
+```
+
+Everything below `state,` (address, share_address, notification fields, etc.) is unchanged — only the `state` line and the two new lines above the `.update()` call change.
+
+- [ ] **Step 2: Run the full test suite to confirm no regressions**
+
+Run: `npx vitest run`
+Expected: PASS (this file has no dedicated test suite of its own — this step is the only automated check for it, per the Global Constraints).
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add app/profile/actions.ts
+git commit -m "fix: reject an invalid state value in updateProfile"
+```
+
+---
+
+### Task 3: Coerce invalid state in `addTbrEntry`
+
+**Files:**
+- Modify: `lib/actions/tbrEntries.ts:1-11`
+
+**Interfaces:**
+- Consumes: `isValidStateCode` from `lib/usStates.ts` (Task 1).
+
+- [ ] **Step 1: Add the import and the coercion**
+
+In `lib/actions/tbrEntries.ts`, change:
+
+```ts
+'use server'
+
+import { createClient } from '@/lib/supabase/server'
+import { redirect } from 'next/navigation'
+
+export async function addTbrEntry(formData: FormData): Promise<void> {
+  const title = ((formData.get('title') as string) || '').trim()
+  const author = ((formData.get('author') as string) || '').trim()
+  const city = ((formData.get('city') as string) || '').trim()
+  const state = ((formData.get('state') as string) || '').trim()
+  const redirectTo = ((formData.get('redirect_to') as string) || '').trim() || '/profile'
+```
+
+to:
+
+```ts
+'use server'
+
+import { createClient } from '@/lib/supabase/server'
+import { redirect } from 'next/navigation'
+import { isValidStateCode } from '@/lib/usStates'
+
+export async function addTbrEntry(formData: FormData): Promise<void> {
+  const title = ((formData.get('title') as string) || '').trim()
+  const author = ((formData.get('author') as string) || '').trim()
+  const city = ((formData.get('city') as string) || '').trim()
+  const rawState = ((formData.get('state') as string) || '').trim()
+  const state = isValidStateCode(rawState) ? rawState : ''
+  const redirectTo = ((formData.get('redirect_to') as string) || '').trim() || '/profile'
+```
+
+Everything below (the `title`/`author` check, the insert, `removeTbrEntry`) is unchanged.
+
+- [ ] **Step 2: Run the full test suite to confirm no regressions**
+
+Run: `npx vitest run`
+Expected: PASS (this file has no dedicated test suite of its own — this step is the only automated check for it, per the Global Constraints).
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add lib/actions/tbrEntries.ts
+git commit -m "fix: reject an invalid state value in addTbrEntry"
+```
+
+---
+
+### Task 4: Coerce invalid state in `signUp`
+
+**Files:**
+- Modify: `app/auth/signup/page.tsx:1-24`
+
+**Interfaces:**
+- Consumes: `isValidStateCode` from `lib/usStates.ts` (Task 1).
+
+- [ ] **Step 1: Add the import**
+
+In `app/auth/signup/page.tsx`, change:
+
+```tsx
+import { redirect } from 'next/navigation'
+import Link from 'next/link'
+import ContactToggle from './ContactToggle'
+import ShareToggle from '@/components/ShareToggle'
+import StateSelect from '@/components/StateSelect'
+```
+
+to:
+
+```tsx
+import { redirect } from 'next/navigation'
+import Link from 'next/link'
+import ContactToggle from './ContactToggle'
+import ShareToggle from '@/components/ShareToggle'
+import StateSelect from '@/components/StateSelect'
+import { isValidStateCode } from '@/lib/usStates'
+```
+
+- [ ] **Step 2: Add the coercion**
+
+In the same file, change:
+
+```tsx
+  async function signUp(formData: FormData) {
+    'use server'
+    try {
+      const { createClient } = await import('@/lib/supabase/server')
+      const supabase = createClient()
+      const { error } = await supabase.auth.signUp({
+        email: formData.get('email') as string,
+        password: formData.get('password') as string,
+        options: {
+          data: {
+            username:           (formData.get('username') as string).toLowerCase().replace(/\s+/g, ''),
+            city:               formData.get('city') as string,
+            state:              formData.get('state') as string,
+            phone:              formData.get('phone') as string,
+```
+
+to:
+
+```tsx
+  async function signUp(formData: FormData) {
+    'use server'
+    try {
+      const { createClient } = await import('@/lib/supabase/server')
+      const supabase = createClient()
+      const rawState = formData.get('state') as string
+      const state = isValidStateCode(rawState) ? rawState : ''
+      const { error } = await supabase.auth.signUp({
+        email: formData.get('email') as string,
+        password: formData.get('password') as string,
+        options: {
+          data: {
+            username:           (formData.get('username') as string).toLowerCase().replace(/\s+/g, ''),
+            city:               formData.get('city') as string,
+            state,
+            phone:              formData.get('phone') as string,
+```
+
+Everything below `state,` (contact_preference, address, etc.) and the rest of the file (error handling, the JSX form) is unchanged.
+
+- [ ] **Step 3: Run the full test suite to confirm no regressions**
+
+Run: `npx vitest run`
+Expected: PASS (this file has no dedicated test suite of its own — this step is the only automated check for it, per the Global Constraints).
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add app/auth/signup/page.tsx
+git commit -m "fix: reject an invalid state value in signUp"
+```
+
+---
+
+### Task 5: Database-level CHECK constraints
+
+**Files:**
+- Modify: `supabase/schema.sql` (append a new migration block at the end of the file)
+
+**Interfaces:**
+- None — one-time SQL script, not application code.
+
+- [ ] **Step 1: Append the migration block**
+
+Append this to the end of `supabase/schema.sql` (after the final `-- ──...──` divider line that currently ends the file — the one closing the "normalize existing state values to 2-letter codes" migration):
+
+```sql
+
+-- ── Migration: enforce state format at the database level ─────────────────────
+-- Run this block in Supabase SQL Editor:
+-- Backstop for the state-normalization work above: the app layer (signup,
+-- profile edit, TBR add — see isValidStateCode() in lib/usStates.ts) now
+-- rejects anything that isn't one of the 51 valid state codes before ever
+-- writing it, but that's an app-layer guarantee, not a data-layer one.
+-- This constraint makes it permanent: no future write, from any code path,
+-- can put a non-conforming value in either column again.
+--
+-- NOT VALID is deliberate: the state-normalization backfill (the migration
+-- above this one) intentionally left a handful of old, unrecognized rows
+-- as free text rather than guessing at them. A normal CHECK validates
+-- every existing row immediately and would fail because of those
+-- stragglers. NOT VALID applies the constraint to every write from this
+-- point forward without requiring old rows to already comply. Once an
+-- admin cleans up the remaining stragglers (visible in the admin Users
+-- tab), this can be closed out later — not part of this migration — with:
+--   alter table profiles validate constraint profiles_state_format;
+--   alter table tbr_entries validate constraint tbr_entries_state_format;
+alter table profiles add constraint profiles_state_format
+  check (state = '' or state ~ '^[A-Z]{2}$') not valid;
+
+alter table tbr_entries add constraint tbr_entries_state_format
+  check (state = '' or state ~ '^[A-Z]{2}$') not valid;
+-- ──────────────────────────────────────────────────────────────────────────────
+```
+
+- [ ] **Step 2: Run the full test suite to confirm no regressions**
+
+Run: `npx vitest run`
+Expected: PASS (SQL-only change; this is the standard check applied to every task in this plan).
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add supabase/schema.sql
+git commit -m "feat: add NOT VALID state-format CHECK constraints"
+```
+
+- [ ] **Step 4: Run the migration against the real database (manual, not automated)**
+
+This step is not run by an automated test — it modifies real schema. Do it once, when ready to ship, after Tasks 1-4 (the app-layer guard) are already deployed:
+
+1. Open the Supabase project's SQL Editor.
+2. Paste and run the new migration block from `supabase/schema.sql` (the block between the `-- ── Migration: enforce state format at the database level...` header and its closing divider). Each `alter table` is a fully independent statement — no temp table, no transaction dependency (same lesson as the earlier backfill migration's fix).
+3. Verify the constraint is active: run `update profiles set state = 'ZZZ' where id = '<any existing profile id>';` and confirm it's rejected with a constraint-violation error. Then confirm a normal update (e.g. re-setting a profile's `state` to its current, valid value) still succeeds.
+
+---
+
+### Task 6: Final full-suite verification
+
+**Files:** None — verification only.
+
+- [ ] **Step 1: Run the full test suite**
+
+Run: `npx vitest run`
+Expected: PASS, all tests green (prior suite count + the 6 new tests from Task 1).
+
+- [ ] **Step 2: Typecheck**
+
+Run: `npx tsc --noEmit`
+Expected: No new errors introduced by this plan's changes. (This repo has a handful of pre-existing, unrelated errors — e.g. in `app/profile/HistorySection.test.tsx` and files using `[...new Set(...)]` — confirm the error list is unchanged from a `git stash` baseline, not that it's empty.)
+
+- [ ] **Step 3: Confirm no code changes remain uncommitted**
+
+Run: `git status -s`
+Expected: Clean (aside from any files unrelated to this plan, e.g. `.claude/`).
