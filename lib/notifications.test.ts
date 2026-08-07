@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { unreadCounts, unreadEntityIds, type NotificationRow } from './notifications'
+import { unreadCounts, unreadEntityIds, dashboardAlertTotal, type NotificationRow } from './notifications'
 
 describe('unreadCounts', () => {
   it('returns all zeros for an empty list', () => {
@@ -51,5 +51,24 @@ describe('unreadEntityIds', () => {
 
   it('returns an empty array for an empty input list', () => {
     expect(unreadEntityIds([], ['message'])).toEqual([])
+  })
+})
+
+describe('dashboardAlertTotal', () => {
+  it('adds a wallet alert to the notification count when the onboarding bonus is unclaimed', () => {
+    expect(dashboardAlertTotal(2, false)).toBe(3)
+  })
+
+  it('does not add a wallet alert when the onboarding bonus is already claimed', () => {
+    expect(dashboardAlertTotal(2, true)).toBe(2)
+  })
+
+  it('treats a null/undefined claimed flag as unclaimed, matching the Wallet tab badge', () => {
+    expect(dashboardAlertTotal(0, null)).toBe(1)
+    expect(dashboardAlertTotal(0, undefined)).toBe(1)
+  })
+
+  it('returns the notification count alone when there are no notifications and the bonus is claimed', () => {
+    expect(dashboardAlertTotal(0, true)).toBe(0)
   })
 })

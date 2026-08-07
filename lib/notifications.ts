@@ -30,3 +30,11 @@ export function unreadEntityIds(rows: NotificationRow[], types: NotificationType
   const typeSet = new Set(types)
   return rows.filter(row => typeSet.has(row.type)).map(row => row.entity_id)
 }
+
+// The Wallet tab's "unclaimed onboarding bonus" badge isn't backed by a
+// notifications row — it's derived straight from the profile. Fold it in
+// here so the nav bar's Dashboard badge reflects every red alert the
+// dashboard shows, not just the notification-table ones.
+export function dashboardAlertTotal(notificationCount: number, onboardingBonusClaimed: boolean | null | undefined): number {
+  return notificationCount + (onboardingBonusClaimed ? 0 : 1)
+}
