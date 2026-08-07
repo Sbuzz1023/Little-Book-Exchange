@@ -130,8 +130,7 @@ function UserLocationsChart({ users }: { users: User[] }) {
       if (view === 'city') {
         key = u.city
       } else if (view === 'state') {
-        const parts = u.city.split(', ')
-        key = parts[1] ?? u.city
+        key = u.state || '(no state)'
       } else {
         // street — mock: group by first word of city as a stand-in for neighbourhood
         key = u.city.split(',')[0]
