@@ -3,14 +3,17 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { buildConfirmationMessage } from '@/lib/buildConfirmationMessage'
+import { isValidStateCode } from '@/lib/usStates'
 
 export async function updateProfile(formData: FormData) {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/auth/signin')
+  const rawState = (formData.get('state') as string) ?? ''
+  const state = isValidStateCode(rawState) ? rawState : ''
   await supabase.from('profiles').update({
     city:               formData.get('city')                as string,
-    state:              formData.get('state')               as string,
+    state,
     phone:              formData.get('phone')               as string,
     address:            (formData.get('address')            as string) || '',
     address_unit:       (formData.get('address_unit')       as string) || '',
