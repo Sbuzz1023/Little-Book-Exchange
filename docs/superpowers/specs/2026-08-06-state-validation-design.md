@@ -91,16 +91,18 @@ or a direct/manual write, not something the UI needs to catch or display.
 - `lib/usStates.test.ts` — add cases for `isValidStateCode`: valid code
   (e.g. `'CA'`) → true; empty string → false (empty is handled as its own
   case by callers, not by this function); lowercase, full name, garbage →
-  false.
-- `app/profile/actions.test.ts` (new — no test file exists for this module
-  today) — confirm an invalid state coerces to `''` rather than being
-  written as-is.
-- `lib/actions/tbrEntries.test.ts` (new — same situation) — same coercion
-  check for `addTbrEntry`.
-- Signup: this repo doesn't have a test file for `app/auth/signup/page.tsx`
-  today (established in the prior feature's plan) — same call there: no new
-  test file forced for it, verify by reading the diff and running the full
-  suite.
+  false. This function carries all the actual logic being added, and it's a
+  pure function — full coverage lives here.
+- The three call sites (`updateProfile`, `addTbrEntry`, `signUp`) each add a
+  one-line coercion built on the already-tested `isValidStateCode` — no new
+  test files for them. No test in this repo mocks the Supabase server
+  client for a `'use server'` action; the established convention (see
+  `lib/actions/validateLocationInput.ts` + its test) is pure, tested logic
+  behind a thin, untested action wrapper. `updateProfile` and `addTbrEntry`
+  already have no test files today; `signUp` didn't get one in the prior
+  state-normalization plan either. Verify these three by reading the diff
+  and running the full suite, consistent with how those files were already
+  handled.
 - No automated test for the DB constraint (same reasoning as the backfill
   migration) — manual verification: after applying it, attempt a raw update
   with a bad value via the Supabase SQL Editor and confirm it's rejected.
