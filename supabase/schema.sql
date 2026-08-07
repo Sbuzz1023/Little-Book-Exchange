@@ -1100,72 +1100,132 @@ create trigger prevent_book_count_self_edit_trigger before insert or update on l
 -- fix, not an ongoing function. Anything not recognized below (typos,
 -- blank, non-US values) is left untouched rather than guessed at — those
 -- rows are visible afterward in the admin Users tab for manual fixing.
--- Must be run as a single unit (all statements in one transaction) — the
--- `on commit drop` temp table below only survives to the final UPDATE if
--- CREATE/INSERT/UPDATE/UPDATE all share one transaction block.
-begin;
-create temporary table state_map (input text, code text) on commit drop;
-insert into state_map (input, code) values
-  ('alabama','AL'), ('al','AL'),
-  ('alaska','AK'), ('ak','AK'),
-  ('arizona','AZ'), ('az','AZ'),
-  ('arkansas','AR'), ('ar','AR'),
-  ('california','CA'), ('ca','CA'),
-  ('colorado','CO'), ('co','CO'),
-  ('connecticut','CT'), ('ct','CT'),
-  ('delaware','DE'), ('de','DE'),
-  ('district of columbia','DC'), ('washington dc','DC'), ('washington d.c.','DC'), ('dc','DC'),
-  ('florida','FL'), ('fl','FL'),
-  ('georgia','GA'), ('ga','GA'),
-  ('hawaii','HI'), ('hi','HI'),
-  ('idaho','ID'), ('id','ID'),
-  ('illinois','IL'), ('il','IL'),
-  ('indiana','IN'), ('in','IN'),
-  ('iowa','IA'), ('ia','IA'),
-  ('kansas','KS'), ('ks','KS'),
-  ('kentucky','KY'), ('ky','KY'),
-  ('louisiana','LA'), ('la','LA'),
-  ('maine','ME'), ('me','ME'),
-  ('maryland','MD'), ('md','MD'),
-  ('massachusetts','MA'), ('ma','MA'),
-  ('michigan','MI'), ('mi','MI'),
-  ('minnesota','MN'), ('mn','MN'),
-  ('mississippi','MS'), ('ms','MS'),
-  ('missouri','MO'), ('mo','MO'),
-  ('montana','MT'), ('mt','MT'),
-  ('nebraska','NE'), ('ne','NE'),
-  ('nevada','NV'), ('nv','NV'),
-  ('new hampshire','NH'), ('nh','NH'),
-  ('new jersey','NJ'), ('nj','NJ'),
-  ('new mexico','NM'), ('nm','NM'),
-  ('new york','NY'), ('ny','NY'),
-  ('north carolina','NC'), ('nc','NC'),
-  ('north dakota','ND'), ('nd','ND'),
-  ('ohio','OH'), ('oh','OH'),
-  ('oklahoma','OK'), ('ok','OK'),
-  ('oregon','OR'), ('or','OR'),
-  ('pennsylvania','PA'), ('pa','PA'),
-  ('rhode island','RI'), ('ri','RI'),
-  ('south carolina','SC'), ('sc','SC'),
-  ('south dakota','SD'), ('sd','SD'),
-  ('tennessee','TN'), ('tn','TN'),
-  ('texas','TX'), ('tx','TX'),
-  ('utah','UT'), ('ut','UT'),
-  ('vermont','VT'), ('vt','VT'),
-  ('virginia','VA'), ('va','VA'),
-  ('washington','WA'), ('wa','WA'),
-  ('west virginia','WV'), ('wv','WV'),
-  ('wisconsin','WI'), ('wi','WI'),
-  ('wyoming','WY'), ('wy','WY');
-
+--
+-- Each UPDATE below is a fully self-contained statement (its own CTE, no
+-- shared temp table). An earlier version of this migration used one
+-- `create temporary table ... on commit drop` shared by both UPDATEs,
+-- wrapped in explicit begin;/commit; — that failed in practice
+-- ("relation state_map does not exist") because Supabase's SQL Editor
+-- does not guarantee a pasted multi-statement buffer runs on a single
+-- connection, so the session-scoped temp table didn't survive to the
+-- second statement even with literal BEGIN/COMMIT text. Duplicating the
+-- ~50-row mapping below costs some DRY-ness but makes each statement
+-- correct in isolation, regardless of how the buffer gets split.
+with state_map(input, code) as (
+  values
+    ('alabama','AL'), ('al','AL'),
+    ('alaska','AK'), ('ak','AK'),
+    ('arizona','AZ'), ('az','AZ'),
+    ('arkansas','AR'), ('ar','AR'),
+    ('california','CA'), ('ca','CA'),
+    ('colorado','CO'), ('co','CO'),
+    ('connecticut','CT'), ('ct','CT'),
+    ('delaware','DE'), ('de','DE'),
+    ('district of columbia','DC'), ('washington dc','DC'), ('washington d.c.','DC'), ('dc','DC'),
+    ('florida','FL'), ('fl','FL'),
+    ('georgia','GA'), ('ga','GA'),
+    ('hawaii','HI'), ('hi','HI'),
+    ('idaho','ID'), ('id','ID'),
+    ('illinois','IL'), ('il','IL'),
+    ('indiana','IN'), ('in','IN'),
+    ('iowa','IA'), ('ia','IA'),
+    ('kansas','KS'), ('ks','KS'),
+    ('kentucky','KY'), ('ky','KY'),
+    ('louisiana','LA'), ('la','LA'),
+    ('maine','ME'), ('me','ME'),
+    ('maryland','MD'), ('md','MD'),
+    ('massachusetts','MA'), ('ma','MA'),
+    ('michigan','MI'), ('mi','MI'),
+    ('minnesota','MN'), ('mn','MN'),
+    ('mississippi','MS'), ('ms','MS'),
+    ('missouri','MO'), ('mo','MO'),
+    ('montana','MT'), ('mt','MT'),
+    ('nebraska','NE'), ('ne','NE'),
+    ('nevada','NV'), ('nv','NV'),
+    ('new hampshire','NH'), ('nh','NH'),
+    ('new jersey','NJ'), ('nj','NJ'),
+    ('new mexico','NM'), ('nm','NM'),
+    ('new york','NY'), ('ny','NY'),
+    ('north carolina','NC'), ('nc','NC'),
+    ('north dakota','ND'), ('nd','ND'),
+    ('ohio','OH'), ('oh','OH'),
+    ('oklahoma','OK'), ('ok','OK'),
+    ('oregon','OR'), ('or','OR'),
+    ('pennsylvania','PA'), ('pa','PA'),
+    ('rhode island','RI'), ('ri','RI'),
+    ('south carolina','SC'), ('sc','SC'),
+    ('south dakota','SD'), ('sd','SD'),
+    ('tennessee','TN'), ('tn','TN'),
+    ('texas','TX'), ('tx','TX'),
+    ('utah','UT'), ('ut','UT'),
+    ('vermont','VT'), ('vt','VT'),
+    ('virginia','VA'), ('va','VA'),
+    ('washington','WA'), ('wa','WA'),
+    ('west virginia','WV'), ('wv','WV'),
+    ('wisconsin','WI'), ('wi','WI'),
+    ('wyoming','WY'), ('wy','WY')
+)
 update profiles set state = m.code
 from state_map m
 where lower(trim(profiles.state)) = m.input
   and profiles.state <> m.code;
 
+with state_map(input, code) as (
+  values
+    ('alabama','AL'), ('al','AL'),
+    ('alaska','AK'), ('ak','AK'),
+    ('arizona','AZ'), ('az','AZ'),
+    ('arkansas','AR'), ('ar','AR'),
+    ('california','CA'), ('ca','CA'),
+    ('colorado','CO'), ('co','CO'),
+    ('connecticut','CT'), ('ct','CT'),
+    ('delaware','DE'), ('de','DE'),
+    ('district of columbia','DC'), ('washington dc','DC'), ('washington d.c.','DC'), ('dc','DC'),
+    ('florida','FL'), ('fl','FL'),
+    ('georgia','GA'), ('ga','GA'),
+    ('hawaii','HI'), ('hi','HI'),
+    ('idaho','ID'), ('id','ID'),
+    ('illinois','IL'), ('il','IL'),
+    ('indiana','IN'), ('in','IN'),
+    ('iowa','IA'), ('ia','IA'),
+    ('kansas','KS'), ('ks','KS'),
+    ('kentucky','KY'), ('ky','KY'),
+    ('louisiana','LA'), ('la','LA'),
+    ('maine','ME'), ('me','ME'),
+    ('maryland','MD'), ('md','MD'),
+    ('massachusetts','MA'), ('ma','MA'),
+    ('michigan','MI'), ('mi','MI'),
+    ('minnesota','MN'), ('mn','MN'),
+    ('mississippi','MS'), ('ms','MS'),
+    ('missouri','MO'), ('mo','MO'),
+    ('montana','MT'), ('mt','MT'),
+    ('nebraska','NE'), ('ne','NE'),
+    ('nevada','NV'), ('nv','NV'),
+    ('new hampshire','NH'), ('nh','NH'),
+    ('new jersey','NJ'), ('nj','NJ'),
+    ('new mexico','NM'), ('nm','NM'),
+    ('new york','NY'), ('ny','NY'),
+    ('north carolina','NC'), ('nc','NC'),
+    ('north dakota','ND'), ('nd','ND'),
+    ('ohio','OH'), ('oh','OH'),
+    ('oklahoma','OK'), ('ok','OK'),
+    ('oregon','OR'), ('or','OR'),
+    ('pennsylvania','PA'), ('pa','PA'),
+    ('rhode island','RI'), ('ri','RI'),
+    ('south carolina','SC'), ('sc','SC'),
+    ('south dakota','SD'), ('sd','SD'),
+    ('tennessee','TN'), ('tn','TN'),
+    ('texas','TX'), ('tx','TX'),
+    ('utah','UT'), ('ut','UT'),
+    ('vermont','VT'), ('vt','VT'),
+    ('virginia','VA'), ('va','VA'),
+    ('washington','WA'), ('wa','WA'),
+    ('west virginia','WV'), ('wv','WV'),
+    ('wisconsin','WI'), ('wi','WI'),
+    ('wyoming','WY'), ('wy','WY')
+)
 update tbr_entries set state = m.code
 from state_map m
 where lower(trim(tbr_entries.state)) = m.input
   and tbr_entries.state <> m.code;
-commit;
 -- ──────────────────────────────────────────────────────────────────────────────
