@@ -3,6 +3,7 @@ import Link from 'next/link'
 import ContactToggle from './ContactToggle'
 import ShareToggle from '@/components/ShareToggle'
 import StateSelect from '@/components/StateSelect'
+import { isValidStateCode } from '@/lib/usStates'
 
 export default function SignUpPage({
   searchParams,
@@ -14,6 +15,8 @@ export default function SignUpPage({
     try {
       const { createClient } = await import('@/lib/supabase/server')
       const supabase = createClient()
+      const rawState = formData.get('state') as string
+      const state = isValidStateCode(rawState) ? rawState : ''
       const { error } = await supabase.auth.signUp({
         email: formData.get('email') as string,
         password: formData.get('password') as string,
@@ -21,7 +24,7 @@ export default function SignUpPage({
           data: {
             username:           (formData.get('username') as string).toLowerCase().replace(/\s+/g, ''),
             city:               formData.get('city') as string,
-            state:              formData.get('state') as string,
+            state,
             phone:              formData.get('phone') as string,
             contact_preference: formData.get('contact_preference') as string,
             address:            (formData.get('address') as string) || '',
