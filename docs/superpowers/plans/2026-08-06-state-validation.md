@@ -398,10 +398,10 @@ git commit -m "feat: add NOT VALID state-format CHECK constraints"
 
 - [ ] **Step 4: Run the migration against the real database (manual, not automated)**
 
-This step is not run by an automated test — it modifies real schema. Do it once, when ready to ship, after Tasks 1-4 (the app-layer guard) are already deployed:
+This step is not run by an automated test — it modifies real schema. **This is a hard deploy gate, not an optional follow-up:** RLS does not restrict which columns a signed-in user's own browser session may write directly, so until this migration runs, the app-layer guard from Tasks 1-4 is the *only* thing stopping bad data — any user can bypass it entirely via a direct client call (e.g. the browser console). Run this promptly after Tasks 1-4 are deployed, not "whenever convenient":
 
 1. Open the Supabase project's SQL Editor.
-2. Paste and run the new migration block from `supabase/schema.sql` (the block between the `-- ── Migration: enforce state format at the database level...` header and its closing divider). Each `alter table` is a fully independent statement — no temp table, no transaction dependency (same lesson as the earlier backfill migration's fix).
+2. Paste and run the new migration block from `supabase/schema.sql` (the block between the `-- ── Migration: enforce state format at the database level...` header and its closing divider). It's a measure → blank → add-validated sequence (see the block's own comments) followed by two independent `alter table` statements — no temp table, no cross-statement transaction dependency (same lesson as the earlier backfill migration's fix).
 3. Verify the constraints exist and are validated (non-destructive — no write to any real row):
 ```sql
 select conname, convalidated, pg_get_constraintdef(oid)

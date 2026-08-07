@@ -59,27 +59,34 @@ Add a `CHECK` constraint to both `profiles.state` and `tbr_entries.state`:
 
 ```sql
 alter table profiles add constraint profiles_state_format
-  check (state = '' or state ~ '^[A-Z]{2}$') not valid;
+  check (state = '' or state ~ '^[A-Z]{2}$');
 
 alter table tbr_entries add constraint tbr_entries_state_format
-  check (state = '' or state ~ '^[A-Z]{2}$') not valid;
+  check (state = '' or state ~ '^[A-Z]{2}$');
 ```
 
 A *format* check (two uppercase letters), not an exact match against all 51
 codes — cheap to maintain forever, and it's exactly the failure mode being
 guarded against (multi-word text, lowercase, full names).
 
-**`NOT VALID` is deliberate.** The state-normalization backfill intentionally
-left a handful of old, unrecognized rows as free text (real typos it
-couldn't confidently map) rather than guessing or blanking them. A normal
-`CHECK` constraint validates every existing row at creation time and would
-fail immediately because of those stragglers. `NOT VALID` applies the
-constraint to every write from this point forward without requiring
-existing rows to already comply — which is the actual goal here (stop new
-bad data), without making this change block on cleaning up old data first.
-An admin can fix the remaining stragglers via the Users tab at their own
-pace and then run `alter table ... validate constraint ...` later to close
-the loop — not part of this change.
+**Validated up front, not added `NOT VALID`.** An earlier draft of this
+migration added the constraints `NOT VALID`, on the mistaken assumption that
+this exempts pre-existing non-conforming rows from the constraint
+permanently. It doesn't: `NOT VALID` only skips the one-time verification
+scan at creation — every subsequent `INSERT` and `UPDATE` is still checked
+per-row, including updates that don't touch `state`. Since the
+state-normalization backfill intentionally left a handful of old,
+unrecognized rows as free text (real typos it couldn't confidently map),
+shipping the constraint `NOT VALID` would have made every one of those rows
+un-updatable forever after — silently breaking, among other things, email/
+phone verification (`sync_verification_status()`, which has no exception
+handler and runs inside GoTrue's own transaction) and exchange completion
+(`complete_exchange_marks_listing_sold()`) for those specific users. The
+actual migration instead measures which rows don't conform, blanks them
+(`''` already means "no state" everywhere the app reads it, so this loses
+nothing the app itself wouldn't already discard on that user's next profile
+save), and only then adds the constraints — validated, with no follow-up
+step required.
 
 The app layer prevents a normal user from ever triggering this constraint
 through the UI. But RLS does not restrict which columns a signed-in user's
