@@ -4,6 +4,7 @@ import Nav from '@/components/Nav'
 import Footer from '@/components/Footer'
 import ScrollToTop from '@/components/ScrollToTop'
 import { cookies } from 'next/headers'
+import { dashboardAlertTotal } from '@/lib/notifications'
 
 export const metadata: Metadata = {
   title: 'LittleBookExchange — Local Used Books',
@@ -32,13 +33,13 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
-        const { data: p } = await supabase.from('profiles').select('username, is_admin').eq('id', user.id).single()
+        const { data: p } = await supabase.from('profiles').select('username, is_admin, onboarding_bonus_claimed').eq('id', user.id).single()
         userName = p?.username ?? user.email ?? 'Me'
         isAdmin = p?.is_admin === true
         const { count } = await supabase
           .from('notifications').select('id', { count: 'exact', head: true })
           .eq('user_id', user.id).eq('read', false)
-        unreadCount = count ?? 0
+        unreadCount = dashboardAlertTotal(count ?? 0, p?.onboarding_bonus_claimed)
       }
     } catch {}
   }
