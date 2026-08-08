@@ -9,6 +9,8 @@ export type ParsedListingForm = {
   genre: string | null
   format: string | null
   pickup_description: string | null
+  ol_work_key: string | null
+  cover_url: string | null
 }
 
 export function parseListingForm(formData: FormData): ParsedListingForm {
@@ -23,21 +25,28 @@ export function parseListingForm(formData: FormData): ParsedListingForm {
     genre:       (formData.get('genre')       as string) || null,
     format:      (formData.get('format')      as string) || null,
     pickup_description: (formData.get('pickup_description') as string) || null,
+    ol_work_key: (formData.get('ol_work_key') as string) || null,
+    cover_url:   (formData.get('cover_url')   as string) || null,
   }
 }
 
 const MAX_BUNDLE_BOOKS = 20
 
-export function parseBundleBooks(formData: FormData): { title: string; author: string }[] {
+export function parseBundleBooks(formData: FormData): { title: string; author: string; ol_work_key: string | null; cover_url: string | null }[] {
   const rawCount = parseInt((formData.get('book_rows') as string) || '0', 10)
   const count = Math.min(Number.isFinite(rawCount) ? Math.max(rawCount, 0) : 0, MAX_BUNDLE_BOOKS)
 
-  const books: { title: string; author: string }[] = []
+  const books: { title: string; author: string; ol_work_key: string | null; cover_url: string | null }[] = []
   for (let i = 1; i <= count; i++) {
     const title = ((formData.get(`book_title_${i}`) as string) || '').trim()
     const author = ((formData.get(`book_author_${i}`) as string) || '').trim()
     if (title === '' && author === '') continue
-    books.push({ title, author })
+    books.push({
+      title,
+      author,
+      ol_work_key: (formData.get(`book_ol_work_key_${i}`) as string) || null,
+      cover_url:   (formData.get(`book_cover_url_${i}`)   as string) || null,
+    })
   }
   return books
 }
