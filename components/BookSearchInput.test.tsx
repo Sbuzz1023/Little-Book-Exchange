@@ -56,4 +56,22 @@ describe('BookSearchInput', () => {
     await waitFor(() => expect(search).toHaveBeenCalled())
     expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
   })
+
+  it('ignores a stale in-flight search response if the input shrinks below 2 characters before it resolves', async () => {
+    let resolveSearch: (books: BookSuggestion[]) => void
+    const search = vi.fn().mockReturnValue(new Promise<BookSuggestion[]>(resolve => { resolveSearch = resolve }))
+    render(<BookSearchInput name="title" value="" onChange={() => {}} onSelect={() => {}} search={search} />)
+
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Du' } })
+    await waitFor(() => expect(search).toHaveBeenCalledWith('Du'), { timeout: 1000 })
+
+    // Shrink below the 2-char threshold while the search above is still in flight.
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'D' } })
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+
+    // The stale search now resolves — it must not repopulate/reopen the dropdown.
+    resolveSearch!([DUNE])
+    await new Promise(r => setTimeout(r, 50))
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+  })
 })

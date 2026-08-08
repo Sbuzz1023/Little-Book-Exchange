@@ -33,6 +33,7 @@ export default function BookSearchInput({
     onChange(next)
     if (debounceRef.current) clearTimeout(debounceRef.current)
     if (next.trim().length < 2) {
+      requestIdRef.current++ // invalidate any in-flight request so a late response can't repopulate the dropdown
       setSuggestions([])
       setOpen(false)
       return
