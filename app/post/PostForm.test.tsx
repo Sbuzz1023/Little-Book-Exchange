@@ -1,6 +1,7 @@
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, within } from '@testing-library/react'
 import { describe, it, expect, vi } from 'vitest'
 import PostForm from './PostForm'
+import type { BookSuggestion } from '@/lib/openLibrary'
 
 describe('PostForm', () => {
   it('renders empty fields and the default submit label with no initialValues', () => {
@@ -158,5 +159,58 @@ describe('PostForm — bundle toggle', () => {
     expect(screen.getByDisplayValue('Harry Potter Series')).toBeInTheDocument()
     expect(screen.getByDisplayValue('Chamber of Secrets')).toBeInTheDocument()
     expect(screen.getByText('This bundle: 2 books · 2 credits')).toBeInTheDocument()
+  })
+})
+
+const DUNE: BookSuggestion = {
+  title: 'Dune', author: 'Frank Herbert', year: 1965, isbn: null,
+  coverUrl: 'https://covers.openlibrary.org/b/id/12345-M.jpg', workKey: '/works/OL893415W',
+}
+
+describe('PostForm — Open Library integration', () => {
+  it('selecting a suggestion fills author and the hidden ol_work_key/cover_url fields', async () => {
+    const search = vi.fn().mockResolvedValue([DUNE])
+    const { container } = render(<PostForm action={vi.fn()} search={search} />)
+    fireEvent.change(screen.getByPlaceholderText('e.g. The Great Gatsby'), { target: { value: 'Dune' } })
+    const listbox = await screen.findByRole('listbox')
+    const option = within(listbox).getByRole('button')
+    expect(option).toHaveTextContent('Dune — Frank Herbert')
+    fireEvent.click(option)
+
+    expect(screen.getByPlaceholderText('e.g. F. Scott Fitzgerald')).toHaveValue('Frank Herbert')
+    expect(container.querySelector('input[name="ol_work_key"]')).toHaveValue('/works/OL893415W')
+    expect(container.querySelector('input[name="cover_url"]')).toHaveValue('https://covers.openlibrary.org/b/id/12345-M.jpg')
+  })
+
+  it('clears the resolved ol_work_key when the title is edited again after a selection', async () => {
+    const search = vi.fn().mockResolvedValue([DUNE])
+    const { container } = render(<PostForm action={vi.fn()} search={search} />)
+    fireEvent.change(screen.getByPlaceholderText('e.g. The Great Gatsby'), { target: { value: 'Dune' } })
+    const listbox = await screen.findByRole('listbox')
+    fireEvent.click(within(listbox).getByRole('button'))
+    fireEvent.change(screen.getByPlaceholderText('e.g. The Great Gatsby'), { target: { value: 'Dune Messiah' } })
+
+    expect(container.querySelector('input[name="ol_work_key"]')).toHaveValue('')
+  })
+
+  it('leaves ol_work_key/cover_url empty by default', () => {
+    const { container } = render(<PostForm action={vi.fn()} />)
+    expect(container.querySelector('input[name="ol_work_key"]')).toHaveValue('')
+    expect(container.querySelector('input[name="cover_url"]')).toHaveValue('')
+  })
+
+  it('pre-fills ol_work_key/cover_url from initialValues (edit mode)', () => {
+    const { container } = render(
+      <PostForm
+        action={vi.fn()}
+        initialValues={{
+          title: 'Dune', author: 'Frank Herbert', condition: 'Good', genre: 'Fiction', format: 'Paperback',
+          description: null, pickup_description: null, photo_url: null, photo_url_2: null, photo_url_3: null,
+          ol_work_key: '/works/OL893415W', cover_url: 'https://covers.openlibrary.org/b/id/12345-M.jpg',
+        }}
+      />
+    )
+    expect(container.querySelector('input[name="ol_work_key"]')).toHaveValue('/works/OL893415W')
+    expect(screen.getByAltText('Cover preview')).toBeInTheDocument()
   })
 })

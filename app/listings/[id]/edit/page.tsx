@@ -49,6 +49,8 @@ export default async function EditListingPage({
           is_bundle: listing.is_bundle ?? false,
           bundle_name: listing.bundle_name,
           books: bundleBooks,
+          ol_work_key: listing.ol_work_key,
+          cover_url: listing.cover_url,
         }}
       />
     </div>

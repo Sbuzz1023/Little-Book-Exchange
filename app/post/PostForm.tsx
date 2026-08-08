@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useRef } from 'react'
+import BookSearchInput from '@/components/BookSearchInput'
+import type { BookSuggestion } from '@/lib/openLibrary'
 
 const DESCRIPTION_MAX_LENGTH = 500
 
@@ -37,8 +39,11 @@ type Props = {
     is_bundle?: boolean
     bundle_name?: string | null
     books?: { title: string; author: string }[]
+    ol_work_key?: string | null
+    cover_url?: string | null
   }
   submitLabel?: string
+  search?: (query: string) => Promise<BookSuggestion[]>
 }
 
 function SectionHeading({ emoji, title }: { emoji: string; title: string }) {
@@ -143,11 +148,13 @@ const inputStyle = {
   outline: 'none',
 } as React.CSSProperties
 
-export default function PostForm({ city, action, error, initialValues, submitLabel }: Props) {
+export default function PostForm({ city, action, error, initialValues, submitLabel, search }: Props) {
   const [genre, setGenre] = useState(initialValues?.genre ?? 'Fiction')
   const [format, setFormat] = useState(initialValues?.format ?? 'Paperback')
   const [title, setTitle] = useState(initialValues?.title ?? '')
   const [author, setAuthor] = useState(initialValues?.author ?? '')
+  const [olWorkKey, setOlWorkKey] = useState(initialValues?.ol_work_key ?? '')
+  const [coverUrl, setCoverUrl] = useState<string | null>(initialValues?.cover_url ?? null)
   const [condition, setCondition] = useState(initialValues?.condition ?? 'Good')
   const [description, setDescription] = useState(initialValues?.description ?? '')
   const [photoPreview, setPhotoPreview] = useState<string | null>(initialValues?.photo_url ?? null)
@@ -158,6 +165,13 @@ export default function PostForm({ city, action, error, initialValues, submitLab
   const [books, setBooks] = useState<{ title: string; author: string }[]>(initialValues?.books ?? [])
 
   const MAX_BUNDLE_BOOKS = 20
+
+  function selectBook(book: BookSuggestion) {
+    setTitle(book.title)
+    setAuthor(book.author)
+    setOlWorkKey(book.workKey)
+    setCoverUrl(book.coverUrl)
+  }
 
   function toggleBundle() {
     setIsBundle(b => {
@@ -191,6 +205,8 @@ export default function PostForm({ city, action, error, initialValues, submitLab
       <input type="hidden" name="price" value="1" />
       <input type="hidden" name="is_bundle" value={isBundle ? 'true' : 'false'} />
       <input type="hidden" name="book_rows" value={books.length} />
+      <input type="hidden" name="ol_work_key" value={olWorkKey} />
+      <input type="hidden" name="cover_url" value={coverUrl ?? ''} />
 
       <div
         className="bg-white border-2 border-gray-100 shadow-[0_8px_0_#e5e7eb] p-5 md:p-9"
@@ -201,14 +217,23 @@ export default function PostForm({ city, action, error, initialValues, submitLab
 
         <div style={{ marginBottom: 18 }}>
           <FieldLabel>Book Title *</FieldLabel>
-          <input
+          <BookSearchInput
             name="title"
             value={title}
-            onChange={e => setTitle(e.target.value)}
+            onChange={v => { setTitle(v); setOlWorkKey(''); setCoverUrl(null) }}
+            onSelect={selectBook}
             placeholder="e.g. The Great Gatsby"
             required
             style={inputStyle}
+            search={search}
           />
+          {coverUrl && (
+            <img
+              src={coverUrl}
+              alt="Cover preview"
+              style={{ width: 40, height: 56, objectFit: 'cover', borderRadius: 6, marginTop: 8, border: '2px solid #fed7aa' }}
+            />
+          )}
         </div>
 
         <div style={{ marginBottom: 18 }}>
@@ -216,7 +241,7 @@ export default function PostForm({ city, action, error, initialValues, submitLab
           <input
             name="author"
             value={author}
-            onChange={e => setAuthor(e.target.value)}
+            onChange={e => { setAuthor(e.target.value); setOlWorkKey(''); setCoverUrl(null) }}
             placeholder="e.g. F. Scott Fitzgerald"
             required
             style={inputStyle}

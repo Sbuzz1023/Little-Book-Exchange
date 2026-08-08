@@ -27,6 +27,8 @@ export type Listing = {
   is_bundle?: boolean
   bundle_name?: string | null
   book_count?: number
+  ol_work_key?: string | null
+  cover_url?: string | null
 }
 
 export type Conversation = {
