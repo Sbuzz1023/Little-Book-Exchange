@@ -3,9 +3,16 @@ import { describe, it, expect, vi } from 'vitest'
 import PostForm from './PostForm'
 import type { BookSuggestion } from '@/lib/openLibrary'
 
+// BookSearchInput defaults to the real searchBooks server action (a live fetch to
+// openlibrary.org) when no `search` prop is given. Every pre-existing test below types
+// into the Title field without caring about Open Library suggestions, so we stub it
+// with a no-op to keep this suite free of real network calls. Tests that specifically
+// exercise the Open Library integration pass their own mock `search`.
+const noopSearch = vi.fn().mockResolvedValue([])
+
 describe('PostForm', () => {
   it('renders empty fields and the default submit label with no initialValues', () => {
-    render(<PostForm action={vi.fn()} />)
+    render(<PostForm action={vi.fn()} search={noopSearch} />)
     expect(screen.getByPlaceholderText('e.g. The Great Gatsby')).toHaveValue('')
     expect(screen.getByPlaceholderText('e.g. F. Scott Fitzgerald')).toHaveValue('')
     expect(screen.getByText('Post My Book →')).toBeInTheDocument()
@@ -15,6 +22,7 @@ describe('PostForm', () => {
     render(
       <PostForm
         action={vi.fn()}
+        search={noopSearch}
         initialValues={{
           title: 'Dune',
           author: 'Frank Herbert',
@@ -39,7 +47,7 @@ describe('PostForm', () => {
   })
 
   it('uses a custom submit label when provided', () => {
-    render(<PostForm action={vi.fn()} submitLabel="Save Changes" />)
+    render(<PostForm action={vi.fn()} search={noopSearch} submitLabel="Save Changes" />)
     expect(screen.getByText('Save Changes')).toBeInTheDocument()
     expect(screen.queryByText('Post My Book →')).not.toBeInTheDocument()
   })
@@ -47,19 +55,19 @@ describe('PostForm', () => {
 
 describe('PostForm — bundle toggle', () => {
   it('does not show the Bundle Details section by default', () => {
-    render(<PostForm action={vi.fn()} />)
+    render(<PostForm action={vi.fn()} search={noopSearch} />)
     expect(screen.queryByText('Series / Bundle Name')).not.toBeInTheDocument()
   })
 
   it('reveals Bundle Details when the toggle is clicked, defaulting to a 1-book/1-credit total', () => {
-    render(<PostForm action={vi.fn()} />)
+    render(<PostForm action={vi.fn()} search={noopSearch} />)
     fireEvent.click(screen.getByText('📚 List as a Bundle / Series'))
     expect(screen.getByText('Series / Bundle Name')).toBeInTheDocument()
     expect(screen.getByText('This bundle: 1 book · 1 credit')).toBeInTheDocument()
   })
 
   it('adds a book row with author pre-filled from Book 1, title left blank, when Add Another Book is clicked', () => {
-    render(<PostForm action={vi.fn()} />)
+    render(<PostForm action={vi.fn()} search={noopSearch} />)
     fireEvent.change(screen.getByPlaceholderText('e.g. The Great Gatsby'), { target: { value: 'Dune' } })
     fireEvent.change(screen.getByPlaceholderText('e.g. F. Scott Fitzgerald'), { target: { value: 'Frank Herbert' } })
     fireEvent.click(screen.getByText('📚 List as a Bundle / Series'))
@@ -71,7 +79,7 @@ describe('PostForm — bundle toggle', () => {
   })
 
   it('removes a book row when its Remove button is clicked', () => {
-    render(<PostForm action={vi.fn()} />)
+    render(<PostForm action={vi.fn()} search={noopSearch} />)
     fireEvent.click(screen.getByText('📚 List as a Bundle / Series'))
     fireEvent.click(screen.getByText('+ Add Another Book'))
     fireEvent.click(screen.getByText('✕ Remove'))
@@ -80,7 +88,7 @@ describe('PostForm — bundle toggle', () => {
   })
 
   it('re-copies the current Book 1 author when Auto-fill is clicked, leaving the row\'s own title untouched', () => {
-    render(<PostForm action={vi.fn()} />)
+    render(<PostForm action={vi.fn()} search={noopSearch} />)
     fireEvent.click(screen.getByText('📚 List as a Bundle / Series'))
     fireEvent.click(screen.getByText('+ Add Another Book'))
     fireEvent.change(screen.getByPlaceholderText('Title in series'), { target: { value: 'Chamber of Secrets' } })
@@ -91,13 +99,13 @@ describe('PostForm — bundle toggle', () => {
   })
 
   it('submits is_bundle=false and book_rows=0 hidden fields by default', () => {
-    const { container } = render(<PostForm action={vi.fn()} />)
+    const { container } = render(<PostForm action={vi.fn()} search={noopSearch} />)
     expect(container.querySelector('input[name="is_bundle"]')).toHaveValue('false')
     expect(container.querySelector('input[name="book_rows"]')).toHaveValue('0')
   })
 
   it('submits is_bundle=true, book_rows, and indexed book fields once populated', () => {
-    const { container } = render(<PostForm action={vi.fn()} />)
+    const { container } = render(<PostForm action={vi.fn()} search={noopSearch} />)
     fireEvent.click(screen.getByText('📚 List as a Bundle / Series'))
     fireEvent.click(screen.getByText('+ Add Another Book'))
     fireEvent.change(screen.getByPlaceholderText('Title in series'), { target: { value: 'Chamber of Secrets' } })
@@ -108,7 +116,7 @@ describe('PostForm — bundle toggle', () => {
   })
 
   it('clears bundle data when the toggle is turned back off', () => {
-    render(<PostForm action={vi.fn()} />)
+    render(<PostForm action={vi.fn()} search={noopSearch} />)
     fireEvent.click(screen.getByText('📚 List as a Bundle / Series'))
     fireEvent.click(screen.getByText('+ Add Another Book'))
     fireEvent.click(screen.getByText('📚 List as a Bundle / Series'))
@@ -119,7 +127,7 @@ describe('PostForm — bundle toggle', () => {
   })
 
   it('hides Add Another Book once 20 additional books are added', () => {
-    render(<PostForm action={vi.fn()} />)
+    render(<PostForm action={vi.fn()} search={noopSearch} />)
     fireEvent.click(screen.getByText('📚 List as a Bundle / Series'))
     for (let i = 0; i < 20; i++) {
       fireEvent.click(screen.getByText('+ Add Another Book'))
@@ -129,12 +137,12 @@ describe('PostForm — bundle toggle', () => {
   })
 
   it('shows 1 credit in the preview line when the bundle toggle is off', () => {
-    render(<PostForm action={vi.fn()} />)
+    render(<PostForm action={vi.fn()} search={noopSearch} />)
     expect(screen.getByText('1 credit')).toBeInTheDocument()
   })
 
   it('shows the bundle total in the preview line while composing a bundle', () => {
-    render(<PostForm action={vi.fn()} />)
+    render(<PostForm action={vi.fn()} search={noopSearch} />)
     fireEvent.click(screen.getByText('📚 List as a Bundle / Series'))
     expect(screen.getByText('1 credit')).toBeInTheDocument()
 
@@ -148,6 +156,7 @@ describe('PostForm — bundle toggle', () => {
     render(
       <PostForm
         action={vi.fn()}
+        search={noopSearch}
         initialValues={{
           title: 'Sorcerer\'s Stone', author: 'J.K. Rowling', condition: 'Good', genre: 'Fiction', format: 'Paperback',
           description: null, pickup_description: null, photo_url: null, photo_url_2: null, photo_url_3: null,
