@@ -1280,3 +1280,12 @@ alter table tbr_entries drop constraint if exists tbr_entries_state_format;
 alter table tbr_entries add constraint tbr_entries_state_format
   check (state = '' or state ~ '^[A-Z]{2}$');
 -- ──────────────────────────────────────────────────────────────────────────────
+
+-- ── Migration: Open Library book metadata ───────────────────────────────────────
+ALTER TABLE listings      ADD COLUMN IF NOT EXISTS ol_work_key text;
+ALTER TABLE listings      ADD COLUMN IF NOT EXISTS cover_url text;
+ALTER TABLE listing_books ADD COLUMN IF NOT EXISTS ol_work_key text;
+ALTER TABLE listing_books ADD COLUMN IF NOT EXISTS cover_url text;
+ALTER TABLE tbr_entries   ADD COLUMN IF NOT EXISTS ol_work_key text;
+ALTER TABLE tbr_entries   ADD COLUMN IF NOT EXISTS cover_url text;
+-- ──────────────────────────────────────────────────────────────────────────────
