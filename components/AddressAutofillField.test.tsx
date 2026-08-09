@@ -37,6 +37,10 @@ const inputStyle = {}
 const labelStyle = {}
 
 describe('AddressAutofillField', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
   it('renders plain editable fields seeded with the given defaults', () => {
     render(
       <AddressAutofillField
@@ -55,6 +59,7 @@ describe('AddressAutofillField', () => {
   })
 
   it('preserves previously-saved coordinates in hidden fields until a new suggestion is picked', () => {
+    vi.stubEnv('NEXT_PUBLIC_MAPBOX_TOKEN', 'pk.test')
     const { container } = render(
       <AddressAutofillField
         defaultLat={41.5}
@@ -69,6 +74,7 @@ describe('AddressAutofillField', () => {
   })
 
   it('picking a suggestion fills city, state, zip, and hidden lat/lng', () => {
+    vi.stubEnv('NEXT_PUBLIC_MAPBOX_TOKEN', 'pk.test')
     const { container } = render(
       <AddressAutofillField
         inputClassName={inputClassName}
@@ -83,5 +89,22 @@ describe('AddressAutofillField', () => {
     expect(screen.getByPlaceholderText('e.g. 60614')).toHaveValue('60614')
     expect(container.querySelector('input[name="lat"]')).toHaveValue('41.9')
     expect(container.querySelector('input[name="lng"]')).toHaveValue('-87.6')
+  })
+
+  it('renders plain input without Mapbox wrapper when no token is available', () => {
+    vi.stubEnv('NEXT_PUBLIC_MAPBOX_TOKEN', '')
+    render(
+      <AddressAutofillField
+        inputClassName={inputClassName}
+        inputStyle={inputStyle}
+        labelStyle={labelStyle}
+      />
+    )
+    // The mocked AddressAutofill renders a "simulate retrieve" button only when token is present
+    expect(screen.queryByText('simulate retrieve')).not.toBeInTheDocument()
+    // But the plain input should still be present and typable
+    const addressInput = screen.getByPlaceholderText('e.g. 123 Main St') as HTMLInputElement
+    expect(addressInput).toBeInTheDocument()
+    expect(addressInput.value).toBe('')
   })
 })

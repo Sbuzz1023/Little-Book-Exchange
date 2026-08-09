@@ -33,8 +33,6 @@ type Props = {
   requiredMark?: React.ReactNode
 }
 
-const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || ''
-
 export default function AddressAutofillField({
   defaultAddress = '',
   defaultCity = '',
@@ -47,6 +45,7 @@ export default function AddressAutofillField({
   labelStyle,
   requiredMark,
 }: Props) {
+  const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || ''
   const [city, setCity] = useState(defaultCity)
   const [state, setState] = useState(defaultState)
   const [zip, setZip] = useState(defaultZip)
