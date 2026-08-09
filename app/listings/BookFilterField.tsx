@@ -8,11 +8,12 @@ type Props = {
   defaultValue: string
   style: React.CSSProperties
   search?: (query: string) => Promise<BookSuggestion[]>
+  defaultOlWorkKey?: string
 }
 
-export default function BookFilterField({ defaultValue, style, search }: Props) {
+export default function BookFilterField({ defaultValue, style, search, defaultOlWorkKey }: Props) {
   const [title, setTitle] = useState(defaultValue)
-  const [olWorkKey, setOlWorkKey] = useState('')
+  const [olWorkKey, setOlWorkKey] = useState(defaultOlWorkKey ?? '')
 
   return (
     <>

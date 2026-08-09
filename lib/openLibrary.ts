@@ -16,6 +16,12 @@ export type OpenLibraryDoc = {
   key?: string
 }
 
+const COVER_URL_PATTERN = /^https:\/\/covers\.openlibrary\.org\/b\/id\/\d+-[SML]\.jpg$/
+
+export function isValidCoverUrl(url: string): boolean {
+  return COVER_URL_PATTERN.test(url)
+}
+
 export function normalizeSearchResults(docs: OpenLibraryDoc[]): BookSuggestion[] {
   return docs
     .filter((d): d is OpenLibraryDoc & { title: string; key: string } => !!d.title && !!d.key)

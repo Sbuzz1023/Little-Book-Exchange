@@ -1288,4 +1288,7 @@ ALTER TABLE listing_books ADD COLUMN IF NOT EXISTS ol_work_key text;
 ALTER TABLE listing_books ADD COLUMN IF NOT EXISTS cover_url text;
 ALTER TABLE tbr_entries   ADD COLUMN IF NOT EXISTS ol_work_key text;
 ALTER TABLE tbr_entries   ADD COLUMN IF NOT EXISTS cover_url text;
+
+CREATE INDEX IF NOT EXISTS listings_ol_work_key_idx ON listings(ol_work_key);
+CREATE INDEX IF NOT EXISTS listing_books_ol_work_key_idx ON listing_books(ol_work_key);
 -- ──────────────────────────────────────────────────────────────────────────────

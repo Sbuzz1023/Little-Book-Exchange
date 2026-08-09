@@ -374,6 +374,8 @@ export default async function ListingDetailPage({ params, searchParams }: { para
                 <form action={addTbrEntry}>
                   <input type="hidden" name="title" value={listing.title} />
                   <input type="hidden" name="author" value={listing.author} />
+                  <input type="hidden" name="ol_work_key" value={listing.ol_work_key ?? ''} />
+                  <input type="hidden" name="cover_url" value={listing.cover_url ?? ''} />
                   <input type="hidden" name="redirect_to" value="/profile?tab=tbr" />
                   <button
                     type="submit"

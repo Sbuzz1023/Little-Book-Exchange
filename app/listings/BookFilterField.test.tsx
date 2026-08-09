@@ -25,6 +25,13 @@ describe('BookFilterField', () => {
     expect(container.querySelector('input[name="ol_work_key"]')).toHaveValue('')
   })
 
+  it('pre-fills the hidden ol_work_key field when defaultOlWorkKey is passed', () => {
+    const { container } = render(
+      <BookFilterField defaultValue="Dune" style={{}} search={noopSearch} defaultOlWorkKey="/works/OL893415W" />
+    )
+    expect(container.querySelector('input[name="ol_work_key"]')).toHaveValue('/works/OL893415W')
+  })
+
   it('selecting a suggestion fills the hidden ol_work_key field', async () => {
     const search = vi.fn().mockResolvedValue([DUNE])
     const { container } = render(<BookFilterField defaultValue="" style={{}} search={search} />)

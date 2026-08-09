@@ -3,7 +3,7 @@
 import { normalizeSearchResults, type BookSuggestion } from '@/lib/openLibrary'
 
 export async function searchBooks(query: string): Promise<BookSuggestion[]> {
-  const trimmed = query.trim()
+  const trimmed = query.trim().slice(0, 100)
   if (trimmed.length < 2) return []
 
   const contact = process.env.OPEN_LIBRARY_CONTACT_EMAIL || 'contact@example.com'

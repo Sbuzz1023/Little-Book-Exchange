@@ -249,7 +249,7 @@ export default async function ListingsPage({
           <span className="block mb-2.5" style={{ fontSize: 11, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.8px', color: '#aaa' }}>
             Search Title
           </span>
-          <BookFilterField defaultValue={title} style={filterInputStyle} />
+          <BookFilterField defaultValue={title} style={filterInputStyle} defaultOlWorkKey={olWorkKey} />
         </div>
 
         <div style={{ marginBottom: 22 }}>
@@ -510,6 +510,8 @@ export default async function ListingsPage({
                       <form action={addTbrEntry} className="mt-2">
                         <input type="hidden" name="title" value={l.title} />
                         <input type="hidden" name="author" value={l.author} />
+                        <input type="hidden" name="ol_work_key" value={l.ol_work_key ?? ''} />
+                        <input type="hidden" name="cover_url" value={l.cover_url ?? ''} />
                         <input type="hidden" name="redirect_to" value="/profile?tab=tbr" />
                         <button
                           type="submit"

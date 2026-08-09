@@ -111,6 +111,7 @@ export default async function ProfilePage({
             .eq('status', 'active')
             .neq('user_id', user.id)
             .eq('ol_work_key', strategy.workKey)
+          if (entry.city) directQuery = directQuery.regexIMatch('city', tbrMatchPattern(entry.city))
           if (entry.state) directQuery = directQuery.eq('profiles.state', entry.state)
           const { data: direct } = await directQuery.limit(1).maybeSingle()
           if (direct) return { ...entry, match: { id: direct.id, title: direct.title } }
@@ -127,6 +128,7 @@ export default async function ProfilePage({
             .in('id', bundleListingIds)
             .eq('status', 'active')
             .neq('user_id', user.id)
+          if (entry.city) bundleQuery = bundleQuery.regexIMatch('city', tbrMatchPattern(entry.city))
           if (entry.state) bundleQuery = bundleQuery.eq('profiles.state', entry.state)
           const { data: bundleMatch } = await bundleQuery.limit(1).maybeSingle()
           return { ...entry, match: bundleMatch ? { id: bundleMatch.id, title: bundleMatch.title } : null }

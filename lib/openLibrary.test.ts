@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { normalizeSearchResults } from './openLibrary'
+import { normalizeSearchResults, isValidCoverUrl } from './openLibrary'
 
 describe('normalizeSearchResults', () => {
   it('maps a full Open Library doc to a BookSuggestion', () => {
@@ -53,5 +53,25 @@ describe('normalizeSearchResults', () => {
       { title: 'Dune Messiah', key: '/works/OL2W' },
     ])
     expect(result.map(r => r.title)).toEqual(['Dune', 'Dune Messiah'])
+  })
+})
+
+describe('isValidCoverUrl', () => {
+  it('accepts a real Open Library cover URL', () => {
+    expect(isValidCoverUrl('https://covers.openlibrary.org/b/id/12345-M.jpg')).toBe(true)
+    expect(isValidCoverUrl('https://covers.openlibrary.org/b/id/1-S.jpg')).toBe(true)
+    expect(isValidCoverUrl('https://covers.openlibrary.org/b/id/999999-L.jpg')).toBe(true)
+  })
+
+  it('rejects a URL on a different host', () => {
+    expect(isValidCoverUrl('https://evil.example.com/b/id/12345-M.jpg')).toBe(false)
+  })
+
+  it('rejects a URL with a different path shape', () => {
+    expect(isValidCoverUrl('https://covers.openlibrary.org/b/isbn/9780441013593-M.jpg')).toBe(false)
+  })
+
+  it('rejects a non-URL string', () => {
+    expect(isValidCoverUrl('not a url')).toBe(false)
   })
 })
