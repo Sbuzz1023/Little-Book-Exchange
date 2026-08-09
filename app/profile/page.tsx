@@ -8,7 +8,7 @@ import { submitReview } from '@/lib/actions/reviews'
 import { averageRating } from '@/lib/reviewAverages'
 import { removeSavedListing } from '@/lib/actions/savedListings'
 import { addTbrEntry, removeTbrEntry } from '@/lib/actions/tbrEntries'
-import { tbrMatchPattern, isTooGenericToMatch } from '@/lib/tbrMatch'
+import { tbrMatchPattern, buildTbrMatchStrategy } from '@/lib/tbrMatch'
 import { unreadCounts as computeUnreadCounts, unreadEntityIds as computeUnreadEntityIds, type NotificationRow } from '@/lib/notifications'
 import { resendEmailConfirmation, sendPhoneOtp, verifyPhoneOtp } from '@/lib/actions/verification'
 
@@ -101,13 +101,40 @@ export default async function ProfilePage({
       const { data: tbr } = await supabase
         .from('tbr_entries').select('*').eq('user_id', user.id).order('created_at', { ascending: false })
       tbrEntries = await Promise.all((tbr ?? []).map(async (entry: any) => {
-        const titleUsable = !!entry.title && !isTooGenericToMatch(entry.title)
-        const authorUsable = !!entry.author && !isTooGenericToMatch(entry.author)
-        // A generic word (e.g. "the") is treated the same as a blank field — it's
-        // never enough on its own to justify a match. If nothing usable is left
-        // to search on, skip the query rather than run one with no real filters,
-        // which would return an arbitrary "match" for every other active listing.
-        if (!titleUsable && !authorUsable && !entry.city) {
+        const strategy = buildTbrMatchStrategy(entry)
+        if (strategy.mode === 'none') return { ...entry, match: null }
+
+        if (strategy.mode === 'exact') {
+          // Standalone listings for this exact book.
+          let directQuery = supabase
+            .from('listings')
+            .select('id, title, city, profiles!inner(state)')
+            .eq('status', 'active')
+            .neq('user_id', user.id)
+            .eq('ol_work_key', strategy.workKey)
+          if (entry.state) directQuery = directQuery.eq('profiles.state', entry.state)
+          const { data: direct } = await directQuery.limit(1).maybeSingle()
+          if (direct) return { ...entry, match: { id: direct.id, title: direct.title } }
+
+          // Bundles containing this exact book, via listing_books.
+          const { data: bundleRows } = await supabase
+            .from('listing_books').select('listing_id').eq('ol_work_key', strategy.workKey)
+          const bundleListingIds = [...new Set((bundleRows ?? []).map((r: any) => r.listing_id))]
+          if (bundleListingIds.length === 0) return { ...entry, match: null }
+
+          let bundleQuery = supabase
+            .from('listings')
+            .select('id, title, city, profiles!inner(state)')
+            .in('id', bundleListingIds)
+            .eq('status', 'active')
+            .neq('user_id', user.id)
+          if (entry.state) bundleQuery = bundleQuery.eq('profiles.state', entry.state)
+          const { data: bundleMatch } = await bundleQuery.limit(1).maybeSingle()
+          return { ...entry, match: bundleMatch ? { id: bundleMatch.id, title: bundleMatch.title } : null }
+        }
+
+        // Fallback: today's whole-word text matching, unchanged, for entries with no resolved key.
+        if (strategy.titlePattern === null && strategy.authorPattern === null && !entry.city) {
           return { ...entry, match: null }
         }
         let query = supabase
@@ -115,10 +142,10 @@ export default async function ProfilePage({
           .select('id, title, author, city, profiles!inner(state)')
           .eq('status', 'active')
           .neq('user_id', user.id)
-        if (titleUsable)  query = query.regexIMatch('title', tbrMatchPattern(entry.title))
-        if (authorUsable) query = query.regexIMatch('author', tbrMatchPattern(entry.author))
-        if (entry.city)   query = query.regexIMatch('city', tbrMatchPattern(entry.city))
-        if (entry.state)  query = query.eq('profiles.state', entry.state)
+        if (strategy.titlePattern)  query = query.regexIMatch('title', strategy.titlePattern)
+        if (strategy.authorPattern) query = query.regexIMatch('author', strategy.authorPattern)
+        if (entry.city)  query = query.regexIMatch('city', tbrMatchPattern(entry.city))
+        if (entry.state) query = query.eq('profiles.state', entry.state)
         const { data: match } = await query.limit(1).maybeSingle()
         return { ...entry, match: match ? { id: match.id, title: match.title } : null }
       }))
