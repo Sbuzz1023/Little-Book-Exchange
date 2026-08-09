@@ -10,7 +10,7 @@ const DUNE: BookSuggestion = {
 
 describe('TbrAddForm', () => {
   it('renders empty Title/Author/City fields and hidden Open Library fields', () => {
-    const { container } = render(<TbrAddForm addTbrEntry={vi.fn()} />)
+    const { container } = render(<TbrAddForm addTbrEntry={vi.fn()} search={vi.fn()} />)
     expect(screen.getByPlaceholderText('Book title...')).toHaveValue('')
     expect(screen.getByPlaceholderText('Author (optional)...')).toHaveValue('')
     expect(container.querySelector('input[name="ol_work_key"]')).toHaveValue('')
