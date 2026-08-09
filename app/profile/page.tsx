@@ -102,7 +102,6 @@ export default async function ProfilePage({
         .from('tbr_entries').select('*').eq('user_id', user.id).order('created_at', { ascending: false })
       tbrEntries = await Promise.all((tbr ?? []).map(async (entry: any) => {
         const strategy = buildTbrMatchStrategy(entry)
-        if (strategy.mode === 'none') return { ...entry, match: null }
 
         if (strategy.mode === 'exact') {
           // Standalone listings for this exact book.
@@ -133,8 +132,10 @@ export default async function ProfilePage({
           return { ...entry, match: bundleMatch ? { id: bundleMatch.id, title: bundleMatch.title } : null }
         }
 
-        // Fallback: today's whole-word text matching, unchanged, for entries with no resolved key.
-        if (strategy.titlePattern === null && strategy.authorPattern === null && !entry.city) {
+        // Text fallback (mode 'text') or no usable title/author (mode 'none') — either way,
+        // still worth a city-only query when entry.city is set, matching the original
+        // pre-existing skip condition (title AND author AND city all unusable → skip).
+        if (strategy.mode === 'none' && !entry.city) {
           return { ...entry, match: null }
         }
         let query = supabase
@@ -142,8 +143,8 @@ export default async function ProfilePage({
           .select('id, title, author, city, profiles!inner(state)')
           .eq('status', 'active')
           .neq('user_id', user.id)
-        if (strategy.titlePattern)  query = query.regexIMatch('title', strategy.titlePattern)
-        if (strategy.authorPattern) query = query.regexIMatch('author', strategy.authorPattern)
+        if (strategy.mode === 'text' && strategy.titlePattern)  query = query.regexIMatch('title', strategy.titlePattern)
+        if (strategy.mode === 'text' && strategy.authorPattern) query = query.regexIMatch('author', strategy.authorPattern)
         if (entry.city)  query = query.regexIMatch('city', tbrMatchPattern(entry.city))
         if (entry.state) query = query.eq('profiles.state', entry.state)
         const { data: match } = await query.limit(1).maybeSingle()
