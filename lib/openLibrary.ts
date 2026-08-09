@@ -1,3 +1,5 @@
+import { tbrMatchPattern } from './tbrMatch'
+
 export type BookSuggestion = {
   title: string
   author: string
@@ -42,9 +44,9 @@ const GENRE_KEYWORDS: [string, string[]][] = [
 ]
 
 export function mapSubjectsToGenre(subjects: string[]): string | null {
-  const joined = subjects.join(' | ').toLowerCase()
+  const joined = subjects.join(' | ')
   for (const [genre, keywords] of GENRE_KEYWORDS) {
-    if (keywords.some(kw => joined.includes(kw))) return genre
+    if (keywords.some(kw => new RegExp(tbrMatchPattern(kw), 'i').test(joined))) return genre
   }
   return null
 }
