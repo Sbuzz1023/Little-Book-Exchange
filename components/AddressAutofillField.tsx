@@ -3,19 +3,26 @@
 import { useState } from 'react'
 import { AddressAutofill } from '@mapbox/search-js-react'
 import StateSelect from '@/components/StateSelect'
+import { resolveStateCode } from '@/lib/usStates'
 
-// Mapbox's Address Autofill onRetrieve payload is a GeoJSON FeatureCollection.
-// Only the fields this component reads are typed here — see
-// https://docs.mapbox.com/api/search/geocoding/ for the full response shape.
+// Mapbox's Address Autofill `retrieve()` payload is a GeoJSON FeatureCollection
+// of AddressAutofillFeatureSuggestion (see @mapbox/search-js-core's
+// dist/autofill/types.d.ts) — a flat, WHATWG-Autocomplete-shaped `properties`
+// object, not the nested `context.*` shape the standalone Geocoding/Search
+// Box APIs use. Only the fields this component reads are typed here.
+//
+// Coordinates are deliberately NOT read here: AddressAutofillCore.retrieve()'s
+// own JSDoc states its coordinates "should be used ephemerally and not
+// persisted" per the Mapbox Terms of Service — a different license than the
+// address text fields below, which Autofill is explicitly built to let you
+// store. See the design spec's Addendum for what a compliant coordinate
+// source would require.
 type AddressAutofillRetrieveResponse = {
   features: {
     properties?: {
-      context?: {
-        place?: { name?: string }
-        region?: { region_code?: string }
-        postcode?: { name?: string }
-      }
-      coordinates?: { latitude?: number; longitude?: number }
+      address_level2?: string // city
+      address_level1?: string // state — may be a full name or a code; resolved via resolveStateCode
+      postcode?: string
     }
   }[]
 }
@@ -25,8 +32,6 @@ type Props = {
   defaultCity?: string
   defaultState?: string
   defaultZip?: string
-  defaultLat?: number | null
-  defaultLng?: number | null
   inputClassName: string
   inputStyle: React.CSSProperties
   labelStyle: React.CSSProperties
@@ -38,8 +43,6 @@ export default function AddressAutofillField({
   defaultCity = '',
   defaultState = '',
   defaultZip = '',
-  defaultLat = null,
-  defaultLng = null,
   inputClassName,
   inputStyle,
   labelStyle,
@@ -49,23 +52,15 @@ export default function AddressAutofillField({
   const [city, setCity] = useState(defaultCity)
   const [state, setState] = useState(defaultState)
   const [zip, setZip] = useState(defaultZip)
-  // Round-trip previously-saved coordinates as hidden fields so an unrelated
-  // profile edit (one that doesn't touch the address) doesn't wipe them.
-  // They're only replaced when the user picks a new suggestion below — a
-  // manual text edit to the street address leaves them as whatever was last
-  // picked, a deliberate, low-stakes trade-off (see the design spec's "Out
-  // of scope").
-  const [lat, setLat] = useState(defaultLat != null ? String(defaultLat) : '')
-  const [lng, setLng] = useState(defaultLng != null ? String(defaultLng) : '')
 
   function handleRetrieve(res: AddressAutofillRetrieveResponse) {
-    const context = res.features?.[0]?.properties?.context
-    if (context?.place?.name) setCity(context.place.name)
-    if (context?.region?.region_code) setState(context.region.region_code)
-    if (context?.postcode?.name) setZip(context.postcode.name)
-    const coords = res.features?.[0]?.properties?.coordinates
-    if (typeof coords?.latitude === 'number') setLat(String(coords.latitude))
-    if (typeof coords?.longitude === 'number') setLng(String(coords.longitude))
+    const props = res.features?.[0]?.properties
+    if (props?.address_level2) setCity(props.address_level2)
+    if (props?.address_level1) {
+      const code = resolveStateCode(props.address_level1)
+      if (code) setState(code)
+    }
+    if (props?.postcode) setZip(props.postcode)
   }
 
   const addressInput = (
@@ -82,9 +77,6 @@ export default function AddressAutofillField({
 
   return (
     <>
-      <input type="hidden" name="lat" value={lat} />
-      <input type="hidden" name="lng" value={lng} />
-
       <div>
         <label className="block mb-1.5" style={labelStyle}>Street Address</label>
         {MAPBOX_TOKEN ? (

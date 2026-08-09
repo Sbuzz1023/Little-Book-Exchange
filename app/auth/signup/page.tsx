@@ -33,8 +33,6 @@ export default function SignUpPage({
             pickup_description: (formData.get('pickup_description') as string) || '',
             share_pickup:       formData.get('share_pickup') === 'true',
             zip:                (formData.get('zip') as string) || '',
-            lat:                formData.get('lat') ? parseFloat(formData.get('lat') as string) : undefined,
-            lng:                formData.get('lng') ? parseFloat(formData.get('lng') as string) : undefined,
           },
         },
       })

@@ -1,5 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react'
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
 import AddressAutofillField from './AddressAutofillField'
 
 // Stub out Mapbox's real <AddressAutofill> (a web component wrapper that
@@ -17,16 +17,19 @@ vi.mock('@mapbox/search-js-react', () => ({
   ),
 }))
 
+// Matches the real (flat, WHATWG-shaped) AddressAutofillFeatureSuggestion
+// properties object from @mapbox/search-js-core — not the nested Geocoding/
+// Search Box API shape used elsewhere on this branch's /locations page.
+// address_level1 deliberately uses a full name here (not "IL") to exercise
+// resolveStateCode's name-to-code resolution, since real Autofill results
+// can return either form.
 const SAMPLE_RETRIEVE_RESPONSE = {
   features: [
     {
       properties: {
-        context: {
-          place: { name: 'Chicago' },
-          region: { region_code: 'IL' },
-          postcode: { name: '60614' },
-        },
-        coordinates: { latitude: 41.9, longitude: -87.6 },
+        address_level2: 'Chicago',
+        address_level1: 'Illinois',
+        postcode: '60614',
       },
     },
   ],
@@ -58,22 +61,7 @@ describe('AddressAutofillField', () => {
     expect(screen.getByPlaceholderText('e.g. 60614')).toHaveValue('62704')
   })
 
-  it('preserves previously-saved coordinates in hidden fields until a new suggestion is picked', () => {
-    vi.stubEnv('NEXT_PUBLIC_MAPBOX_TOKEN', 'pk.test')
-    const { container } = render(
-      <AddressAutofillField
-        defaultLat={41.5}
-        defaultLng={-88.1}
-        inputClassName={inputClassName}
-        inputStyle={inputStyle}
-        labelStyle={labelStyle}
-      />
-    )
-    expect(container.querySelector('input[name="lat"]')).toHaveValue('41.5')
-    expect(container.querySelector('input[name="lng"]')).toHaveValue('-88.1')
-  })
-
-  it('picking a suggestion fills city, state, zip, and hidden lat/lng', () => {
+  it('picking a suggestion fills city, state (resolved from a full name to its code), and zip', () => {
     vi.stubEnv('NEXT_PUBLIC_MAPBOX_TOKEN', 'pk.test')
     const { container } = render(
       <AddressAutofillField
@@ -87,8 +75,6 @@ describe('AddressAutofillField', () => {
     expect(screen.getByPlaceholderText('e.g. Chicago')).toHaveValue('Chicago')
     expect(container.querySelector('select[name="state"]')).toHaveValue('IL')
     expect(screen.getByPlaceholderText('e.g. 60614')).toHaveValue('60614')
-    expect(container.querySelector('input[name="lat"]')).toHaveValue('41.9')
-    expect(container.querySelector('input[name="lng"]')).toHaveValue('-87.6')
   })
 
   it('renders plain input without Mapbox wrapper when no token is available', () => {

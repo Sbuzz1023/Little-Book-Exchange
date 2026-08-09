@@ -16,8 +16,6 @@ type Props = {
     address?: string | null
     address_unit?: string | null
     zip?: string | null
-    lat?: number | null
-    lng?: number | null
     share_address?: boolean | null
     pickup_description?: string | null
     share_pickup?: boolean | null
@@ -116,8 +114,6 @@ export default function ProfileCard({ profile, updateAction, success }: Props) {
                   defaultCity={profile?.city ?? ''}
                   defaultState={profile?.state ?? ''}
                   defaultZip={profile?.zip ?? ''}
-                  defaultLat={profile?.lat ?? null}
-                  defaultLng={profile?.lng ?? null}
                   inputClassName={inputClass}
                   inputStyle={{ padding: '12px 16px' }}
                   labelStyle={{ fontSize: 12, fontWeight: 900, color: '#888', textTransform: 'uppercase', letterSpacing: '0.5px' }}

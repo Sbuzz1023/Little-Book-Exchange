@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { US_STATES, isValidStateCode } from './usStates'
+import { US_STATES, isValidStateCode, resolveStateCode } from './usStates'
 
 describe('US_STATES', () => {
   it('has 50 states plus the District of Columbia', () => {
@@ -59,5 +59,37 @@ describe('isValidStateCode', () => {
 
   it('returns false for undefined', () => {
     expect(isValidStateCode(undefined)).toBe(false)
+  })
+})
+
+describe('resolveStateCode', () => {
+  it('returns the code unchanged when given a valid code', () => {
+    expect(resolveStateCode('IL')).toBe('IL')
+  })
+
+  it('resolves a full state name to its code', () => {
+    expect(resolveStateCode('Illinois')).toBe('IL')
+  })
+
+  it('resolves a full state name case-insensitively', () => {
+    expect(resolveStateCode('illinois')).toBe('IL')
+  })
+
+  it('resolves District of Columbia to DC', () => {
+    expect(resolveStateCode('District of Columbia')).toBe('DC')
+  })
+
+  it('returns empty string for an unrecognized value', () => {
+    expect(resolveStateCode('Nowhere')).toBe('')
+  })
+
+  it('returns empty string for a two-letter code that is not a real state', () => {
+    expect(resolveStateCode('ZZ')).toBe('')
+  })
+
+  it('returns empty string for empty/null/undefined input', () => {
+    expect(resolveStateCode('')).toBe('')
+    expect(resolveStateCode(null)).toBe('')
+    expect(resolveStateCode(undefined)).toBe('')
   })
 })
