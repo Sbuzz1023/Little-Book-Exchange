@@ -5,7 +5,7 @@ import type { BookSuggestion } from '@/lib/openLibrary'
 
 const DUNE: BookSuggestion = {
   title: 'Dune', author: 'Frank Herbert', year: 1965, isbn: null,
-  coverUrl: 'https://covers.openlibrary.org/b/id/12345-M.jpg', workKey: '/works/OL893415W',
+  coverUrl: 'https://covers.openlibrary.org/b/id/12345-M.jpg', workKey: '/works/OL893415W', genre: null,
 }
 
 describe('BookSearchInput', () => {

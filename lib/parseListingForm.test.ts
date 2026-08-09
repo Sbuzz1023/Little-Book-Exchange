@@ -128,6 +128,16 @@ describe('parseListingForm — Open Library fields', () => {
     expect(result.ol_work_key).toBeNull()
     expect(result.cover_url).toBeNull()
   })
+
+  it('parses isbn when present', () => {
+    const fd = makeFormData({ title: 'Dune', author: 'Frank Herbert', condition: 'Good', price: '1', isbn: '9780441013593' })
+    expect(parseListingForm(fd).isbn).toBe('9780441013593')
+  })
+
+  it('defaults isbn to null when absent or blank', () => {
+    const fd = makeFormData({ title: 'Dune', author: 'Frank Herbert', condition: 'Good', price: '1' })
+    expect(parseListingForm(fd).isbn).toBeNull()
+  })
 })
 
 describe('parseBundleBooks — Open Library fields', () => {
