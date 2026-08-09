@@ -35,10 +35,10 @@ const GENRE_KEYWORDS: [string, string[]][] = [
   ['Biography', ['biography', 'autobiography']],
   ['Self-Help', ['self-help', 'self help', 'personal growth']],
   ['Cooking', ['cooking', 'cookery', 'cookbooks']],
-  ['Art', ['art', 'design', 'photography']],
-  ['History', ['history', 'historical']],
   ['Non-Fiction', ['non-fiction', 'nonfiction']],
   ['Fiction', ['fiction']],
+  ['History', ['history', 'historical']],
+  ['Art', ['art', 'design', 'photography']],
 ]
 
 export function mapSubjectsToGenre(subjects: string[]): string | null {

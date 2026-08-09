@@ -139,4 +139,12 @@ describe('mapSubjectsToGenre', () => {
   it('is case-insensitive', () => {
     expect(mapSubjectsToGenre(['SCIENCE FICTION'])).toBe('Sci-Fi')
   })
+
+  it('resolves "historical fiction" to Fiction, not History (regression: History used to be checked before Fiction)', () => {
+    expect(mapSubjectsToGenre(['Fiction', 'Historical fiction', 'Novel'])).toBe('Fiction')
+  })
+
+  it('resolves explicit Nonfiction tagging correctly even when "art" appears as a substring elsewhere (regression: "Earth sciences" was matching the Art keyword)', () => {
+    expect(mapSubjectsToGenre(['Earth sciences', 'Nonfiction', 'Geology'])).toBe('Non-Fiction')
+  })
 })
