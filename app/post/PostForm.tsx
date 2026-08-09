@@ -515,7 +515,7 @@ export default function PostForm({ city, action, error, initialValues, submitLab
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 4 }}>
           <div>
             <FieldLabel optional>ISBN</FieldLabel>
-            <input name="isbn" type="text" value={isbn} onChange={e => setIsbn(e.target.value)} placeholder="978-..." style={inputStyle} />
+            <input name="isbn" type="text" value={isbn} onChange={e => setIsbn(e.target.value)} placeholder="978-..." maxLength={20} style={inputStyle} />
           </div>
           <div>
             <FieldLabel optional>Language</FieldLabel>

@@ -208,7 +208,7 @@ describe('PostForm — Open Library integration', () => {
     expect(container.querySelector('input[name="cover_url"]')).toHaveValue('')
   })
 
-  it('pre-fills ol_work_key/cover_url from initialValues (edit mode)', () => {
+  it('pre-fills ol_work_key/cover_url/isbn from initialValues (edit mode)', () => {
     const { container } = render(
       <PostForm
         action={vi.fn()}
@@ -217,11 +217,13 @@ describe('PostForm — Open Library integration', () => {
           title: 'Dune', author: 'Frank Herbert', condition: 'Good', genre: 'Fiction', format: 'Paperback',
           description: null, pickup_description: null, photo_url: null, photo_url_2: null, photo_url_3: null,
           ol_work_key: '/works/OL893415W', cover_url: 'https://covers.openlibrary.org/b/id/12345-M.jpg',
+          isbn: '9780441013593',
         }}
       />
     )
     expect(container.querySelector('input[name="ol_work_key"]')).toHaveValue('/works/OL893415W')
     expect(screen.getByAltText('Cover preview')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('978-...')).toHaveValue('9780441013593')
   })
 
   it('selecting a suggestion with a mapped genre pre-selects that Genre button', async () => {

@@ -276,7 +276,7 @@ export default async function ListingDetailPage({ params, searchParams }: { para
             )}
             {listing.isbn && (
               <span
-                className="text-[13px] font-extrabold"
+                className="text-[13px] font-extrabold break-words"
                 style={{ padding: '8px 16px', borderRadius: 12, background: '#f3f4f6', color: '#555' }}
               >
                 ISBN {listing.isbn}
