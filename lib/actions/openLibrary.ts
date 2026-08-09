@@ -7,7 +7,7 @@ export async function searchBooks(query: string): Promise<BookSuggestion[]> {
   if (trimmed.length < 2) return []
 
   const contact = process.env.OPEN_LIBRARY_CONTACT_EMAIL || 'contact@example.com'
-  const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(trimmed)}&fields=title,author_name,first_publish_year,isbn,cover_i,key&limit=8`
+  const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(trimmed)}&fields=title,author_name,first_publish_year,isbn,cover_i,key,subject&limit=8`
 
   try {
     const res = await fetch(url, {
