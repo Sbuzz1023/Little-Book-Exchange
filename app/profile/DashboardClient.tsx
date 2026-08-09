@@ -7,8 +7,8 @@ import Image from 'next/image'
 import ProfileCard from './ProfileCard'
 import MessagesTab from './MessagesTab'
 import HistorySection, { type HistoryExchange } from './HistorySection'
+import TbrAddForm from './TbrAddForm'
 import { createClient } from '@/lib/supabase/client'
-import StateSelect from '@/components/StateSelect'
 
 type Tab = 'listings' | 'exchanges' | 'tbr' | 'saved' | 'wallet' | 'account' | 'messages'
 
@@ -38,6 +38,8 @@ type TbrEntry = {
   author: string
   city: string
   state: string
+  ol_work_key?: string | null
+  cover_url?: string | null
   match: { id: string; title: string } | null
 }
 
@@ -626,24 +628,7 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
             </div>
           )}
 
-          <form action={addTbrEntry} className="flex gap-2 mb-4 flex-wrap">
-            <input name="title" placeholder="Book title..."
-              className="flex-1 border-2 border-[#ddd6fe] rounded-[12px] font-bold text-[13px] bg-[#f5f3ff]"
-              style={{ padding: '9px 12px', minWidth: 120 }} />
-            <input name="author" placeholder="Author (optional)..."
-              className="flex-1 border-2 border-[#ddd6fe] rounded-[12px] font-bold text-[13px] bg-[#f5f3ff]"
-              style={{ padding: '9px 12px', minWidth: 120 }} />
-            <input name="city" placeholder="City (optional)..."
-              className="flex-1 border-2 border-[#ddd6fe] rounded-[12px] font-bold text-[13px] bg-[#f5f3ff]"
-              style={{ padding: '9px 12px', minWidth: 100 }} />
-            <StateSelect name="state" placeholder="Any state"
-              className="flex-1 border-2 border-[#ddd6fe] rounded-[12px] font-bold text-[13px] bg-[#f5f3ff]"
-              style={{ padding: '9px 12px', minWidth: 100 }} />
-            <button type="submit" className="text-white font-extrabold text-[13px]"
-              style={{ background: '#7c3aed', padding: '9px 18px', borderRadius: 12, border: 'none', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>
-              + Add
-            </button>
-          </form>
+          <TbrAddForm addTbrEntry={addTbrEntry} />
 
           {tbrEntries.length === 0 ? (
             <div className="text-center py-8 font-bold text-[14px]" style={{ color: '#aaa' }}>
