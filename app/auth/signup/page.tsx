@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import ContactToggle from './ContactToggle'
 import ShareToggle from '@/components/ShareToggle'
-import StateSelect from '@/components/StateSelect'
+import AddressAutofillField from '@/components/AddressAutofillField'
 import { isValidStateCode } from '@/lib/usStates'
 
 export default function SignUpPage({
@@ -32,6 +32,9 @@ export default function SignUpPage({
             share_address:      formData.get('share_address') === 'true',
             pickup_description: (formData.get('pickup_description') as string) || '',
             share_pickup:       formData.get('share_pickup') === 'true',
+            zip:                (formData.get('zip') as string) || '',
+            lat:                formData.get('lat') ? parseFloat(formData.get('lat') as string) : undefined,
+            lng:                formData.get('lng') ? parseFloat(formData.get('lng') as string) : undefined,
           },
         },
       })
@@ -82,26 +85,13 @@ export default function SignUpPage({
               className={inputClass} style={inputStyle} />
           </div>
 
-          {/* City */}
-          <div>
-            <label className="block mb-1.5" style={labelStyle}>City{req}</label>
-            <input name="city" type="text" placeholder="e.g. Chicago" required
-              className={inputClass} style={inputStyle} />
-          </div>
-
-          {/* State */}
-          <div>
-            <label className="block mb-1.5" style={labelStyle}>State{req}</label>
-            <StateSelect name="state" required placeholder="Select a state"
-              className={inputClass} style={inputStyle} />
-          </div>
-
-          {/* Street Address */}
-          <div>
-            <label className="block mb-1.5" style={labelStyle}>Street Address</label>
-            <input name="address" type="text" placeholder="e.g. 123 Main St"
-              className={inputClass} style={inputStyle} />
-          </div>
+          {/* Street Address / City / State / Zip — Mapbox autofill */}
+          <AddressAutofillField
+            inputClassName={inputClass}
+            inputStyle={inputStyle}
+            labelStyle={labelStyle}
+            requiredMark={req}
+          />
 
           {/* Apt / Unit */}
           <div>
