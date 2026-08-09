@@ -1344,3 +1344,7 @@ exception when others then
 end;
 $$ language plpgsql security definer set search_path = public, pg_temp;
 -- ──────────────────────────────────────────────────────────────────────────────
+
+-- ── Migration: listing ISBN ─────────────────────────────────────────────────────
+ALTER TABLE listings ADD COLUMN IF NOT EXISTS isbn text;
+-- ──────────────────────────────────────────────────────────────────────────────
