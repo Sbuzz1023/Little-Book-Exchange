@@ -203,7 +203,7 @@ describe('PostForm — Open Library integration', () => {
   })
 
   it('leaves ol_work_key/cover_url empty by default', () => {
-    const { container } = render(<PostForm action={vi.fn()} />)
+    const { container } = render(<PostForm action={vi.fn()} search={noopSearch} />)
     expect(container.querySelector('input[name="ol_work_key"]')).toHaveValue('')
     expect(container.querySelector('input[name="cover_url"]')).toHaveValue('')
   })
@@ -212,6 +212,7 @@ describe('PostForm — Open Library integration', () => {
     const { container } = render(
       <PostForm
         action={vi.fn()}
+        search={noopSearch}
         initialValues={{
           title: 'Dune', author: 'Frank Herbert', condition: 'Good', genre: 'Fiction', format: 'Paperback',
           description: null, pickup_description: null, photo_url: null, photo_url_2: null, photo_url_3: null,
