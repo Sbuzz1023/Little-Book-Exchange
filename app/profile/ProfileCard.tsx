@@ -106,7 +106,7 @@ export default function ProfileCard({ profile, updateAction, success }: Props) {
             {/* Address section */}
             <div style={{ borderTop: '2px dashed #fed7aa', paddingTop: 16, marginTop: 4 }}>
               <p style={{ fontSize: 11, fontWeight: 900, color: '#f97316', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 12 }}>
-                📍 Private Address
+                📍 Address
               </p>
               <div className="flex flex-col gap-4">
                 <AddressAutofillField

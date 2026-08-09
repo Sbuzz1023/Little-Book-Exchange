@@ -52,13 +52,17 @@ export default function AddressAutofillField({
   const [city, setCity] = useState(defaultCity)
   const [state, setState] = useState(defaultState)
   const [zip, setZip] = useState(defaultZip)
+  const [stateKey, setStateKey] = useState(0)
 
   function handleRetrieve(res: AddressAutofillRetrieveResponse) {
     const props = res.features?.[0]?.properties
     if (props?.address_level2) setCity(props.address_level2)
     if (props?.address_level1) {
       const code = resolveStateCode(props.address_level1)
-      if (code) setState(code)
+      if (code) {
+        setState(code)
+        setStateKey(k => k + 1)
+      }
     }
     if (props?.postcode) setZip(props.postcode)
   }
@@ -104,7 +108,7 @@ export default function AddressAutofillField({
       <div>
         <label className="block mb-1.5" style={labelStyle}>State{requiredMark}</label>
         <StateSelect
-          key={state}
+          key={stateKey}
           name="state"
           defaultValue={state}
           required

@@ -1354,13 +1354,16 @@ ALTER TABLE listings ADD COLUMN IF NOT EXISTS isbn text;
 -- Run this block in Supabase SQL Editor. Backs the Address Autofill feature on
 -- signup/profile edit — see
 -- docs/superpowers/specs/2026-08-09-mapbox-address-autofill-design.md.
--- lat/lng were originally added here too and have been removed: Mapbox
--- Address Autofill's retrieve() coordinates are licensed as ephemeral-only
--- (see the spec's Addendum) and cannot be persisted. This migration was
--- never run against a live database (the earlier version of this block was
--- always deferred to a manual step — see the plan's Task 1 Step 5), so this
--- edits the pending block directly rather than adding a follow-up
--- drop-column migration on top of it.
+--
+-- An earlier version of this block also added `lat`/`lng` columns (removed
+-- here — see the spec's Addendum: Mapbox Address Autofill's coordinates are
+-- licensed as ephemeral-only and cannot be persisted). If that earlier
+-- version was already run against your database, `lat`/`lng` are orphan
+-- columns nothing writes to anymore. Check first:
+--   select column_name from information_schema.columns
+--   where table_name = 'profiles' and column_name in ('zip','lat','lng');
+-- If `lat`/`lng` come back, drop them:
+--   alter table profiles drop column if exists lat, drop column if exists lng;
 ALTER TABLE profiles
   ADD COLUMN IF NOT EXISTS zip text NOT NULL DEFAULT '';
 -- ──────────────────────────────────────────────────────────────────────────────

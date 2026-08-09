@@ -45,6 +45,7 @@ describe('AddressAutofillField', () => {
   })
 
   it('renders plain editable fields seeded with the given defaults', () => {
+    vi.stubEnv('NEXT_PUBLIC_MAPBOX_TOKEN', '')
     render(
       <AddressAutofillField
         defaultAddress="123 Main St"
@@ -92,5 +93,8 @@ describe('AddressAutofillField', () => {
     const addressInput = screen.getByPlaceholderText('e.g. 123 Main St') as HTMLInputElement
     expect(addressInput).toBeInTheDocument()
     expect(addressInput.value).toBe('')
+
+    fireEvent.change(addressInput, { target: { value: '456 Oak Ave' } })
+    expect(addressInput.value).toBe('456 Oak Ave')
   })
 })

@@ -34,6 +34,12 @@ purpose. Every mention of `lat`/`lng` capture/storage below is historical:
 it describes what was originally designed and briefly implemented (Tasks
 1-4), then removed (Task 6) before this branch was merged.
 
+**§3's `context.*` field paths are also wrong, for an unrelated reason (not
+the ToS issue)** — the real fields are the flat
+`properties.address_level1`/`properties.address_level2`/`properties.postcode`,
+and `address_level1` may be a full state name, hence `resolveStateCode()`.
+See Task 6 in the implementation plan for the fix.
+
 ## Problem
 
 Signup and profile edit collect City, State, Street Address, and Apt/Unit as
