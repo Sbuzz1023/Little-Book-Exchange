@@ -638,8 +638,8 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
             <>
               {/* Desktop: table with column headers */}
               <div className="hidden md:block">
-                <div className="grid gap-3 px-1 pb-2" style={{ gridTemplateColumns: '2fr 1.5fr 1fr 70px 150px', borderBottom: '2px solid #f3f4f6' }}>
-                  {['Title', 'Author', 'City', 'State', ''].map(h => (
+                <div className="grid gap-3 px-1 pb-2" style={{ gridTemplateColumns: '46px 2fr 1.5fr 1fr 70px 150px', borderBottom: '2px solid #f3f4f6' }}>
+                  {['', 'Title', 'Author', 'City', 'State', ''].map(h => (
                     <span key={h} className="font-black text-[11px]" style={{ textTransform: 'uppercase', letterSpacing: '0.6px', color: '#aaa' }}>
                       {h}
                     </span>
@@ -649,7 +649,12 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
                   const isUnread = unreadEntityIds.tbrMatch.includes(entry.id)
                   return (
                   <div key={entry.id} className="grid gap-3 items-center px-1"
-                    style={{ gridTemplateColumns: '2fr 1.5fr 1fr 70px 150px', padding: '12px 4px', borderBottom: '2px solid #f3f4f6', ...(isUnread ? { background: '#f5f3ff', borderRadius: 10 } : {}) }}>
+                    style={{ gridTemplateColumns: '46px 2fr 1.5fr 1fr 70px 150px', padding: '12px 4px', borderBottom: '2px solid #f3f4f6', ...(isUnread ? { background: '#f5f3ff', borderRadius: 10 } : {}) }}>
+                    {entry.cover_url ? (
+                      <img src={entry.cover_url} alt="" style={{ width: 32, height: 46, objectFit: 'cover', borderRadius: 4 }} />
+                    ) : (
+                      <span style={{ width: 32, height: 46, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>📚</span>
+                    )}
                     <span className="font-black text-[14px] truncate">{entry.title || '—'}</span>
                     <span className="font-semibold text-[13px] truncate" style={{ color: entry.author ? '#555' : '#ccc' }}>{entry.author || '—'}</span>
                     <span className="font-semibold text-[13px] truncate" style={{ color: entry.city ? '#555' : '#ccc' }}>{entry.city || '—'}</span>
@@ -680,7 +685,13 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
                 {tbrEntries.map(entry => {
                   const isUnread = unreadEntityIds.tbrMatch.includes(entry.id)
                   return (
-                  <div key={entry.id} style={{ padding: '12px 0', borderBottom: '2px solid #f3f4f6', ...(isUnread ? { background: '#f5f3ff', borderRadius: 10 } : {}) }}>
+                  <div key={entry.id} style={{ padding: '12px 0', borderBottom: '2px solid #f3f4f6', display: 'flex', gap: 10, ...(isUnread ? { background: '#f5f3ff', borderRadius: 10 } : {}) }}>
+                    {entry.cover_url ? (
+                      <img src={entry.cover_url} alt="" style={{ width: 32, height: 46, objectFit: 'cover', borderRadius: 4, flexShrink: 0 }} />
+                    ) : (
+                      <span style={{ width: 32, height: 46, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>📚</span>
+                    )}
+                    <div style={{ flex: 1 }}>
                     <p className="font-black text-[14px] truncate">
                       {entry.title || `by ${entry.author}`}
                     </p>
@@ -703,6 +714,7 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
                           ✕ Delete
                         </button>
                       </form>
+                    </div>
                     </div>
                   </div>
                   )
