@@ -9,6 +9,7 @@ import { averageRating } from '@/lib/reviewAverages'
 import { StarRatingBadge } from '@/components/StarRating'
 import { getListingAvailability } from '@/lib/listingAvailability'
 import { addTbrEntry } from '@/lib/actions/tbrEntries'
+import BookFilterField from './BookFilterField'
 
 const COVER_GRADIENTS = [
   'linear-gradient(145deg, #fde68a, #fca5a5)',
@@ -37,6 +38,7 @@ async function getListings(params: {
   city?: string
   title?: string
   author?: string
+  olWorkKey?: string
   type?: string
   genre?: string
   condition?: string
@@ -44,6 +46,50 @@ async function getListings(params: {
 }): Promise<Listing[]> {
   try {
     const supabase = createClient()
+
+    if (params.olWorkKey) {
+      const applyCommonFilters = (q: any) => {
+        if (params.city) q = q.ilike('city', `%${params.city}%`)
+        if (params.type === 'free') q = q.is('price', null)
+        if (params.type === 'sale') q = q.not('price', 'is', null)
+        if (params.genre && params.genre !== 'all') q = q.eq('genre', params.genre)
+        if (params.condition && params.condition !== 'any') q = q.eq('condition', params.condition)
+        return q
+      }
+
+      // Standalone listings for this exact book.
+      const directQuery = applyCommonFilters(
+        supabase.from('listings').select('*, profiles(username, city)')
+          .in('status', ['active', 'pending']).eq('ol_work_key', params.olWorkKey)
+      )
+
+      // Bundles containing this exact book, via listing_books.
+      const { data: bundleRows } = await supabase
+        .from('listing_books').select('listing_id').eq('ol_work_key', params.olWorkKey)
+      const bundleListingIds = [...new Set((bundleRows ?? []).map((r: any) => r.listing_id))]
+
+      const [{ data: direct, error: directErr }, bundleResult] = await Promise.all([
+        directQuery,
+        bundleListingIds.length > 0
+          ? applyCommonFilters(
+              supabase.from('listings').select('*, profiles(username, city)')
+                .in('status', ['active', 'pending']).in('id', bundleListingIds)
+            )
+          : Promise.resolve({ data: [] as any[], error: null }),
+      ])
+      if (directErr) console.error('Browse ol_work_key query error:', directErr)
+
+      const merged: any[] = []
+      const seen = new Set<string>()
+      for (const row of [...(direct ?? []), ...((bundleResult as any).data ?? [])]) {
+        if (!seen.has(row.id)) { seen.add(row.id); merged.push(row) }
+      }
+      if (params.sort === 'price-asc') merged.sort((a, b) => (a.price ?? 0) - (b.price ?? 0))
+      else if (params.sort === 'price-desc') merged.sort((a, b) => (b.price ?? 0) - (a.price ?? 0))
+      else merged.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      return merged as Listing[]
+    }
+
     let query = supabase
       .from('listings')
       .select('*, profiles(username, city)')
@@ -135,6 +181,7 @@ export default async function ListingsPage({
     city?: string
     title?: string
     author?: string
+    ol_work_key?: string
     type?: string
     genre?: string
     condition?: string
@@ -144,13 +191,14 @@ export default async function ListingsPage({
   const city = searchParams.city ?? ''
   const title = searchParams.title ?? ''
   const author = searchParams.author ?? ''
+  const olWorkKey = searchParams.ol_work_key ?? ''
   const type = searchParams.type ?? 'all'
   const genre = searchParams.genre ?? 'all'
   const condition = searchParams.condition ?? 'any'
   const sort = searchParams.sort ?? 'newest'
 
   const [listings, { isLoggedIn, userId, savedIds }] = await Promise.all([
-    getListings({ city, title, author, type, genre, condition, sort }),
+    getListings({ city, title, author, olWorkKey, type, genre, condition, sort }),
     getUserSaveContext(),
   ])
   const sellerRatings = await getSellerRatings(listings)
@@ -169,6 +217,7 @@ export default async function ListingsPage({
     const p = new URLSearchParams()
     if (city && key !== 'city') p.set('city', city)
     if (title && key !== 'title') p.set('title', title)
+    if (olWorkKey && key !== 'title') p.set('ol_work_key', olWorkKey)
     if (author && key !== 'author') p.set('author', author)
     if (type !== 'all' && key !== 'type') p.set('type', type)
     if (genre !== 'all' && key !== 'genre') p.set('genre', genre)
@@ -189,27 +238,26 @@ export default async function ListingsPage({
       >
         <h2 className="font-display text-[18px] text-bk-orange mb-5">🔍 Filters</h2>
 
-        {[
-          { label: 'City', name: 'city', placeholder: 'e.g. Chicago...', value: city },
-          { label: 'Search Title', name: 'title', placeholder: 'e.g. Great Gatsby...', value: title },
-          { label: 'Search Author', name: 'author', placeholder: 'e.g. Tara Westover...', value: author },
-        ].map(f => (
-          <div key={f.name} style={{ marginBottom: 22 }}>
-            <span
-              className="block mb-2.5"
-              style={{ fontSize: 11, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.8px', color: '#aaa' }}
-            >
-              {f.label}
-            </span>
-            <input
-              name={f.name}
-              type="text"
-              defaultValue={f.value}
-              placeholder={f.placeholder}
-              style={filterInputStyle}
-            />
-          </div>
-        ))}
+        <div style={{ marginBottom: 22 }}>
+          <span className="block mb-2.5" style={{ fontSize: 11, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.8px', color: '#aaa' }}>
+            City
+          </span>
+          <input name="city" type="text" defaultValue={city} placeholder="e.g. Chicago..." style={filterInputStyle} />
+        </div>
+
+        <div style={{ marginBottom: 22 }}>
+          <span className="block mb-2.5" style={{ fontSize: 11, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.8px', color: '#aaa' }}>
+            Search Title
+          </span>
+          <BookFilterField defaultValue={title} style={filterInputStyle} />
+        </div>
+
+        <div style={{ marginBottom: 22 }}>
+          <span className="block mb-2.5" style={{ fontSize: 11, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.8px', color: '#aaa' }}>
+            Search Author
+          </span>
+          <input name="author" type="text" defaultValue={author} placeholder="e.g. Tara Westover..." style={filterInputStyle} />
+        </div>
 
         {/* Listing Type chips */}
         <div style={{ marginBottom: 22 }}>
