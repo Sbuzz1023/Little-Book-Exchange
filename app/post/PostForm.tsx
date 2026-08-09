@@ -41,6 +41,7 @@ type Props = {
     books?: { title: string; author: string; ol_work_key?: string | null; cover_url?: string | null }[]
     ol_work_key?: string | null
     cover_url?: string | null
+    isbn?: string | null
   }
   submitLabel?: string
   search?: (query: string) => Promise<BookSuggestion[]>
@@ -155,6 +156,7 @@ export default function PostForm({ city, action, error, initialValues, submitLab
   const [author, setAuthor] = useState(initialValues?.author ?? '')
   const [olWorkKey, setOlWorkKey] = useState(initialValues?.ol_work_key ?? '')
   const [coverUrl, setCoverUrl] = useState<string | null>(initialValues?.cover_url ?? null)
+  const [isbn, setIsbn] = useState(initialValues?.isbn ?? '')
   const [condition, setCondition] = useState(initialValues?.condition ?? 'Good')
   const [description, setDescription] = useState(initialValues?.description ?? '')
   const [photoPreview, setPhotoPreview] = useState<string | null>(initialValues?.photo_url ?? null)
@@ -173,6 +175,8 @@ export default function PostForm({ city, action, error, initialValues, submitLab
     setAuthor(book.author)
     setOlWorkKey(book.workKey)
     setCoverUrl(book.coverUrl)
+    if (book.genre) setGenre(book.genre)
+    setIsbn(book.isbn ?? '')
   }
 
   function toggleBundle() {
@@ -511,7 +515,7 @@ export default function PostForm({ city, action, error, initialValues, submitLab
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 4 }}>
           <div>
             <FieldLabel optional>ISBN</FieldLabel>
-            <input name="isbn" type="text" placeholder="978-..." style={inputStyle} />
+            <input name="isbn" type="text" value={isbn} onChange={e => setIsbn(e.target.value)} placeholder="978-..." style={inputStyle} />
           </div>
           <div>
             <FieldLabel optional>Language</FieldLabel>

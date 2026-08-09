@@ -173,7 +173,7 @@ describe('PostForm — bundle toggle', () => {
 
 const DUNE: BookSuggestion = {
   title: 'Dune', author: 'Frank Herbert', year: 1965, isbn: null,
-  coverUrl: 'https://covers.openlibrary.org/b/id/12345-M.jpg', workKey: '/works/OL893415W',
+  coverUrl: 'https://covers.openlibrary.org/b/id/12345-M.jpg', workKey: '/works/OL893415W', genre: null,
 }
 
 describe('PostForm — Open Library integration', () => {
@@ -223,13 +223,55 @@ describe('PostForm — Open Library integration', () => {
     expect(container.querySelector('input[name="ol_work_key"]')).toHaveValue('/works/OL893415W')
     expect(screen.getByAltText('Cover preview')).toBeInTheDocument()
   })
+
+  it('selecting a suggestion with a mapped genre pre-selects that Genre button', async () => {
+    const SCI_FI_BOOK: BookSuggestion = {
+      title: 'Dune', author: 'Frank Herbert', year: 1965, isbn: '9780441013593',
+      coverUrl: null, workKey: '/works/OL893415W', genre: 'Sci-Fi',
+    }
+    const search = vi.fn().mockResolvedValue([SCI_FI_BOOK])
+    render(<PostForm action={vi.fn()} search={search} />)
+    fireEvent.change(screen.getByPlaceholderText('e.g. The Great Gatsby'), { target: { value: 'Dune' } })
+    const option = await within(await screen.findByRole('listbox')).findByRole('button')
+    fireEvent.click(option)
+
+    expect(screen.getByText('🚀 Sci-Fi / Fantasy').closest('button')).toHaveStyle({ background: '#fff7ed' })
+  })
+
+  it('selecting a suggestion with no genre match leaves the current Genre selection untouched', async () => {
+    const UNMAPPED_BOOK: BookSuggestion = {
+      title: 'Some Book', author: 'Someone', year: null, isbn: null,
+      coverUrl: null, workKey: '/works/OL999W', genre: null,
+    }
+    const search = vi.fn().mockResolvedValue([UNMAPPED_BOOK])
+    render(<PostForm action={vi.fn()} search={search} />)
+    fireEvent.change(screen.getByPlaceholderText('e.g. The Great Gatsby'), { target: { value: 'Some Book' } })
+    const option = await within(await screen.findByRole('listbox')).findByRole('button')
+    fireEvent.click(option)
+
+    // Default genre ('Fiction') is untouched -- still selected, since UNMAPPED_BOOK.genre is null
+    expect(screen.getByText('📚 Fiction').closest('button')).toHaveStyle({ background: '#fff7ed' })
+  })
+
+  it('selecting a suggestion fills the ISBN field', async () => {
+    const search = vi.fn().mockResolvedValue([{
+      title: 'Dune', author: 'Frank Herbert', year: 1965, isbn: '9780441013593',
+      coverUrl: null, workKey: '/works/OL893415W', genre: null,
+    }])
+    render(<PostForm action={vi.fn()} search={search} />)
+    fireEvent.change(screen.getByPlaceholderText('e.g. The Great Gatsby'), { target: { value: 'Dune' } })
+    const option = await within(await screen.findByRole('listbox')).findByRole('button')
+    fireEvent.click(option)
+
+    expect(screen.getByPlaceholderText('978-...')).toHaveValue('9780441013593')
+  })
 })
 
 describe('PostForm — bundle row Open Library integration', () => {
   it('selecting a suggestion in a bundle row fills that row\'s author and hidden fields', async () => {
     const CHAMBER: BookSuggestion = {
       title: 'Chamber of Secrets', author: 'J.K. Rowling', year: 1998, isbn: null,
-      coverUrl: 'https://covers.openlibrary.org/b/id/2-M.jpg', workKey: '/works/OL82586W',
+      coverUrl: 'https://covers.openlibrary.org/b/id/2-M.jpg', workKey: '/works/OL82586W', genre: null,
     }
     const search = vi.fn().mockResolvedValue([CHAMBER])
     const { container } = render(<PostForm action={vi.fn()} search={search} />)

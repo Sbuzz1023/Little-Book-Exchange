@@ -51,6 +51,7 @@ export default async function EditListingPage({
           books: bundleBooks,
           ol_work_key: listing.ol_work_key,
           cover_url: listing.cover_url,
+          isbn: listing.isbn,
         }}
       />
     </div>
