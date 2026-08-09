@@ -6,12 +6,12 @@
 
 ## Problem
 
-`mapSubjectsToGenre` (`lib/openLibrary.ts`) matches genre keywords with plain substring search (`joined.includes(kw)`), which matches a keyword hiding anywhere inside an unrelated word — not just as its own word. Confirmed real cases:
+`mapSubjectsToGenre` (`lib/openLibrary.ts`) matches genre keywords with plain substring search (`joined.includes(kw)`), which matches a keyword hiding anywhere inside an unrelated word — not just as its own word. Verified directly against the current (already keyword-reordered) source — these two still reproduce today:
 
-- `['Crimean War, 1853-1856', 'History']` → maps to **Mystery**, because "Crimean" contains "crime".
-- `['Earth sciences', 'Nonfiction', 'Geology']` → maps to **Art**, because "Earth" contains "art" (also hits "he**art**", "ch**art**", "dep**art**ment", etc. — the single riskiest keyword in the list).
+- `mapSubjectsToGenre(['Crimean War, 1853-1856', 'History'])` → maps to **Mystery**, because "Crimean" contains "crime". (`Mystery` is checked 2nd, well before `History` — the earlier reorder fix doesn't touch this pair at all.)
+- `mapSubjectsToGenre(['Earth sciences', 'Geology'])` → maps to **Art**, because "Earth" contains "art" (also hits "he**art**", "ch**art**", "dep**art**ment", etc. — the single riskiest keyword in the list). Note: adding an explicit `'Nonfiction'` tag to this same subject list would currently "accidentally" resolve correctly (the prior reorder put `Non-Fiction` ahead of `Art`) — but that's incidental cover, not a real fix; drop the explicit `Nonfiction` tag and the bug is exposed again, as shown here.
 
-This was partially masked by a prior fix (reordering `GENRE_KEYWORDS` so `Non-Fiction`/`Fiction` are checked before `Art`/`History`), but the underlying substring-matching bug remains for any case that reorder doesn't happen to cover.
+The prior fix (reordering `GENRE_KEYWORDS` so `Non-Fiction`/`Fiction` are checked before `Art`/`History`) only ever helped cases where a *more specific, still-substring-matched* keyword happened to fire first — it did not address the underlying substring-matching bug itself, which both examples above still demonstrate.
 
 ## Goal
 
@@ -54,8 +54,8 @@ Word-boundary matching fixes "keyword hides inside an unrelated word" (the major
 ## Testing
 
 Add to `lib/openLibrary.test.ts`, inside the existing `describe('mapSubjectsToGenre', ...)` block:
-- `mapSubjectsToGenre(['Crimean War, 1853-1856', 'History'])` → `'History'` (regression: "Crimean" no longer false-matches the Mystery keyword "crime").
-- `mapSubjectsToGenre(['Charts, diagrams, etc', 'History'])` → `'History'` (regression: "Charts" no longer false-matches the Art keyword "art").
+- `mapSubjectsToGenre(['Crimean War, 1853-1856', 'History'])` → `'History'` (regression: "Crimean" no longer false-matches the Mystery keyword "crime"; verified this case still returns `'Mystery'` under the current pre-fix code).
+- `mapSubjectsToGenre(['Earth sciences', 'Geology'])` → `null` (regression: "Earth" no longer false-matches the Art keyword "art"; verified this case still returns `'Art'` under the current pre-fix code — expecting `null` here, not some other genre, since nothing in this subject list legitimately maps to any of the 11 categories once the false match is removed).
 - A case confirming a real, correct Art match still works with the new matching, e.g. `mapSubjectsToGenre(['Art', 'Painting'])` → `'Art'`.
 
 No other file changes. `normalizeSearchResults`'s existing tests are unaffected (they only assert on the resulting `genre` value, not the matching mechanism).
