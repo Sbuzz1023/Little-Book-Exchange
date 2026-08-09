@@ -223,3 +223,24 @@ describe('PostForm — Open Library integration', () => {
     expect(screen.getByAltText('Cover preview')).toBeInTheDocument()
   })
 })
+
+describe('PostForm — bundle row Open Library integration', () => {
+  it('selecting a suggestion in a bundle row fills that row\'s author and hidden fields', async () => {
+    const CHAMBER: BookSuggestion = {
+      title: 'Chamber of Secrets', author: 'J.K. Rowling', year: 1998, isbn: null,
+      coverUrl: 'https://covers.openlibrary.org/b/id/2-M.jpg', workKey: '/works/OL82586W',
+    }
+    const search = vi.fn().mockResolvedValue([CHAMBER])
+    const { container } = render(<PostForm action={vi.fn()} search={search} />)
+    fireEvent.click(screen.getByText('📚 List as a Bundle / Series'))
+    fireEvent.click(screen.getByText('+ Add Another Book'))
+    fireEvent.change(screen.getByPlaceholderText('Title in series'), { target: { value: 'Chamber' } })
+    const listbox = await screen.findByRole('listbox')
+    const option = within(listbox).getByRole('button')
+    fireEvent.click(option)
+
+    expect(screen.getByPlaceholderText('Author')).toHaveValue('J.K. Rowling')
+    expect(container.querySelector('input[name="book_ol_work_key_1"]')).toHaveValue('/works/OL82586W')
+    expect(container.querySelector('input[name="book_cover_url_1"]')).toHaveValue('https://covers.openlibrary.org/b/id/2-M.jpg')
+  })
+})

@@ -38,7 +38,7 @@ type Props = {
     photo_url_3: string | null
     is_bundle?: boolean
     bundle_name?: string | null
-    books?: { title: string; author: string }[]
+    books?: { title: string; author: string; ol_work_key?: string | null; cover_url?: string | null }[]
     ol_work_key?: string | null
     cover_url?: string | null
   }
@@ -162,7 +162,9 @@ export default function PostForm({ city, action, error, initialValues, submitLab
   const [photo3Preview, setPhoto3Preview] = useState<string | null>(initialValues?.photo_url_3 ?? null)
   const [isBundle, setIsBundle] = useState(initialValues?.is_bundle ?? false)
   const [bundleName, setBundleName] = useState(initialValues?.bundle_name ?? '')
-  const [books, setBooks] = useState<{ title: string; author: string }[]>(initialValues?.books ?? [])
+  const [books, setBooks] = useState<{ title: string; author: string; ol_work_key: string; cover_url: string | null }[]>(
+    initialValues?.books?.map(b => ({ ...b, ol_work_key: b.ol_work_key ?? '', cover_url: b.cover_url ?? null })) ?? []
+  )
 
   const MAX_BUNDLE_BOOKS = 20
 
@@ -180,11 +182,11 @@ export default function PostForm({ city, action, error, initialValues, submitLab
       return next
     })
   }
-  function updateBook(i: number, next: { title: string; author: string }) {
+  function updateBook(i: number, next: { title: string; author: string; ol_work_key: string; cover_url: string | null }) {
     setBooks(prev => prev.map((b, idx) => (idx === i ? next : b)))
   }
   function addBook() {
-    setBooks(prev => (prev.length >= MAX_BUNDLE_BOOKS ? prev : [...prev, { title: '', author }]))
+    setBooks(prev => (prev.length >= MAX_BUNDLE_BOOKS ? prev : [...prev, { title: '', author, ol_work_key: '', cover_url: null }]))
   }
   function removeBook(i: number) {
     setBooks(prev => prev.filter((_, idx) => idx !== i))
@@ -349,7 +351,7 @@ export default function PostForm({ city, action, error, initialValues, submitLab
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
-                      onClick={() => updateBook(i, { title: book.title, author })}
+                      onClick={() => updateBook(i, { ...book, author })}
                       style={{ background: 'none', border: 'none', color: '#f97316', fontWeight: 800, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}
                     >
                       ✨ Auto-fill from Book 1
@@ -364,21 +366,32 @@ export default function PostForm({ city, action, error, initialValues, submitLab
                   </div>
                 </div>
                 <div style={{ marginBottom: 10 }}>
-                  <input
+                  <BookSearchInput
                     name={`book_title_${i + 1}`}
                     value={book.title}
-                    onChange={e => updateBook(i, { title: e.target.value, author: book.author })}
+                    onChange={v => updateBook(i, { ...book, title: v, ol_work_key: '', cover_url: null })}
+                    onSelect={s => updateBook(i, { title: s.title, author: s.author, ol_work_key: s.workKey, cover_url: s.coverUrl })}
                     placeholder="Title in series"
                     style={inputStyle}
+                    search={search}
                   />
+                  {book.cover_url && (
+                    <img
+                      src={book.cover_url}
+                      alt="Cover preview"
+                      style={{ width: 32, height: 46, objectFit: 'cover', borderRadius: 6, marginTop: 8, border: '2px solid #fed7aa' }}
+                    />
+                  )}
                 </div>
                 <input
                   name={`book_author_${i + 1}`}
                   value={book.author}
-                  onChange={e => updateBook(i, { title: book.title, author: e.target.value })}
+                  onChange={e => updateBook(i, { title: book.title, author: e.target.value, ol_work_key: '', cover_url: null })}
                   placeholder="Author"
                   style={inputStyle}
                 />
+                <input type="hidden" name={`book_ol_work_key_${i + 1}`} value={book.ol_work_key} />
+                <input type="hidden" name={`book_cover_url_${i + 1}`} value={book.cover_url ?? ''} />
               </div>
             ))}
 
