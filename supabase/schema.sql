@@ -1292,3 +1292,55 @@ ALTER TABLE tbr_entries   ADD COLUMN IF NOT EXISTS cover_url text;
 CREATE INDEX IF NOT EXISTS listings_ol_work_key_idx ON listings(ol_work_key);
 CREATE INDEX IF NOT EXISTS listing_books_ol_work_key_idx ON listing_books(ol_work_key);
 -- ──────────────────────────────────────────────────────────────────────────────
+
+-- ── Migration: TBR notifications gain exact ol_work_key matching ───────────────
+-- Mirrors buildTbrMatchStrategy() in lib/tbrMatch.ts: a TBR entry with a
+-- resolved ol_work_key matches on that key alone (never falls back to the
+-- fuzzy title/author text match below); entries without one keep the
+-- existing word-boundary text-match behavior unchanged. City/state filtering
+-- applies either way. Deliberately does not cover bundle contents (listing_books)
+-- — this trigger has only ever looked at the main listing's title/author, and
+-- extending it to bundles is out of scope for this change.
+create or replace function notify_tbr_matches()
+returns trigger as $$
+declare
+  v_entry record;
+  v_seller_state text;
+begin
+  if new.status <> 'active' then
+    return new;
+  end if;
+  if tg_op = 'UPDATE' and old.status = 'active' then
+    return new;
+  end if;
+
+  select state into v_seller_state from profiles where id = new.user_id;
+
+  for v_entry in
+    select t.id, t.user_id
+    from tbr_entries t
+    join profiles p on p.id = t.user_id
+    where t.user_id <> new.user_id
+      and p.notify_tbr_match = true
+      and (
+        (t.ol_work_key is not null and t.ol_work_key = new.ol_work_key)
+        or (
+          t.ol_work_key is null
+          and (t.title = '' or new.title ~* ('(^|\W)' || tbr_escape_regex(t.title) || '(\W|$)'))
+          and (t.author = '' or new.author ~* ('(^|\W)' || tbr_escape_regex(t.author) || '(\W|$)'))
+        )
+      )
+      and (t.city = '' or new.city ~* ('(^|\W)' || tbr_escape_regex(t.city) || '(\W|$)'))
+      and (t.state = '' or t.state = v_seller_state)
+  loop
+    insert into notifications (user_id, type, entity_id, title, body)
+    values (v_entry.user_id, 'tbr_match', v_entry.id, 'A book on your TBR is available', new.title || ' by ' || new.author);
+  end loop;
+
+  return new;
+exception when others then
+  raise warning 'notify_tbr_matches failed: %', sqlerrm;
+  return new;
+end;
+$$ language plpgsql security definer set search_path = public, pg_temp;
+-- ──────────────────────────────────────────────────────────────────────────────
