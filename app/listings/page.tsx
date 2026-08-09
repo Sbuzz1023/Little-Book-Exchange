@@ -451,10 +451,13 @@ export default async function ListingsPage({
                       className="absolute inset-0 flex items-center justify-center"
                       style={{ background: gradient, ...(locked ? { filter: 'grayscale(1)', opacity: 0.55 } : {}) }}
                     >
-                      {l.photo_url
-                        ? <Image src={l.photo_url} alt={l.title} fill className="object-cover" />
-                        : <span>📚</span>
-                      }
+                      {l.photo_url ? (
+                        <Image src={l.photo_url} alt={l.title} fill className="object-cover" />
+                      ) : l.cover_url ? (
+                        <Image src={l.cover_url} alt={l.title} fill className="object-cover" />
+                      ) : (
+                        <span>📚</span>
+                      )}
                     </div>
                     {!locked && l.user_id !== userId && (
                       <HeartButton listingId={l.id} isLoggedIn={isLoggedIn} initialSaved={savedIds.has(l.id)} />
