@@ -159,4 +159,15 @@ describe('mapSubjectsToGenre', () => {
   it('still matches a real, correct Art subject as its own word', () => {
     expect(mapSubjectsToGenre(['Art', 'Painting'])).toBe('Art')
   })
+
+  it('matches plural forms of keywords (e.g. "Arts" for Art, "Detectives" for Mystery)', () => {
+    expect(mapSubjectsToGenre(['Decorative arts'])).toBe('Art')
+    expect(mapSubjectsToGenre(['Detectives'])).toBe('Mystery')
+    expect(mapSubjectsToGenre(['Romances'])).toBe('Romance')
+  })
+
+  it('does not match a plural-looking word that merely ends in "s" near an unrelated keyword substring', () => {
+    expect(mapSubjectsToGenre(['Parts'])).toBeNull()
+    expect(mapSubjectsToGenre(['Starts'])).toBeNull()
+  })
 })
