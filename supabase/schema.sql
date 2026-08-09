@@ -893,7 +893,7 @@ begin
   -- Must be schema-qualified: this trigger fires inside GoTrue's own
   -- transaction (as supabase_auth_admin), whose search_path doesn't
   -- include public, so the bare table name fails to resolve.
-  insert into public.profiles (id, email, username, city, state, phone, contact_preference, address, address_unit, share_address, pickup_description, share_pickup, email_verified, phone_verified)
+  insert into public.profiles (id, email, username, city, state, phone, contact_preference, address, address_unit, share_address, pickup_description, share_pickup, email_verified, phone_verified, zip, lat, lng)
   values (
     new.id,
     new.email,
@@ -908,7 +908,10 @@ begin
     coalesce(new.raw_user_meta_data->>'pickup_description', ''),
     coalesce((new.raw_user_meta_data->>'share_pickup')::boolean, true),
     (new.email_confirmed_at is not null),
-    (new.phone_confirmed_at is not null)
+    (new.phone_confirmed_at is not null),
+    coalesce(new.raw_user_meta_data->>'zip', ''),
+    (new.raw_user_meta_data->>'lat')::double precision,
+    (new.raw_user_meta_data->>'lng')::double precision
   );
   return new;
 end;
@@ -1347,4 +1350,17 @@ $$ language plpgsql security definer set search_path = public, pg_temp;
 
 -- ── Migration: listing ISBN ─────────────────────────────────────────────────────
 ALTER TABLE listings ADD COLUMN IF NOT EXISTS isbn text;
+-- ──────────────────────────────────────────────────────────────────────────────
+
+-- ── Migration: Mapbox address autofill (zip + coordinates) ─────────────────────
+-- Run this block in Supabase SQL Editor. Backs the Address Autofill feature on
+-- signup/profile edit — see
+-- docs/superpowers/specs/2026-08-09-mapbox-address-autofill-design.md.
+-- lat/lng are nullable: a manually-typed address (no Mapbox suggestion picked)
+-- never has coordinates, and that's an expected, permanent state for some
+-- rows, not a to-be-filled-in-later gap.
+ALTER TABLE profiles
+  ADD COLUMN IF NOT EXISTS zip text NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS lat double precision,
+  ADD COLUMN IF NOT EXISTS lng double precision;
 -- ──────────────────────────────────────────────────────────────────────────────
