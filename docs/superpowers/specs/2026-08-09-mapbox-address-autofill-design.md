@@ -1,7 +1,38 @@
 # Mapbox Address Autofill (Signup + Profile Edit) — Design
 
 **Date:** 2026-08-09
-**Status:** Approved
+**Status:** Approved (coordinate storage descoped — see Addendum)
+
+## Addendum (2026-08-09, discovered during implementation)
+
+**Coordinate storage (`lat`/`lng`) was removed from this feature after
+implementation began.** This spec originally claimed (§2 "Mapbox setup"):
+"Address Autofill has its own free tier... and its own terms explicitly
+permit permanently storing the address/coordinates it returns." That claim
+is **wrong about the coordinates specifically**. While implementing Task 2,
+the installed `@mapbox/search-js-core` package's own type declarations
+(`AddressAutofillCore.retrieve()`'s JSDoc) were found to state: "Geographic
+coordinates should be used ephemerally and not persisted. This permanent
+policy is consistent with the Mapbox Terms of Service." Mapbox's own docs
+confirm coordinates from the Autofill/temporary-geocoding family of
+endpoints cannot be stored — only the separate, standalone Permanent
+Geocoding API (`mapbox.places-permanent`, priced at $5/1,000 requests with
+no free tier — see `2026-08-09-mapbox-address-autofill.md`'s cost research)
+carries permanent-storage rights.
+
+The original claim was correct about the address **text** fields
+(street/city/state/zip — Autofill exists precisely to let you store those,
+same as any checkout-autofill product) — only the coordinates are affected.
+
+**Resolution (human decision):** drop coordinate capture/storage from this
+feature entirely. `profiles` gains only `zip`, not `lat`/`lng`. The
+distance-radius search this spec's Problem section motivated is not
+abandoned — it needs its own follow-up spec that gets coordinates the
+compliant way (an explicit Permanent Geocoding API call), not as a free
+side effect of an Autofill `retrieve()` already being made for a different
+purpose. Every mention of `lat`/`lng` capture/storage below is historical:
+it describes what was originally designed and briefly implemented (Tasks
+1-4), then removed (Task 6) before this branch was merged.
 
 ## Problem
 
@@ -165,16 +196,12 @@ field-by-field pattern in that function.
 - **Mapbox GL JS migration for the `/locations` map** (replacing Leaflet +
   OpenStreetMap tiles + Nominatim geocoding) — a separate, independently
   shippable piece of work, to be designed as its own spec.
-- **Distance-radius search on book listings** — the feature that motivates
-  storing lat/lng here, but not built in this spec. Center point will
-  default to the logged-in buyer's saved profile coordinates (captured by
-  this spec) with the ability to override, and support a one-off
-  address/current-location entry for signed-out users — to be designed as
-  its own spec once this one and the map migration have shipped.
-- **Backfilling lat/lng for existing profiles** created before this ships —
-  those rows simply have `lat`/`lng` = null until the user re-saves their
-  address through the new autofill field. No bulk geocoding migration is
-  planned; nothing currently depends on every row having coordinates.
+- **Distance-radius search on book listings** — the feature that originally
+  motivated storing coordinates here. Per the Addendum, this spec no longer
+  captures or stores `lat`/`lng` at all (a Mapbox ToS conflict, found during
+  implementation). A future spec for this feature needs to get profile
+  coordinates the compliant way — an explicit Permanent Geocoding API call —
+  not as a side effect of Address Autofill's `retrieve()`.
 - **Mapbox's built-in unit-number suggestion feature** — the existing
   separate Apt/Unit free-text field is kept as-is (see the corresponding
   brainstorming decision); Autofill only drives Street/City/State/Zip.
