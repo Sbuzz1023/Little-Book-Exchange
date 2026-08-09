@@ -26,3 +26,26 @@ const GENERIC_WORDS = new Set([
 export function isTooGenericToMatch(value: string): boolean {
   return GENERIC_WORDS.has(value.trim().toLowerCase())
 }
+
+export type TbrMatchStrategy =
+  | { mode: 'exact'; workKey: string }
+  | { mode: 'text'; titlePattern: string | null; authorPattern: string | null }
+  | { mode: 'none' }
+
+export function buildTbrMatchStrategy(entry: {
+  title: string
+  author: string
+  ol_work_key: string | null
+}): TbrMatchStrategy {
+  if (entry.ol_work_key) return { mode: 'exact', workKey: entry.ol_work_key }
+
+  const titleUsable = !!entry.title && !isTooGenericToMatch(entry.title)
+  const authorUsable = !!entry.author && !isTooGenericToMatch(entry.author)
+  if (!titleUsable && !authorUsable) return { mode: 'none' }
+
+  return {
+    mode: 'text',
+    titlePattern: titleUsable ? tbrMatchPattern(entry.title) : null,
+    authorPattern: authorUsable ? tbrMatchPattern(entry.author) : null,
+  }
+}

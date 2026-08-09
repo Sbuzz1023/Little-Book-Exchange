@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { isValidStateCode } from '@/lib/usStates'
+import { isValidCoverUrl } from '@/lib/openLibrary'
 
 export async function addTbrEntry(formData: FormData): Promise<void> {
   const title = ((formData.get('title') as string) || '').trim()
@@ -11,6 +12,9 @@ export async function addTbrEntry(formData: FormData): Promise<void> {
   const rawState = ((formData.get('state') as string) || '').trim()
   const state = isValidStateCode(rawState) ? rawState : ''
   const redirectTo = ((formData.get('redirect_to') as string) || '').trim() || '/profile'
+  const olWorkKey = ((formData.get('ol_work_key') as string) || '').trim() || null
+  const rawCoverUrl = ((formData.get('cover_url') as string) || '').trim()
+  const coverUrl = isValidCoverUrl(rawCoverUrl) ? rawCoverUrl : null
 
   if (!title && !author) {
     redirect('/profile?tbr_error=' + encodeURIComponent('Enter a title or an author.'))
@@ -26,6 +30,8 @@ export async function addTbrEntry(formData: FormData): Promise<void> {
     author,
     city,
     state,
+    ol_work_key: olWorkKey,
+    cover_url: coverUrl,
   })
 
   redirect(redirectTo)

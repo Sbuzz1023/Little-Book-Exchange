@@ -57,7 +57,10 @@ export async function createListing(formData: FormData) {
 
     if (isBundle && bundleBooks.length > 0) {
       const { error: booksError } = await supabase.from('listing_books').insert(
-        bundleBooks.map((b, i) => ({ listing_id: listing!.id, title: b.title, author: b.author, position: i }))
+        bundleBooks.map((b, i) => ({
+          listing_id: listing!.id, title: b.title, author: b.author,
+          ol_work_key: b.ol_work_key, cover_url: b.cover_url, position: i,
+        }))
       )
       if (booksError) console.error('Failed to insert bundle books:', booksError)
     }
@@ -114,7 +117,10 @@ export async function updateListing(listingId: string, formData: FormData) {
     await supabase.from('listing_books').delete().eq('listing_id', listingId)
     if (isBundle && bundleBooks.length > 0) {
       const { error: booksError } = await supabase.from('listing_books').insert(
-        bundleBooks.map((b, i) => ({ listing_id: listingId, title: b.title, author: b.author, position: i }))
+        bundleBooks.map((b, i) => ({
+          listing_id: listingId, title: b.title, author: b.author,
+          ol_work_key: b.ol_work_key, cover_url: b.cover_url, position: i,
+        }))
       )
       if (booksError) console.error('Failed to update bundle books:', booksError)
     }

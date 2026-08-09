@@ -51,7 +51,7 @@ export default async function ListingDetailPage({ params, searchParams }: { para
 
     if (listing?.is_bundle) {
       const { data: books } = await supabase
-        .from('listing_books').select('title, author').eq('listing_id', listing.id).order('position', { ascending: true })
+        .from('listing_books').select('title, author, cover_url').eq('listing_id', listing.id).order('position', { ascending: true })
       listing.books = books ?? []
     }
     if (u) {
@@ -212,6 +212,9 @@ export default async function ListingDetailPage({ params, searchParams }: { para
   }
 
 
+  const uploadedPhotos = [listing.photo_url, listing.photo_url_2, listing.photo_url_3].filter(Boolean)
+  const displayPhotos = uploadedPhotos.length > 0 ? uploadedPhotos : (listing.cover_url ? [listing.cover_url] : [])
+
   return (
     <div className="max-w-[680px] mx-auto px-4 py-6 md:px-8 md:py-10">
       <Link
@@ -224,7 +227,7 @@ export default async function ListingDetailPage({ params, searchParams }: { para
       <div className="bg-white rounded-[28px] overflow-hidden border-2 border-gray-100 shadow-[0_8px_0_#e5e7eb]">
         {/* Cover */}
         <PhotoGallery
-          photos={[listing.photo_url, listing.photo_url_2, listing.photo_url_3].filter(Boolean)}
+          photos={displayPhotos}
           alt={listing.title}
           gradient={gradient}
         >
@@ -295,14 +298,24 @@ export default async function ListingDetailPage({ params, searchParams }: { para
             <div style={{ marginBottom: 28 }}>
               <p className="font-display text-[16px] text-bk-orange mb-3">📚 Books in this Bundle</p>
               <div className="flex flex-col" style={{ gap: 8 }}>
-                <div style={{ padding: '10px 14px', borderRadius: 12, background: '#fff7ed', border: '2px solid #fed7aa' }}>
-                  <span className="font-black text-[14px]">{listing.title}</span>
-                  <span className="font-semibold text-[13px]" style={{ color: '#888' }}> — {listing.author}</span>
+                <div style={{ padding: '10px 14px', borderRadius: 12, background: '#fff7ed', border: '2px solid #fed7aa', display: 'flex', alignItems: 'center', gap: 10 }}>
+                  {listing.cover_url && (
+                    <img src={listing.cover_url} alt="" style={{ width: 32, height: 46, objectFit: 'cover', borderRadius: 4, flexShrink: 0 }} />
+                  )}
+                  <div>
+                    <span className="font-black text-[14px]">{listing.title}</span>
+                    <span className="font-semibold text-[13px]" style={{ color: '#888' }}> — {listing.author}</span>
+                  </div>
                 </div>
-                {(listing.books ?? []).map((b: { title: string; author: string }, i: number) => (
-                  <div key={i} style={{ padding: '10px 14px', borderRadius: 12, background: '#fff7ed', border: '2px solid #fed7aa' }}>
-                    <span className="font-black text-[14px]">{b.title}</span>
-                    <span className="font-semibold text-[13px]" style={{ color: '#888' }}> — {b.author}</span>
+                {(listing.books ?? []).map((b: { title: string; author: string; cover_url: string | null }, i: number) => (
+                  <div key={i} style={{ padding: '10px 14px', borderRadius: 12, background: '#fff7ed', border: '2px solid #fed7aa', display: 'flex', alignItems: 'center', gap: 10 }}>
+                    {b.cover_url && (
+                      <img src={b.cover_url} alt="" style={{ width: 32, height: 46, objectFit: 'cover', borderRadius: 4, flexShrink: 0 }} />
+                    )}
+                    <div>
+                      <span className="font-black text-[14px]">{b.title}</span>
+                      <span className="font-semibold text-[13px]" style={{ color: '#888' }}> — {b.author}</span>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -361,6 +374,8 @@ export default async function ListingDetailPage({ params, searchParams }: { para
                 <form action={addTbrEntry}>
                   <input type="hidden" name="title" value={listing.title} />
                   <input type="hidden" name="author" value={listing.author} />
+                  <input type="hidden" name="ol_work_key" value={listing.ol_work_key ?? ''} />
+                  <input type="hidden" name="cover_url" value={listing.cover_url ?? ''} />
                   <input type="hidden" name="redirect_to" value="/profile?tab=tbr" />
                   <button
                     type="submit"

@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useRef } from 'react'
+import BookSearchInput from '@/components/BookSearchInput'
+import type { BookSuggestion } from '@/lib/openLibrary'
 
 const DESCRIPTION_MAX_LENGTH = 500
 
@@ -36,9 +38,12 @@ type Props = {
     photo_url_3: string | null
     is_bundle?: boolean
     bundle_name?: string | null
-    books?: { title: string; author: string }[]
+    books?: { title: string; author: string; ol_work_key?: string | null; cover_url?: string | null }[]
+    ol_work_key?: string | null
+    cover_url?: string | null
   }
   submitLabel?: string
+  search?: (query: string) => Promise<BookSuggestion[]>
 }
 
 function SectionHeading({ emoji, title }: { emoji: string; title: string }) {
@@ -143,11 +148,13 @@ const inputStyle = {
   outline: 'none',
 } as React.CSSProperties
 
-export default function PostForm({ city, action, error, initialValues, submitLabel }: Props) {
+export default function PostForm({ city, action, error, initialValues, submitLabel, search }: Props) {
   const [genre, setGenre] = useState(initialValues?.genre ?? 'Fiction')
   const [format, setFormat] = useState(initialValues?.format ?? 'Paperback')
   const [title, setTitle] = useState(initialValues?.title ?? '')
   const [author, setAuthor] = useState(initialValues?.author ?? '')
+  const [olWorkKey, setOlWorkKey] = useState(initialValues?.ol_work_key ?? '')
+  const [coverUrl, setCoverUrl] = useState<string | null>(initialValues?.cover_url ?? null)
   const [condition, setCondition] = useState(initialValues?.condition ?? 'Good')
   const [description, setDescription] = useState(initialValues?.description ?? '')
   const [photoPreview, setPhotoPreview] = useState<string | null>(initialValues?.photo_url ?? null)
@@ -155,9 +162,18 @@ export default function PostForm({ city, action, error, initialValues, submitLab
   const [photo3Preview, setPhoto3Preview] = useState<string | null>(initialValues?.photo_url_3 ?? null)
   const [isBundle, setIsBundle] = useState(initialValues?.is_bundle ?? false)
   const [bundleName, setBundleName] = useState(initialValues?.bundle_name ?? '')
-  const [books, setBooks] = useState<{ title: string; author: string }[]>(initialValues?.books ?? [])
+  const [books, setBooks] = useState<{ title: string; author: string; ol_work_key: string; cover_url: string | null }[]>(
+    initialValues?.books?.map(b => ({ ...b, ol_work_key: b.ol_work_key ?? '', cover_url: b.cover_url ?? null })) ?? []
+  )
 
   const MAX_BUNDLE_BOOKS = 20
+
+  function selectBook(book: BookSuggestion) {
+    setTitle(book.title)
+    setAuthor(book.author)
+    setOlWorkKey(book.workKey)
+    setCoverUrl(book.coverUrl)
+  }
 
   function toggleBundle() {
     setIsBundle(b => {
@@ -166,11 +182,11 @@ export default function PostForm({ city, action, error, initialValues, submitLab
       return next
     })
   }
-  function updateBook(i: number, next: { title: string; author: string }) {
+  function updateBook(i: number, next: { title: string; author: string; ol_work_key: string; cover_url: string | null }) {
     setBooks(prev => prev.map((b, idx) => (idx === i ? next : b)))
   }
   function addBook() {
-    setBooks(prev => (prev.length >= MAX_BUNDLE_BOOKS ? prev : [...prev, { title: '', author }]))
+    setBooks(prev => (prev.length >= MAX_BUNDLE_BOOKS ? prev : [...prev, { title: '', author, ol_work_key: '', cover_url: null }]))
   }
   function removeBook(i: number) {
     setBooks(prev => prev.filter((_, idx) => idx !== i))
@@ -191,6 +207,8 @@ export default function PostForm({ city, action, error, initialValues, submitLab
       <input type="hidden" name="price" value="1" />
       <input type="hidden" name="is_bundle" value={isBundle ? 'true' : 'false'} />
       <input type="hidden" name="book_rows" value={books.length} />
+      <input type="hidden" name="ol_work_key" value={olWorkKey} />
+      <input type="hidden" name="cover_url" value={coverUrl ?? ''} />
 
       <div
         className="bg-white border-2 border-gray-100 shadow-[0_8px_0_#e5e7eb] p-5 md:p-9"
@@ -201,14 +219,23 @@ export default function PostForm({ city, action, error, initialValues, submitLab
 
         <div style={{ marginBottom: 18 }}>
           <FieldLabel>Book Title *</FieldLabel>
-          <input
+          <BookSearchInput
             name="title"
             value={title}
-            onChange={e => setTitle(e.target.value)}
+            onChange={v => { setTitle(v); setOlWorkKey(''); setCoverUrl(null) }}
+            onSelect={selectBook}
             placeholder="e.g. The Great Gatsby"
             required
             style={inputStyle}
+            search={search}
           />
+          {coverUrl && (
+            <img
+              src={coverUrl}
+              alt="Cover preview"
+              style={{ width: 40, height: 56, objectFit: 'cover', borderRadius: 6, marginTop: 8, border: '2px solid #fed7aa' }}
+            />
+          )}
         </div>
 
         <div style={{ marginBottom: 18 }}>
@@ -216,7 +243,7 @@ export default function PostForm({ city, action, error, initialValues, submitLab
           <input
             name="author"
             value={author}
-            onChange={e => setAuthor(e.target.value)}
+            onChange={e => { setAuthor(e.target.value); setOlWorkKey(''); setCoverUrl(null) }}
             placeholder="e.g. F. Scott Fitzgerald"
             required
             style={inputStyle}
@@ -324,7 +351,7 @@ export default function PostForm({ city, action, error, initialValues, submitLab
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
-                      onClick={() => updateBook(i, { title: book.title, author })}
+                      onClick={() => updateBook(i, { ...book, author })}
                       style={{ background: 'none', border: 'none', color: '#f97316', fontWeight: 800, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}
                     >
                       ✨ Auto-fill from Book 1
@@ -339,21 +366,32 @@ export default function PostForm({ city, action, error, initialValues, submitLab
                   </div>
                 </div>
                 <div style={{ marginBottom: 10 }}>
-                  <input
+                  <BookSearchInput
                     name={`book_title_${i + 1}`}
                     value={book.title}
-                    onChange={e => updateBook(i, { title: e.target.value, author: book.author })}
+                    onChange={v => updateBook(i, { ...book, title: v, ol_work_key: '', cover_url: null })}
+                    onSelect={s => updateBook(i, { title: s.title, author: s.author, ol_work_key: s.workKey, cover_url: s.coverUrl })}
                     placeholder="Title in series"
                     style={inputStyle}
+                    search={search}
                   />
+                  {book.cover_url && (
+                    <img
+                      src={book.cover_url}
+                      alt="Cover preview"
+                      style={{ width: 32, height: 46, objectFit: 'cover', borderRadius: 6, marginTop: 8, border: '2px solid #fed7aa' }}
+                    />
+                  )}
                 </div>
                 <input
                   name={`book_author_${i + 1}`}
                   value={book.author}
-                  onChange={e => updateBook(i, { title: book.title, author: e.target.value })}
+                  onChange={e => updateBook(i, { title: book.title, author: e.target.value, ol_work_key: '', cover_url: null })}
                   placeholder="Author"
                   style={inputStyle}
                 />
+                <input type="hidden" name={`book_ol_work_key_${i + 1}`} value={book.ol_work_key} />
+                <input type="hidden" name={`book_cover_url_${i + 1}`} value={book.cover_url ?? ''} />
               </div>
             ))}
 

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { tbrMatchPattern, isTooGenericToMatch } from './tbrMatch'
+import { tbrMatchPattern, isTooGenericToMatch, buildTbrMatchStrategy } from './tbrMatch'
 
 describe('tbrMatchPattern', () => {
   it('does not match a substring buried inside another word', () => {
@@ -54,5 +54,41 @@ describe('isTooGenericToMatch', () => {
   it('is false for a multi-word phrase that merely contains a filler word', () => {
     expect(isTooGenericToMatch('The Great Gatsby')).toBe(false)
     expect(isTooGenericToMatch('Harry Potter')).toBe(false)
+  })
+})
+
+describe('buildTbrMatchStrategy', () => {
+  it('returns exact mode with the work key when ol_work_key is set', () => {
+    const strategy = buildTbrMatchStrategy({ title: 'Dune', author: 'Frank Herbert', ol_work_key: '/works/OL893415W' })
+    expect(strategy).toEqual({ mode: 'exact', workKey: '/works/OL893415W' })
+  })
+
+  it('ignores title/author entirely when ol_work_key is set', () => {
+    // Even a generic-only title shouldn't fall through to text mode if a key is present.
+    const strategy = buildTbrMatchStrategy({ title: 'the', author: '', ol_work_key: '/works/OL1W' })
+    expect(strategy.mode).toBe('exact')
+  })
+
+  it('returns text mode with both patterns when no key and both fields are usable', () => {
+    const strategy = buildTbrMatchStrategy({ title: 'Dune', author: 'Frank Herbert', ol_work_key: null })
+    expect(strategy).toEqual({
+      mode: 'text',
+      titlePattern: tbrMatchPattern('Dune'),
+      authorPattern: tbrMatchPattern('Frank Herbert'),
+    })
+  })
+
+  it('returns text mode with only the usable pattern when the other is generic or blank', () => {
+    const strategy = buildTbrMatchStrategy({ title: 'the', author: 'Frank Herbert', ol_work_key: null })
+    expect(strategy).toEqual({
+      mode: 'text',
+      titlePattern: null,
+      authorPattern: tbrMatchPattern('Frank Herbert'),
+    })
+  })
+
+  it('returns none mode when no key and neither field is usable', () => {
+    const strategy = buildTbrMatchStrategy({ title: 'the', author: '', ol_work_key: null })
+    expect(strategy).toEqual({ mode: 'none' })
   })
 })

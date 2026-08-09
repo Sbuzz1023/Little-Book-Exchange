@@ -7,8 +7,8 @@ import Image from 'next/image'
 import ProfileCard from './ProfileCard'
 import MessagesTab from './MessagesTab'
 import HistorySection, { type HistoryExchange } from './HistorySection'
+import TbrAddForm from './TbrAddForm'
 import { createClient } from '@/lib/supabase/client'
-import StateSelect from '@/components/StateSelect'
 
 type Tab = 'listings' | 'exchanges' | 'tbr' | 'saved' | 'wallet' | 'account' | 'messages'
 
@@ -38,6 +38,8 @@ type TbrEntry = {
   author: string
   city: string
   state: string
+  ol_work_key?: string | null
+  cover_url?: string | null
   match: { id: string; title: string } | null
 }
 
@@ -626,24 +628,7 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
             </div>
           )}
 
-          <form action={addTbrEntry} className="flex gap-2 mb-4 flex-wrap">
-            <input name="title" placeholder="Book title..."
-              className="flex-1 border-2 border-[#ddd6fe] rounded-[12px] font-bold text-[13px] bg-[#f5f3ff]"
-              style={{ padding: '9px 12px', minWidth: 120 }} />
-            <input name="author" placeholder="Author (optional)..."
-              className="flex-1 border-2 border-[#ddd6fe] rounded-[12px] font-bold text-[13px] bg-[#f5f3ff]"
-              style={{ padding: '9px 12px', minWidth: 120 }} />
-            <input name="city" placeholder="City (optional)..."
-              className="flex-1 border-2 border-[#ddd6fe] rounded-[12px] font-bold text-[13px] bg-[#f5f3ff]"
-              style={{ padding: '9px 12px', minWidth: 100 }} />
-            <StateSelect name="state" placeholder="Any state"
-              className="flex-1 border-2 border-[#ddd6fe] rounded-[12px] font-bold text-[13px] bg-[#f5f3ff]"
-              style={{ padding: '9px 12px', minWidth: 100 }} />
-            <button type="submit" className="text-white font-extrabold text-[13px]"
-              style={{ background: '#7c3aed', padding: '9px 18px', borderRadius: 12, border: 'none', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>
-              + Add
-            </button>
-          </form>
+          <TbrAddForm addTbrEntry={addTbrEntry} />
 
           {tbrEntries.length === 0 ? (
             <div className="text-center py-8 font-bold text-[14px]" style={{ color: '#aaa' }}>
@@ -653,8 +638,8 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
             <>
               {/* Desktop: table with column headers */}
               <div className="hidden md:block">
-                <div className="grid gap-3 px-1 pb-2" style={{ gridTemplateColumns: '2fr 1.5fr 1fr 70px 150px', borderBottom: '2px solid #f3f4f6' }}>
-                  {['Title', 'Author', 'City', 'State', ''].map(h => (
+                <div className="grid gap-3 px-1 pb-2" style={{ gridTemplateColumns: '46px 2fr 1.5fr 1fr 70px 150px', borderBottom: '2px solid #f3f4f6' }}>
+                  {['', 'Title', 'Author', 'City', 'State', ''].map(h => (
                     <span key={h} className="font-black text-[11px]" style={{ textTransform: 'uppercase', letterSpacing: '0.6px', color: '#aaa' }}>
                       {h}
                     </span>
@@ -664,7 +649,12 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
                   const isUnread = unreadEntityIds.tbrMatch.includes(entry.id)
                   return (
                   <div key={entry.id} className="grid gap-3 items-center px-1"
-                    style={{ gridTemplateColumns: '2fr 1.5fr 1fr 70px 150px', padding: '12px 4px', borderBottom: '2px solid #f3f4f6', ...(isUnread ? { background: '#f5f3ff', borderRadius: 10 } : {}) }}>
+                    style={{ gridTemplateColumns: '46px 2fr 1.5fr 1fr 70px 150px', padding: '12px 4px', borderBottom: '2px solid #f3f4f6', ...(isUnread ? { background: '#f5f3ff', borderRadius: 10 } : {}) }}>
+                    {entry.cover_url ? (
+                      <img src={entry.cover_url} alt="" style={{ width: 32, height: 46, objectFit: 'cover', borderRadius: 4 }} />
+                    ) : (
+                      <span style={{ width: 32, height: 46, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>📚</span>
+                    )}
                     <span className="font-black text-[14px] truncate">{entry.title || '—'}</span>
                     <span className="font-semibold text-[13px] truncate" style={{ color: entry.author ? '#555' : '#ccc' }}>{entry.author || '—'}</span>
                     <span className="font-semibold text-[13px] truncate" style={{ color: entry.city ? '#555' : '#ccc' }}>{entry.city || '—'}</span>
@@ -695,7 +685,13 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
                 {tbrEntries.map(entry => {
                   const isUnread = unreadEntityIds.tbrMatch.includes(entry.id)
                   return (
-                  <div key={entry.id} style={{ padding: '12px 0', borderBottom: '2px solid #f3f4f6', ...(isUnread ? { background: '#f5f3ff', borderRadius: 10 } : {}) }}>
+                  <div key={entry.id} style={{ padding: '12px 0', borderBottom: '2px solid #f3f4f6', display: 'flex', gap: 10, ...(isUnread ? { background: '#f5f3ff', borderRadius: 10 } : {}) }}>
+                    {entry.cover_url ? (
+                      <img src={entry.cover_url} alt="" style={{ width: 32, height: 46, objectFit: 'cover', borderRadius: 4, flexShrink: 0 }} />
+                    ) : (
+                      <span style={{ width: 32, height: 46, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>📚</span>
+                    )}
+                    <div style={{ flex: 1 }}>
                     <p className="font-black text-[14px] truncate">
                       {entry.title || `by ${entry.author}`}
                     </p>
@@ -718,6 +714,7 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
                           ✕ Delete
                         </button>
                       </form>
+                    </div>
                     </div>
                   </div>
                   )
