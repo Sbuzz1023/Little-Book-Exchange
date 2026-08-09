@@ -489,7 +489,14 @@ export default async function ListingsPage({
                     {l.profiles?.username && (
                       <div className="flex items-center gap-1.5 mb-2">
                         <span className="text-[11px] font-bold truncate" style={{ color: '#888' }}>{l.profiles.username}</span>
-                        <StarRatingBadge rating={sellerRatings[l.user_id] ?? null} sellerId={l.user_id} />
+                        {/* No sellerId here: the whole card is already a <Link> to the
+                            listing detail page, and StarRatingBadge renders its own <Link>
+                            to the seller's reviews when given one — nesting an <a> inside
+                            an <a> is invalid HTML and was the actual cause of the browser's
+                            "Expected server HTML to contain a matching <div> in <a>"
+                            hydration error. Plain (non-link) badge here; the clickable
+                            version still appears on the listing detail page itself. */}
+                        <StarRatingBadge rating={sellerRatings[l.user_id] ?? null} />
                       </div>
                     )}
                     <div className="flex items-center justify-between">
