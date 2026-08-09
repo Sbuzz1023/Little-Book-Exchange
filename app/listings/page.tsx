@@ -459,9 +459,6 @@ export default async function ListingsPage({
                         <span>📚</span>
                       )}
                     </div>
-                    {!locked && l.user_id !== userId && (
-                      <HeartButton listingId={l.id} isLoggedIn={isLoggedIn} initialSaved={savedIds.has(l.id)} />
-                    )}
                     {avail === 'active' ? (
                       <span
                         className="absolute text-white font-black"
@@ -526,23 +523,33 @@ export default async function ListingsPage({
                 </>
               )
 
-              return locked ? (
-                <div
-                  key={l.id}
-                  className="bg-white border-2 border-gray-100 shadow-[0_5px_0_#e5e7eb] overflow-hidden"
-                  style={{ borderRadius: 20 }}
-                >
-                  {cardInner}
+              return (
+                <div key={l.id} style={{ position: 'relative' }}>
+                  {/* HeartButton sits outside the <Link>/<div> card on purpose — a <button>
+                      nested inside an <a> is invalid HTML and causes a hydration mismatch
+                      ("Expected server HTML to contain a matching <div> in <a>") on any
+                      listing that isn't locked and isn't owned by the viewer. Same absolute
+                      top:8/left:8 positioning, just anchored to this wrapper instead. */}
+                  {!locked && l.user_id !== userId && (
+                    <HeartButton listingId={l.id} isLoggedIn={isLoggedIn} initialSaved={savedIds.has(l.id)} />
+                  )}
+                  {locked ? (
+                    <div
+                      className="bg-white border-2 border-gray-100 shadow-[0_5px_0_#e5e7eb] overflow-hidden"
+                      style={{ borderRadius: 20 }}
+                    >
+                      {cardInner}
+                    </div>
+                  ) : (
+                    <Link
+                      href={`/listings/${l.id}`}
+                      className="block bg-white border-2 border-gray-100 shadow-[0_5px_0_#e5e7eb] hover:-translate-y-1 transition-transform overflow-hidden"
+                      style={{ borderRadius: 20, textDecoration: 'none', color: 'inherit' }}
+                    >
+                      {cardInner}
+                    </Link>
+                  )}
                 </div>
-              ) : (
-                <Link
-                  key={l.id}
-                  href={`/listings/${l.id}`}
-                  className="block bg-white border-2 border-gray-100 shadow-[0_5px_0_#e5e7eb] hover:-translate-y-1 transition-transform overflow-hidden"
-                  style={{ borderRadius: 20, textDecoration: 'none', color: 'inherit' }}
-                >
-                  {cardInner}
-                </Link>
               )
             })}
           </div>
