@@ -51,6 +51,22 @@ export function mapSubjectsToGenre(subjects: string[]): string | null {
 
 Word-boundary matching fixes "keyword hides inside an unrelated word" (the majority of real cases seen so far). It does **not** fix "a real whole word coincidentally means something else in this context" — e.g. `['Romance languages', 'French language']` still maps to Romance, because "Romance" genuinely appears there as its own whole word; the ambiguity is in word *meaning*, not word *boundaries*. Solving that would require real subject-classification logic, not a matching-mechanism fix, and is out of scope here.
 
+## Plural-form handling (added after initial review)
+
+The initial word-boundary fix above accidentally stopped matching plural forms of
+keywords — e.g. `['Arts']`, `['Detectives']`, `['Romances']` all stopped resolving to
+their expected genres, because `tbrMatchPattern`'s right boundary (`(\W|$)`) requires
+the keyword to be followed immediately by a non-word character or end-of-string, with
+no allowance for a trailing "s". This is a false-negative regression found in the
+final whole-branch review (distinct from the original false-positive substring-matching
+bug this design fixes). The fix adds an optional trailing "s" to the boundary pattern
+used in `mapSubjectsToGenre` (`(^|\\W)${escapeRegex(kw)}s?(\\W|$)`), inlined locally
+rather than changing `tbrMatchPattern` itself, since that helper's no-plural-handling
+contract is correct for its original TBR-matching use case. Verified against 32 cases
+total: the 19 from the original fix above, plus 9 plural-regression cases, plus 4
+anti-false-positive sanity checks confirming the trailing "s" doesn't reopen substring
+false-positives (e.g. `'Parts'` and `'Starts'` still correctly return `null`).
+
 ## Testing
 
 Add to `lib/openLibrary.test.ts`, inside the existing `describe('mapSubjectsToGenre', ...)` block:
@@ -64,5 +80,5 @@ No other file changes. `normalizeSearchResults`'s existing tests are unaffected 
 
 | File | Change |
 |---|---|
-| `lib/openLibrary.ts` | `mapSubjectsToGenre` uses `tbrMatchPattern`-based regex matching instead of substring `.includes()`; new import from `./tbrMatch` |
-| `lib/openLibrary.test.ts` | Two regression tests + one Art-still-works sanity test |
+| `lib/openLibrary.ts` | `mapSubjectsToGenre` uses word-boundary regex matching (with an optional trailing "s" for plurals) instead of substring `.includes()`; imports `escapeRegex` from `./tbrMatch` |
+| `lib/openLibrary.test.ts` | Two original regression tests, one Art-still-works sanity test, plus plural-matching and anti-false-positive tests added after the final review |

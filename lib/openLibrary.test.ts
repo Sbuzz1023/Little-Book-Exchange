@@ -147,4 +147,27 @@ describe('mapSubjectsToGenre', () => {
   it('resolves explicit Nonfiction tagging correctly even when "art" appears as a substring elsewhere (regression: "Earth sciences" was matching the Art keyword)', () => {
     expect(mapSubjectsToGenre(['Earth sciences', 'Nonfiction', 'Geology'])).toBe('Non-Fiction')
   })
+
+  it('does not match "crime" hiding inside "Crimean" (regression: word-boundary matching)', () => {
+    expect(mapSubjectsToGenre(['Crimean War, 1853-1856', 'History'])).toBe('History')
+  })
+
+  it('does not match "art" hiding inside "Earth" (regression: word-boundary matching)', () => {
+    expect(mapSubjectsToGenre(['Earth sciences', 'Geology'])).toBeNull()
+  })
+
+  it('still matches a real, correct Art subject as its own word', () => {
+    expect(mapSubjectsToGenre(['Art', 'Painting'])).toBe('Art')
+  })
+
+  it('matches plural forms of keywords (e.g. "Arts" for Art, "Detectives" for Mystery)', () => {
+    expect(mapSubjectsToGenre(['Decorative arts'])).toBe('Art')
+    expect(mapSubjectsToGenre(['Detectives'])).toBe('Mystery')
+    expect(mapSubjectsToGenre(['Romances'])).toBe('Romance')
+  })
+
+  it('does not match a plural-looking word that merely ends in "s" near an unrelated keyword substring', () => {
+    expect(mapSubjectsToGenre(['Parts'])).toBeNull()
+    expect(mapSubjectsToGenre(['Starts'])).toBeNull()
+  })
 })

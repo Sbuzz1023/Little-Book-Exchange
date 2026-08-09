@@ -1,3 +1,5 @@
+import { escapeRegex } from './tbrMatch'
+
 export type BookSuggestion = {
   title: string
   author: string
@@ -41,10 +43,14 @@ const GENRE_KEYWORDS: [string, string[]][] = [
   ['Art', ['art', 'design', 'photography']],
 ]
 
+// Keywords match as whole words/phrases (via the same word-boundary technique as
+// lib/tbrMatch.ts's tbrMatchPattern), with an optional trailing "s" so common plural
+// subject tags (e.g. "Arts", "Detectives", "Crimes") still match — but no other
+// inflection (e.g. "artistic", "criminal") is handled.
 export function mapSubjectsToGenre(subjects: string[]): string | null {
-  const joined = subjects.join(' | ').toLowerCase()
+  const joined = subjects.join(' | ')
   for (const [genre, keywords] of GENRE_KEYWORDS) {
-    if (keywords.some(kw => joined.includes(kw))) return genre
+    if (keywords.some(kw => new RegExp(`(^|\\W)${escapeRegex(kw)}s?(\\W|$)`, 'i').test(joined))) return genre
   }
   return null
 }
