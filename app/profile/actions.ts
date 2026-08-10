@@ -11,7 +11,9 @@ export async function updateProfile(formData: FormData) {
   if (!user) redirect('/auth/signin')
   const rawState = (formData.get('state') as string) ?? ''
   const state = isValidStateCode(rawState) ? rawState : ''
-  await supabase.from('profiles').update({
+  const username = ((formData.get('username') as string) || '').toLowerCase().replace(/\s+/g, '')
+  const { error } = await supabase.from('profiles').update({
+    username,
     city:               formData.get('city')                as string,
     state,
     phone:              formData.get('phone')               as string,
@@ -27,6 +29,14 @@ export async function updateProfile(formData: FormData) {
     notify_tbr_match:        formData.get('notify_tbr_match')        === 'true',
     notify_pickup:           formData.get('notify_pickup')           === 'true',
   }).eq('id', user!.id)
+
+  if (error) {
+    const message = error.code === '23505'
+      ? 'That username is already taken — try another.'
+      : 'Something went wrong saving your changes. Please try again.'
+    redirect(`/profile?error=${encodeURIComponent(message)}`)
+  }
+
   redirect('/profile?success=1')
 }
 
