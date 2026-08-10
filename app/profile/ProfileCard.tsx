@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import ShareToggle from '@/components/ShareToggle'
 import AddressAutofillField from '@/components/AddressAutofillField'
+import PhoneVerify from '@/components/PhoneVerify'
 
 type Props = {
   profile: {
@@ -13,6 +14,7 @@ type Props = {
     city?: string | null
     state?: string | null
     phone?: string | null
+    phone_verified?: boolean | null
     address?: string | null
     address_unit?: string | null
     zip?: string | null
@@ -28,13 +30,26 @@ type Props = {
   } | null
   updateAction: (formData: FormData) => Promise<void>
   success?: boolean
+  error?: string | null
+  sendPhoneOtp: (formData: FormData) => Promise<{ ok: boolean; error?: string }>
+  verifyPhoneOtp: (formData: FormData) => Promise<{ ok: boolean; error?: string }>
+  onPhoneVerified: () => void
 }
 
 const labelStyle: React.CSSProperties = {
   fontSize: 11, fontWeight: 900, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.5px',
 }
 
+const sectionHeaderStyle: React.CSSProperties = {
+  fontSize: 11, fontWeight: 900, color: '#f97316', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 12,
+}
+
 const inputClass = "w-full border-2 border-[#fed7aa] rounded-[12px] px-4 bg-cream font-bold text-[15px] focus:outline-none focus:border-bk-orange"
+
+const staticValueStyle: React.CSSProperties = {
+  padding: '12px 16px', borderRadius: 12, background: '#f3f4f6', border: '2px solid #e5e7eb',
+  color: '#555', fontWeight: 700, fontSize: 15,
+}
 
 function Field({ label, value, full }: { label: string; value?: string | null; full?: boolean }) {
   return (
@@ -58,8 +73,11 @@ function formatDate(iso?: string | null) {
   return new Date(iso).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
 }
 
-export default function ProfileCard({ profile, updateAction, success }: Props) {
+export default function ProfileCard({ profile, updateAction, success, error, sendPhoneOtp, verifyPhoneOtp, onPhoneVerified }: Props) {
   const [editing, setEditing] = useState(false)
+  const [phone, setPhone] = useState(profile?.phone ?? '')
+  const phoneVerified = !!profile?.phone_verified
+  const hasAddressInfo = !!(profile?.city || profile?.state || profile?.address || profile?.zip)
 
   return (
     <div
@@ -94,18 +112,50 @@ export default function ProfileCard({ profile, updateAction, success }: Props) {
         </div>
       )}
 
+      {error && (
+        <div className="bg-red-50 border-2 border-red-200 rounded-xl px-4 py-3 text-red-700 font-bold text-sm mb-4">
+          {error}
+        </div>
+      )}
+
       {editing ? (
         <form action={updateAction} onSubmit={() => setEditing(false)}>
           <div className="grid grid-cols-1 gap-4">
             <div>
-              <EditLabel>Phone</EditLabel>
-              <input name="phone" defaultValue={profile?.phone ?? ''} type="tel"
+              <EditLabel>Username</EditLabel>
+              <input name="username" defaultValue={profile?.username ?? ''} type="text"
                 className={inputClass} style={{ padding: '12px 16px' }} />
+            </div>
+
+            <div>
+              <EditLabel>Email</EditLabel>
+              <div style={staticValueStyle}>{profile?.email || '—'}</div>
+            </div>
+
+            <div>
+              <EditLabel>Phone</EditLabel>
+              {phoneVerified ? (
+                <div style={staticValueStyle}>
+                  {phone} <span style={{ color: '#059669' }}>✅ Verified</span>
+                </div>
+              ) : (
+                <>
+                  <input name="phone" value={phone} onChange={e => setPhone(e.target.value)} type="tel"
+                    className={inputClass} style={{ padding: '12px 16px' }} />
+                  <PhoneVerify
+                    phone={phone}
+                    phoneVerified={false}
+                    sendPhoneOtp={sendPhoneOtp}
+                    verifyPhoneOtp={verifyPhoneOtp}
+                    onVerified={onPhoneVerified}
+                  />
+                </>
+              )}
             </div>
 
             {/* Address section */}
             <div style={{ borderTop: '2px dashed #fed7aa', paddingTop: 16, marginTop: 4 }}>
-              <p style={{ fontSize: 11, fontWeight: 900, color: '#f97316', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 12 }}>
+              <p style={sectionHeaderStyle}>
                 📍 Address
               </p>
               <div className="flex flex-col gap-4">
@@ -135,7 +185,7 @@ export default function ProfileCard({ profile, updateAction, success }: Props) {
 
             {/* Pickup section */}
             <div style={{ borderTop: '2px dashed #fed7aa', paddingTop: 16, marginTop: 4 }}>
-              <p style={{ fontSize: 11, fontWeight: 900, color: '#f97316', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 12 }}>
+              <p style={sectionHeaderStyle}>
                 📦 Pickup Spot
               </p>
               <div className="flex flex-col gap-4">
@@ -156,7 +206,7 @@ export default function ProfileCard({ profile, updateAction, success }: Props) {
 
             {/* Notifications section */}
             <div style={{ borderTop: '2px dashed #fed7aa', paddingTop: 16, marginTop: 4 }}>
-              <p style={{ fontSize: 11, fontWeight: 900, color: '#f97316', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 12 }}>
+              <p style={sectionHeaderStyle}>
                 🔔 Notifications
               </p>
               <div className="flex flex-col gap-3">
@@ -212,21 +262,35 @@ export default function ProfileCard({ profile, updateAction, success }: Props) {
           </div>
         </form>
       ) : (
-        <div className="grid grid-cols-2 gap-x-8 gap-y-5">
-          <Field label="Email" value={profile?.email} full />
-          <Field label="Username" value={profile?.username} />
-          <Field label="City" value={profile?.city} />
-          <Field label="State" value={profile?.state} />
-          <Field label="Phone" value={profile?.phone} />
-          <Field label="Member Since" value={formatDate(profile?.created_at)} />
-          {profile?.address && (
-            <Field label="Address" value={[profile.address, profile.address_unit].filter(Boolean).join(' ')} />
+        <div className="flex flex-col" style={{ gap: 20 }}>
+          <div className="grid grid-cols-2 gap-x-8 gap-y-5">
+            <Field label="Username" value={profile?.username} />
+            <Field label="Email" value={profile?.email} />
+            <Field label="Phone" value={profile?.phone ? `${profile.phone}${phoneVerified ? ' ✅' : ''}` : null} />
+            <Field label="Member Since" value={formatDate(profile?.created_at)} />
+          </div>
+
+          {hasAddressInfo && (
+            <div style={{ borderTop: '2px dashed #fed7aa', paddingTop: 16 }}>
+              <p style={sectionHeaderStyle}>📍 Address</p>
+              <div className="grid grid-cols-2 gap-x-8 gap-y-5">
+                {profile?.address && (
+                  <Field label="Address" value={[profile.address, profile.address_unit].filter(Boolean).join(' ')} full />
+                )}
+                <Field label="City" value={profile?.city} />
+                <Field label="State" value={profile?.state} />
+                {profile?.zip && <Field label="Zip" value={profile.zip} />}
+              </div>
+            </div>
           )}
-          {profile?.zip && (
-            <Field label="Zip" value={profile.zip} />
-          )}
+
           {profile?.pickup_description && (
-            <Field label="Pickup Spot" value={profile.pickup_description} />
+            <div style={{ borderTop: '2px dashed #fed7aa', paddingTop: 16 }}>
+              <p style={sectionHeaderStyle}>📦 Pickup Spot</p>
+              <div className="grid grid-cols-2 gap-x-8 gap-y-5">
+                <Field label="Pickup Spot" value={profile.pickup_description} full />
+              </div>
+            </div>
           )}
         </div>
       )}

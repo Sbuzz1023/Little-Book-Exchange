@@ -269,6 +269,7 @@ export default async function ProfilePage({
       defaultTab={searchParams.tab === 'messages' ? 'messages' : searchParams.tab === 'tbr' ? 'tbr' : (searchParams.demo_pending ? 'exchanges' : 'listings')}
       queryError={queryError}
       tbrError={searchParams.tbr_error ?? null}
+      error={searchParams.error ? decodeURIComponent(searchParams.error) : null}
       unreadCounts={unreadCounts}
       unreadEntityIds={unreadEntityIds}
       resendEmailConfirmation={resendEmailConfirmation}

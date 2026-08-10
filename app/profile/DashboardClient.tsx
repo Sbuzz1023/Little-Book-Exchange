@@ -125,6 +125,7 @@ type Props = {
   defaultTab?: Tab
   queryError?: string | null
   tbrError?: string | null
+  error?: string | null
   isDemo: boolean
   initialConversationId?: string | null
   unreadCounts: { total: number; exchanges: number; tbr: number; messages: number }
@@ -177,7 +178,7 @@ function statusLabel(status: string) {
   return 'Active'
 }
 
-export default function DashboardClient({ profile, listings, exchanges, savedListings, tbrEntries, transactions, updateAction, updateListingStatus, completeExchange, hideExchangeHistory, submitReview, confirmExchange, denyPurchase, cancelPurchase, removeSavedListing, addTbrEntry, removeTbrEntry, success, defaultTab, queryError, tbrError, isDemo, initialConversationId, unreadCounts, unreadEntityIds, resendEmailConfirmation, sendPhoneOtp, verifyPhoneOtp }: Props) {
+export default function DashboardClient({ profile, listings, exchanges, savedListings, tbrEntries, transactions, updateAction, updateListingStatus, completeExchange, hideExchangeHistory, submitReview, confirmExchange, denyPurchase, cancelPurchase, removeSavedListing, addTbrEntry, removeTbrEntry, success, defaultTab, queryError, tbrError, error, isDemo, initialConversationId, unreadCounts, unreadEntityIds, resendEmailConfirmation, sendPhoneOtp, verifyPhoneOtp }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>(defaultTab ?? 'listings')
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(initialConversationId ?? null)
   const booksPosted = listings.reduce((sum, l: any) => sum + (l.book_count ?? 1), 0)
@@ -953,7 +954,15 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
       {/* ── ACCOUNT ── */}
       {activeTab === 'account' && (
         <div className="flex flex-col" style={{ gap: 16 }}>
-          <ProfileCard profile={profile} updateAction={updateAction} success={success} />
+          <ProfileCard
+            profile={profile}
+            updateAction={updateAction}
+            success={success}
+            error={error}
+            sendPhoneOtp={sendPhoneOtp}
+            verifyPhoneOtp={verifyPhoneOtp}
+            onPhoneVerified={() => router.refresh()}
+          />
           <div style={{ borderTop: '2px dashed #e5e7eb', paddingTop: 16 }}>
             <form action="/auth/signout" method="post">
               <button className="font-bold text-sm hover:text-red-400 transition-colors"
