@@ -7,9 +7,16 @@ vi.mock('next/navigation', () => ({
 }))
 
 let updateResult: { error: { code?: string; message?: string } | null }
+let selectResult: { data: { phone_verified: boolean } | null; error: unknown }
+
 const eqMock = vi.fn(() => Promise.resolve(updateResult))
-const updateMock = vi.fn(() => ({ eq: eqMock }))
-const fromMock = vi.fn(() => ({ update: updateMock }))
+const updateMock = vi.fn((_payload: Record<string, unknown>) => ({ eq: eqMock }))
+
+const singleMock = vi.fn(() => Promise.resolve(selectResult))
+const selectEqMock = vi.fn(() => ({ single: singleMock }))
+const selectMock = vi.fn(() => ({ eq: selectEqMock }))
+
+const fromMock = vi.fn(() => ({ update: updateMock, select: selectMock }))
 const getUserMock = vi.fn(() => Promise.resolve({ data: { user: { id: 'user-1' } } }))
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -49,30 +56,65 @@ describe('updateProfile', () => {
     fromMock.mockClear()
     updateMock.mockClear()
     eqMock.mockClear()
+    selectMock.mockClear()
+    selectEqMock.mockClear()
+    singleMock.mockClear()
+    selectResult = { data: { phone_verified: false }, error: null }
   })
 
   it('saves the username along with the rest of the profile and redirects to success', async () => {
     updateResult = { error: null }
-    await expect(updateProfile(buildFormData(baseFields))).rejects.toThrow('REDIRECT:/profile?success=1')
+    await expect(updateProfile(buildFormData(baseFields))).rejects.toThrow('REDIRECT:/profile?tab=account&success=1')
     expect(updateMock).toHaveBeenCalledWith(expect.objectContaining({ username: 'newname' }))
   })
 
   it('lowercases and strips whitespace from the submitted username, matching signup', async () => {
     updateResult = { error: null }
     await expect(updateProfile(buildFormData({ ...baseFields, username: ' New Name ' })))
-      .rejects.toThrow('REDIRECT:/profile?success=1')
+      .rejects.toThrow('REDIRECT:/profile?tab=account&success=1')
     expect(updateMock).toHaveBeenCalledWith(expect.objectContaining({ username: 'newname' }))
   })
 
   it('redirects with a clear message when the username is already taken', async () => {
     updateResult = { error: { code: '23505', message: 'duplicate key value violates unique constraint "profiles_username_key"' } }
     await expect(updateProfile(buildFormData(baseFields)))
-      .rejects.toThrow(`REDIRECT:/profile?error=${encodeURIComponent('That username is already taken — try another.')}`)
+      .rejects.toThrow(`REDIRECT:/profile?tab=account&error=${encodeURIComponent('That username is already taken — try another.')}`)
   })
 
   it('redirects with a generic message on any other save failure', async () => {
     updateResult = { error: { code: '42501', message: 'permission denied' } }
     await expect(updateProfile(buildFormData(baseFields)))
-      .rejects.toThrow(`REDIRECT:/profile?error=${encodeURIComponent('Something went wrong saving your changes. Please try again.')}`)
+      .rejects.toThrow(`REDIRECT:/profile?tab=account&error=${encodeURIComponent('Something went wrong saving your changes. Please try again.')}`)
+  })
+
+  it('redirects to the Account tab so the banner is actually visible', async () => {
+    updateResult = { error: null }
+    await expect(updateProfile(buildFormData(baseFields))).rejects.toThrow()
+    expect(redirectMock).toHaveBeenCalledWith(expect.stringContaining('tab=account'))
+  })
+
+  it('saves the phone when it is not yet verified', async () => {
+    updateResult = { error: null }
+    selectResult = { data: { phone_verified: false }, error: null }
+    await expect(updateProfile(buildFormData(baseFields))).rejects.toThrow()
+    expect(updateMock).toHaveBeenCalledWith(expect.objectContaining({ phone: '3125550100' }))
+  })
+
+  it('never overwrites a verified phone, even if a different value is submitted', async () => {
+    updateResult = { error: null }
+    selectResult = { data: { phone_verified: true }, error: null }
+    await expect(updateProfile(buildFormData({ ...baseFields, phone: '9995550000' })))
+      .rejects.toThrow('REDIRECT:/profile?tab=account&success=1')
+    const payload = updateMock.mock.calls[0][0]
+    expect(payload).not.toHaveProperty('phone')
+    // the rest of the profile still saves
+    expect(payload).toEqual(expect.objectContaining({ username: 'newname', city: 'Chicago' }))
+  })
+
+  it('rejects an empty username without touching the database', async () => {
+    updateResult = { error: null }
+    await expect(updateProfile(buildFormData({ ...baseFields, username: '   ' })))
+      .rejects.toThrow(`REDIRECT:/profile?tab=account&error=${encodeURIComponent('Please enter a username.')}`)
+    expect(updateMock).not.toHaveBeenCalled()
   })
 })

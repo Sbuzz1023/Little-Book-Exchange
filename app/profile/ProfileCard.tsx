@@ -123,7 +123,7 @@ export default function ProfileCard({ profile, updateAction, success, error, sen
           <div className="grid grid-cols-1 gap-4">
             <div>
               <EditLabel>Username</EditLabel>
-              <input name="username" defaultValue={profile?.username ?? ''} type="text"
+              <input name="username" defaultValue={profile?.username ?? ''} type="text" required
                 className={inputClass} style={{ padding: '12px 16px' }} />
             </div>
 

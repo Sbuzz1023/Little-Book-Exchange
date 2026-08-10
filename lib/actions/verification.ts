@@ -37,5 +37,14 @@ export async function verifyPhoneOtp(formData: FormData): Promise<{ ok: boolean;
 
   const { error } = await supabase.auth.verifyOtp({ phone: toE164(phone), token, type: 'phone_change' })
   if (error) return { ok: false, error: error.message }
+
+  // auth.verifyOtp only updates auth.users.phone (and, via the DB trigger in
+  // supabase/schema.sql, profiles.phone_verified). Nothing else copies the
+  // now-confirmed number into profiles.phone, so without this the profile
+  // would show phone_verified: true next to a stale/different phone number.
+  // Stored raw (as typed) to match how profiles.phone is written elsewhere.
+  const { error: profileError } = await supabase.from('profiles').update({ phone }).eq('id', user.id)
+  if (profileError) console.error('verifyPhoneOtp: failed to save verified phone to profile', profileError)
+
   return { ok: true }
 }
