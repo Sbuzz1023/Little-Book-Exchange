@@ -36,6 +36,7 @@ export default function PhoneVerify({ phone, onPhoneChange, phoneVerified, sendP
       {onPhoneChange && (
         <input
           type="tel" value={phone} onChange={e => onPhoneChange(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') e.preventDefault() }}
           className="border-2 border-[#a7f3d0] rounded-lg px-2 py-1.5 font-bold text-[12px]"
         />
       )}
@@ -54,6 +55,7 @@ export default function PhoneVerify({ phone, onPhoneChange, phoneVerified, sendP
       </button>
       <input
         type="text" placeholder="Enter 6-digit code" value={code} onChange={e => setCode(e.target.value)}
+        onKeyDown={e => { if (e.key === 'Enter') e.preventDefault() }}
         className="border-2 border-[#a7f3d0] rounded-lg px-2 py-1.5 font-bold text-[12px]"
       />
       <button

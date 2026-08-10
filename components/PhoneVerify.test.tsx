@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, createEvent } from '@testing-library/react'
 import { describe, it, expect, vi } from 'vitest'
 import PhoneVerify from './PhoneVerify'
 
@@ -17,8 +17,8 @@ describe('PhoneVerify', () => {
   })
 
   it('sends a code and confirms it, calling onVerified on success', async () => {
-    const sendPhoneOtp = vi.fn(() => Promise.resolve({ ok: true }))
-    const verifyPhoneOtp = vi.fn(() => Promise.resolve({ ok: true }))
+    const sendPhoneOtp = vi.fn((_fd: FormData) => Promise.resolve({ ok: true }))
+    const verifyPhoneOtp = vi.fn((_fd: FormData) => Promise.resolve({ ok: true }))
     const onVerified = vi.fn()
 
     render(
@@ -78,5 +78,47 @@ describe('PhoneVerify', () => {
     )
     fireEvent.click(screen.getByRole('button', { name: /Verify Phone/ }))
     expect(screen.queryByDisplayValue('3125550100')).not.toBeInTheDocument()
+  })
+
+  it('renders an editable phone input bound to the phone prop and reports edits via onPhoneChange', () => {
+    const onPhoneChange = vi.fn()
+    render(
+      <PhoneVerify
+        phone="3125550100"
+        onPhoneChange={onPhoneChange}
+        phoneVerified={false}
+        sendPhoneOtp={vi.fn()}
+        verifyPhoneOtp={vi.fn()}
+        onVerified={vi.fn()}
+      />
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: /Verify Phone/ }))
+    const phoneInput = screen.getByDisplayValue('3125550100') as HTMLInputElement
+    expect(phoneInput.tagName).toBe('INPUT')
+    expect(phoneInput).not.toHaveAttribute('readonly')
+
+    fireEvent.change(phoneInput, { target: { value: '3125550199' } })
+    expect(onPhoneChange).toHaveBeenCalledWith('3125550199')
+  })
+
+  it('swallows Enter in its inputs so it cannot submit the surrounding profile form', () => {
+    render(
+      <PhoneVerify
+        phone="3125550100"
+        onPhoneChange={vi.fn()}
+        phoneVerified={false}
+        sendPhoneOtp={vi.fn()}
+        verifyPhoneOtp={vi.fn()}
+        onVerified={vi.fn()}
+      />
+    )
+    fireEvent.click(screen.getByRole('button', { name: /Verify Phone/ }))
+
+    for (const input of [screen.getByDisplayValue('3125550100'), screen.getByPlaceholderText(/6-digit code/)]) {
+      const enter = createEvent.keyDown(input, { key: 'Enter' })
+      fireEvent(input, enter)
+      expect(enter.defaultPrevented).toBe(true)
+    }
   })
 })

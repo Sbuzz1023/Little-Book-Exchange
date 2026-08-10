@@ -23,10 +23,13 @@ describe('ProfileCard — view mode', () => {
   it('renders Username, Email, Phone, and Member Since together, ahead of Address', () => {
     render(<ProfileCard profile={baseProfile} {...baseProps} />)
     const text = document.body.textContent ?? ''
-    expect(text.indexOf('Username')).toBeLessThan(text.indexOf('📍 Address'))
-    expect(text.indexOf('Email')).toBeLessThan(text.indexOf('📍 Address'))
-    expect(text.indexOf('Phone')).toBeLessThan(text.indexOf('📍 Address'))
-    expect(text.indexOf('Member Since')).toBeLessThan(text.indexOf('📍 Address'))
+    // indexOf returns -1 for a missing label, and -1 is "less than" any real
+    // index — so assert each label is actually present before comparing order.
+    expect(text).toContain('📍 Address')
+    for (const label of ['Username', 'Email', 'Phone', 'Member Since']) {
+      expect(text).toContain(label)
+      expect(text.indexOf(label)).toBeLessThan(text.indexOf('📍 Address'))
+    }
   })
 
   it('does not render an Address section when no address fields are set', () => {
@@ -46,9 +49,12 @@ describe('ProfileCard — edit mode', () => {
     fireEvent.click(screen.getByRole('button', { name: /Edit/ }))
   }
 
-  it('has an editable Username input', () => {
+  it('has an editable Username input named "username" so updateProfile can read it', () => {
     openEdit()
-    expect(screen.getByDisplayValue('demouser')).toBeInTheDocument()
+    const usernameInput = screen.getByDisplayValue('demouser')
+    expect(usernameInput).toBeInTheDocument()
+    expect(usernameInput).toHaveAttribute('name', 'username')
+    expect(usernameInput).toBeRequired()
   })
 
   it('shows Email as plain text, not an input', () => {
