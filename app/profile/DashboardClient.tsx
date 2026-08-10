@@ -8,6 +8,7 @@ import ProfileCard from './ProfileCard'
 import MessagesTab from './MessagesTab'
 import HistorySection, { type HistoryExchange } from './HistorySection'
 import TbrAddForm from './TbrAddForm'
+import PhoneVerify from '@/components/PhoneVerify'
 import { createClient } from '@/lib/supabase/client'
 
 type Tab = 'listings' | 'exchanges' | 'tbr' | 'saved' | 'wallet' | 'account' | 'messages'
@@ -125,6 +126,7 @@ type Props = {
   defaultTab?: Tab
   queryError?: string | null
   tbrError?: string | null
+  error?: string | null
   isDemo: boolean
   initialConversationId?: string | null
   unreadCounts: { total: number; exchanges: number; tbr: number; messages: number }
@@ -177,15 +179,12 @@ function statusLabel(status: string) {
   return 'Active'
 }
 
-export default function DashboardClient({ profile, listings, exchanges, savedListings, tbrEntries, transactions, updateAction, updateListingStatus, completeExchange, hideExchangeHistory, submitReview, confirmExchange, denyPurchase, cancelPurchase, removeSavedListing, addTbrEntry, removeTbrEntry, success, defaultTab, queryError, tbrError, isDemo, initialConversationId, unreadCounts, unreadEntityIds, resendEmailConfirmation, sendPhoneOtp, verifyPhoneOtp }: Props) {
+export default function DashboardClient({ profile, listings, exchanges, savedListings, tbrEntries, transactions, updateAction, updateListingStatus, completeExchange, hideExchangeHistory, submitReview, confirmExchange, denyPurchase, cancelPurchase, removeSavedListing, addTbrEntry, removeTbrEntry, success, defaultTab, queryError, tbrError, error, isDemo, initialConversationId, unreadCounts, unreadEntityIds, resendEmailConfirmation, sendPhoneOtp, verifyPhoneOtp }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>(defaultTab ?? 'listings')
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(initialConversationId ?? null)
   const booksPosted = listings.reduce((sum, l: any) => sum + (l.book_count ?? 1), 0)
   const router = useRouter()
-  const [phoneStep, setPhoneStep] = useState<'idle' | 'code_sent'>('idle')
   const [phoneNumber, setPhoneNumber] = useState(profile?.phone ?? '')
-  const [phoneCode, setPhoneCode] = useState('')
-  const [phoneError, setPhoneError] = useState<string | null>(null)
   const [emailResendMessage, setEmailResendMessage] = useState<string | null>(null)
   const [emailResendOk, setEmailResendOk] = useState(false)
 
@@ -799,66 +798,15 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
                   )}
                 </div>
                 <div>
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-[13px]">{profile?.phone_verified ? '✅' : '☐'} Verify phone</span>
-                    {!profile?.phone_verified && phoneStep === 'idle' && (
-                      <button
-                        type="button"
-                        onClick={() => setPhoneStep('code_sent')}
-                        className="font-extrabold text-[12px]"
-                        style={{ background: 'none', border: 'none', color: '#059669', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
-                      >
-                        Verify Phone
-                      </button>
-                    )}
-                  </div>
-                  {!profile?.phone_verified && phoneStep === 'code_sent' && (
-                    <div className="mt-2 flex flex-col" style={{ gap: 6 }}>
-                      <input
-                        type="tel" value={phoneNumber} onChange={e => setPhoneNumber(e.target.value)}
-                        className="border-2 border-[#a7f3d0] rounded-lg px-2 py-1.5 font-bold text-[12px]"
-                      />
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          const fd = new FormData()
-                          fd.set('phone', phoneNumber)
-                          const res = await sendPhoneOtp(fd)
-                          setPhoneError(res.ok ? null : (res.error ?? 'Failed to send code.'))
-                        }}
-                        className="font-extrabold text-[12px] self-start"
-                        style={{ background: '#059669', color: '#fff', border: 'none', borderRadius: 8, padding: '5px 12px', cursor: 'pointer', fontFamily: 'inherit' }}
-                      >
-                        Send code
-                      </button>
-                      <input
-                        type="text" placeholder="Enter 6-digit code" value={phoneCode} onChange={e => setPhoneCode(e.target.value)}
-                        className="border-2 border-[#a7f3d0] rounded-lg px-2 py-1.5 font-bold text-[12px]"
-                      />
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          const fd = new FormData()
-                          fd.set('phone', phoneNumber)
-                          fd.set('token', phoneCode)
-                          const res = await verifyPhoneOtp(fd)
-                          if (res.ok) {
-                            setPhoneStep('idle'); setPhoneError(null); setPhoneCode('')
-                            // The server-rendered `profile` prop still says phone_verified: false.
-                            // Without this the checklist row stays unchecked and the "Bonus earned"
-                            // card never appears until a manual reload.
-                            router.refresh()
-                          }
-                          else setPhoneError(res.error ?? 'Invalid code.')
-                        }}
-                        className="font-extrabold text-[12px] self-start"
-                        style={{ background: '#059669', color: '#fff', border: 'none', borderRadius: 8, padding: '5px 12px', cursor: 'pointer', fontFamily: 'inherit' }}
-                      >
-                        Confirm code
-                      </button>
-                      {phoneError && <p className="font-bold text-[11px]" style={{ color: '#e11d48' }}>{phoneError}</p>}
-                    </div>
-                  )}
+                  <span className="font-bold text-[13px]">{profile?.phone_verified ? '✅' : '☐'} Verify phone</span>
+                  <PhoneVerify
+                    phone={phoneNumber}
+                    onPhoneChange={setPhoneNumber}
+                    phoneVerified={!!profile?.phone_verified}
+                    sendPhoneOtp={sendPhoneOtp}
+                    verifyPhoneOtp={verifyPhoneOtp}
+                    onVerified={() => router.refresh()}
+                  />
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-[13px]">{booksPosted >= 3 ? '✅' : '☐'} Books posted</span>
@@ -953,7 +901,15 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
       {/* ── ACCOUNT ── */}
       {activeTab === 'account' && (
         <div className="flex flex-col" style={{ gap: 16 }}>
-          <ProfileCard profile={profile} updateAction={updateAction} success={success} />
+          <ProfileCard
+            profile={profile}
+            updateAction={updateAction}
+            success={success}
+            error={error}
+            sendPhoneOtp={sendPhoneOtp}
+            verifyPhoneOtp={verifyPhoneOtp}
+            onPhoneVerified={() => router.refresh()}
+          />
           <div style={{ borderTop: '2px dashed #e5e7eb', paddingTop: 16 }}>
             <form action="/auth/signout" method="post">
               <button className="font-bold text-sm hover:text-red-400 transition-colors"

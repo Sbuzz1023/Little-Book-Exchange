@@ -9,12 +9,26 @@ export async function updateProfile(formData: FormData) {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/auth/signin')
+
+  const { data: currentProfile } = await supabase
+    .from('profiles')
+    .select('phone_verified')
+    .eq('id', user!.id)
+    .single()
+  const phoneVerified = !!currentProfile?.phone_verified
+
   const rawState = (formData.get('state') as string) ?? ''
   const state = isValidStateCode(rawState) ? rawState : ''
-  await supabase.from('profiles').update({
+  const username = ((formData.get('username') as string) || '').toLowerCase().replace(/\s+/g, '')
+
+  if (!username) {
+    redirect(`/profile?tab=account&error=${encodeURIComponent('Please enter a username.')}`)
+  }
+
+  const updatePayload: Record<string, unknown> = {
+    username,
     city:               formData.get('city')                as string,
     state,
-    phone:              formData.get('phone')               as string,
     address:            (formData.get('address')            as string) || '',
     address_unit:       (formData.get('address_unit')       as string) || '',
     zip:                (formData.get('zip')                as string) || '',
@@ -26,8 +40,25 @@ export async function updateProfile(formData: FormData) {
     notify_purchase_decision: formData.get('notify_purchase_decision') === 'true',
     notify_tbr_match:        formData.get('notify_tbr_match')        === 'true',
     notify_pickup:           formData.get('notify_pickup')           === 'true',
-  }).eq('id', user!.id)
-  redirect('/profile?success=1')
+  }
+
+  // Once a phone number is verified, only the verification flow itself may
+  // change profiles.phone — readOnly in the UI is not a security boundary
+  // by itself, since a crafted POST could still submit a different value.
+  if (!phoneVerified) {
+    updatePayload.phone = formData.get('phone') as string
+  }
+
+  const { error } = await supabase.from('profiles').update(updatePayload).eq('id', user!.id)
+
+  if (error) {
+    const message = error.code === '23505'
+      ? 'That username is already taken — try another.'
+      : 'Something went wrong saving your changes. Please try again.'
+    redirect(`/profile?tab=account&error=${encodeURIComponent(message)}`)
+  }
+
+  redirect('/profile?tab=account&success=1')
 }
 
 export async function updateListingStatus(formData: FormData) {
