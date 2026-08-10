@@ -1,9 +1,25 @@
 'use client'
 
 import { useState } from 'react'
-import { AddressAutofill } from '@mapbox/search-js-react'
+import dynamic from 'next/dynamic'
 import StateSelect from '@/components/StateSelect'
 import { resolveStateCode } from '@/lib/usStates'
+
+// @mapbox/search-js-react's AddressAutofill executes browser-only code
+// (customElements.define or similar) at module-import time, which crashes
+// Next.js's SSR pass for this 'use client' component with "document is not
+// defined" — 'use client' components are still server-rendered for their
+// initial HTML, so a static top-level import still gets evaluated on the
+// server. Loading it via next/dynamic with ssr:false defers the actual
+// import() to the browser only, matching the identical fix this codebase
+// already uses for react-leaflet in app/locations/LocationsClient.tsx, for
+// the same underlying reason. Only this piece is skipped during SSR — the
+// rest of the form (City/State/Zip, and the plain fallback input below)
+// still renders on the server normally.
+const AddressAutofill = dynamic(
+  () => import('@mapbox/search-js-react').then(mod => mod.AddressAutofill),
+  { ssr: false }
+)
 
 // Mapbox's Address Autofill `retrieve()` payload is a GeoJSON FeatureCollection
 // of AddressAutofillFeatureSuggestion (see @mapbox/search-js-core's

@@ -62,7 +62,7 @@ describe('AddressAutofillField', () => {
     expect(screen.getByPlaceholderText('e.g. 60614')).toHaveValue('62704')
   })
 
-  it('picking a suggestion fills city, state (resolved from a full name to its code), and zip', () => {
+  it('picking a suggestion fills city, state (resolved from a full name to its code), and zip', async () => {
     vi.stubEnv('NEXT_PUBLIC_MAPBOX_TOKEN', 'pk.test')
     const { container } = render(
       <AddressAutofillField
@@ -71,7 +71,11 @@ describe('AddressAutofillField', () => {
         labelStyle={labelStyle}
       />
     )
-    fireEvent.click(screen.getByText('simulate retrieve'))
+    // AddressAutofill is now loaded via next/dynamic (ssr:false) so its
+    // wrapped children — including this mock's "simulate retrieve" button —
+    // only appear after the dynamic import resolves on a later tick, even
+    // with @mapbox/search-js-react mocked synchronously above.
+    fireEvent.click(await screen.findByText('simulate retrieve'))
 
     expect(screen.getByPlaceholderText('e.g. Chicago')).toHaveValue('Chicago')
     expect(container.querySelector('select[name="state"]')).toHaveValue('IL')
