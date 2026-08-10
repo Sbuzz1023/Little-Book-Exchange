@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import dynamic from 'next/dynamic'
 import StateSelect from '@/components/StateSelect'
 import { resolveStateCode } from '@/lib/usStates'
@@ -69,6 +69,17 @@ export default function AddressAutofillField({
   const [state, setState] = useState(defaultState)
   const [zip, setZip] = useState(defaultZip)
   const [stateKey, setStateKey] = useState(0)
+  // The plain input must render identically on the server and on the
+  // client's first paint (mounted=false in both) to avoid a hydration
+  // mismatch. Only after useEffect fires post-hydration does this flip to
+  // true, swapping in the Mapbox-enhanced version — progressive
+  // enhancement, same spirit as the no-token fallback below. This also
+  // fixes a real bug: since AddressAutofill is a next/dynamic(ssr:false)
+  // bailout boundary and addressInput is passed as its children, gating on
+  // MAPBOX_TOKEN alone made the whole subtree — including the required
+  // Street Address input — absent from the initial SSR HTML.
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => setMounted(true), [])
 
   function handleRetrieve(res: AddressAutofillRetrieveResponse) {
     const props = res.features?.[0]?.properties
@@ -99,7 +110,7 @@ export default function AddressAutofillField({
     <>
       <div>
         <label className="block mb-1.5" style={labelStyle}>Street Address</label>
-        {MAPBOX_TOKEN ? (
+        {mounted && MAPBOX_TOKEN ? (
           <AddressAutofill accessToken={MAPBOX_TOKEN} options={{ country: 'us' }} onRetrieve={handleRetrieve}>
             {addressInput}
           </AddressAutofill>
