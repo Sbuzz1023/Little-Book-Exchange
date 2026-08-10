@@ -893,7 +893,7 @@ begin
   -- Must be schema-qualified: this trigger fires inside GoTrue's own
   -- transaction (as supabase_auth_admin), whose search_path doesn't
   -- include public, so the bare table name fails to resolve.
-  insert into public.profiles (id, email, username, city, state, phone, contact_preference, address, address_unit, share_address, pickup_description, share_pickup, email_verified, phone_verified)
+  insert into public.profiles (id, email, username, city, state, phone, contact_preference, address, address_unit, share_address, pickup_description, share_pickup, email_verified, phone_verified, zip)
   values (
     new.id,
     new.email,
@@ -908,7 +908,8 @@ begin
     coalesce(new.raw_user_meta_data->>'pickup_description', ''),
     coalesce((new.raw_user_meta_data->>'share_pickup')::boolean, true),
     (new.email_confirmed_at is not null),
-    (new.phone_confirmed_at is not null)
+    (new.phone_confirmed_at is not null),
+    coalesce(new.raw_user_meta_data->>'zip', '')
   );
   return new;
 end;
@@ -1347,4 +1348,22 @@ $$ language plpgsql security definer set search_path = public, pg_temp;
 
 -- ── Migration: listing ISBN ─────────────────────────────────────────────────────
 ALTER TABLE listings ADD COLUMN IF NOT EXISTS isbn text;
+-- ──────────────────────────────────────────────────────────────────────────────
+
+-- ── Migration: Mapbox address autofill (zip) ────────────────────────────────────
+-- Run this block in Supabase SQL Editor. Backs the Address Autofill feature on
+-- signup/profile edit — see
+-- docs/superpowers/specs/2026-08-09-mapbox-address-autofill-design.md.
+--
+-- An earlier version of this block also added `lat`/`lng` columns (removed
+-- here — see the spec's Addendum: Mapbox Address Autofill's coordinates are
+-- licensed as ephemeral-only and cannot be persisted). If that earlier
+-- version was already run against your database, `lat`/`lng` are orphan
+-- columns nothing writes to anymore. Check first:
+--   select column_name from information_schema.columns
+--   where table_name = 'profiles' and column_name in ('zip','lat','lng');
+-- If `lat`/`lng` come back, drop them:
+--   alter table profiles drop column if exists lat, drop column if exists lng;
+ALTER TABLE profiles
+  ADD COLUMN IF NOT EXISTS zip text NOT NULL DEFAULT '';
 -- ──────────────────────────────────────────────────────────────────────────────

@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import ShareToggle from '@/components/ShareToggle'
-import StateSelect from '@/components/StateSelect'
+import AddressAutofillField from '@/components/AddressAutofillField'
 
 type Props = {
   profile: {
@@ -15,6 +15,7 @@ type Props = {
     phone?: string | null
     address?: string | null
     address_unit?: string | null
+    zip?: string | null
     share_address?: boolean | null
     pickup_description?: string | null
     share_pickup?: boolean | null
@@ -97,16 +98,6 @@ export default function ProfileCard({ profile, updateAction, success }: Props) {
         <form action={updateAction} onSubmit={() => setEditing(false)}>
           <div className="grid grid-cols-1 gap-4">
             <div>
-              <EditLabel>City</EditLabel>
-              <input name="city" defaultValue={profile?.city ?? ''} required
-                className={inputClass} style={{ padding: '12px 16px' }} />
-            </div>
-            <div>
-              <EditLabel>State</EditLabel>
-              <StateSelect name="state" defaultValue={profile?.state ?? ''} required placeholder="Select a state"
-                className={inputClass} style={{ padding: '12px 16px' }} />
-            </div>
-            <div>
               <EditLabel>Phone</EditLabel>
               <input name="phone" defaultValue={profile?.phone ?? ''} type="tel"
                 className={inputClass} style={{ padding: '12px 16px' }} />
@@ -115,15 +106,18 @@ export default function ProfileCard({ profile, updateAction, success }: Props) {
             {/* Address section */}
             <div style={{ borderTop: '2px dashed #fed7aa', paddingTop: 16, marginTop: 4 }}>
               <p style={{ fontSize: 11, fontWeight: 900, color: '#f97316', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 12 }}>
-                📍 Private Address
+                📍 Address
               </p>
               <div className="flex flex-col gap-4">
-                <div>
-                  <EditLabel>Street Address</EditLabel>
-                  <input name="address" defaultValue={profile?.address ?? ''}
-                    placeholder="e.g. 123 Main St"
-                    className={inputClass} style={{ padding: '12px 16px' }} />
-                </div>
+                <AddressAutofillField
+                  defaultAddress={profile?.address ?? ''}
+                  defaultCity={profile?.city ?? ''}
+                  defaultState={profile?.state ?? ''}
+                  defaultZip={profile?.zip ?? ''}
+                  inputClassName={inputClass}
+                  inputStyle={{ padding: '12px 16px' }}
+                  labelStyle={{ fontSize: 12, fontWeight: 900, color: '#888', textTransform: 'uppercase', letterSpacing: '0.5px' }}
+                />
                 <div>
                   <EditLabel>Apt / Unit #</EditLabel>
                   <input name="address_unit" defaultValue={profile?.address_unit ?? ''}
@@ -227,6 +221,9 @@ export default function ProfileCard({ profile, updateAction, success }: Props) {
           <Field label="Member Since" value={formatDate(profile?.created_at)} />
           {profile?.address && (
             <Field label="Address" value={[profile.address, profile.address_unit].filter(Boolean).join(' ')} />
+          )}
+          {profile?.zip && (
+            <Field label="Zip" value={profile.zip} />
           )}
           {profile?.pickup_description && (
             <Field label="Pickup Spot" value={profile.pickup_description} />

@@ -62,3 +62,18 @@ export const US_STATES: UsState[] = [
 export function isValidStateCode(code: string | null | undefined): boolean {
   return US_STATES.some(s => s.code === code)
 }
+
+// Resolves an address-autocomplete result's state/region text — which may
+// arrive as a 2-letter code ("IL") or a full name ("Illinois") depending on
+// the source — to a valid 2-letter code, or '' if it doesn't match any of
+// the 51. Callers coerce '' to "no state," the same convention
+// isValidStateCode's callers already use.
+export function resolveStateCode(input: string | null | undefined): string {
+  if (!input) return ''
+  const trimmed = input.trim()
+  const upper = trimmed.toUpperCase()
+  if (isValidStateCode(upper)) return upper
+  const lower = trimmed.toLowerCase()
+  const match = US_STATES.find(s => s.name.toLowerCase() === lower)
+  return match ? match.code : ''
+}

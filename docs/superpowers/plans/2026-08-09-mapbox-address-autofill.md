@@ -2,6 +2,20 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> **Addendum (2026-08-09, discovered during Task 5 verification):** Tasks 1-4
+> as originally written capture and persist `lat`/`lng` from Mapbox Address
+> Autofill's `retrieve()`. That data is licensed by Mapbox as ephemeral-only
+> (see the corresponding addendum in
+> `docs/superpowers/specs/2026-08-09-mapbox-address-autofill-design.md`) —
+> persisting it conflicts with Mapbox's Terms of Service. Task 6 below
+> removes coordinate capture/storage (added in Tasks 1-4) and separately
+> fixes two real bugs in Task 2's code found in the same pass: a missing
+> `afterEach` import, and `AddressAutofillField`'s field-extraction logic
+> reading a response shape that doesn't match the real, installed
+> `@mapbox/search-js-core` package (so city/state/zip autofill would not
+> actually have worked at runtime despite passing tests, which mocked the
+> wrong shape). Every `lat`/`lng` reference in Tasks 1-4 below is historical.
+
 **Goal:** Typing in the Street Address field on signup or profile edit offers real Mapbox address suggestions; picking one fills City, State, and a new Zip field, and captures lat/lng on the profile — laying the groundwork for a future distance-radius search, without building that search here.
 
 **Architecture:** A single new client component, `AddressAutofillField`, wraps the Street Address `<input>` in Mapbox's `<AddressAutofill>` and drives City/State/Zip/lat/lng via its `onRetrieve` callback (not the browser-autofill-attribute pattern, since Mapbox's own docs only show that filling `<input>`s, and the State field is a `<select>` requiring an exact 2-letter code). It replaces the City/State/Street/Zip block on both the signup page and the profile-edit form; the existing Apt/Unit field is untouched. Two new nullable `profiles` columns (`lat`, `lng`) plus a `zip` column carry the captured data through the existing server actions into Supabase.
@@ -850,3 +864,563 @@ With `NEXT_PUBLIC_MAPBOX_TOKEN` set in `.env.local` (Task 2, Step 2) and the Tas
 
 Run: `git status -s`
 Expected: Clean (aside from `.env.local`, which is gitignored and expected to show no diff, and any files unrelated to this plan, e.g. `.claude/`).
+
+---
+
+### Task 6: Remove coordinate storage; fix the real Mapbox response shape
+
+**Files:**
+- Modify: `lib/usStates.ts` (add `resolveStateCode`)
+- Modify: `lib/usStates.test.ts` (add its tests)
+- Modify: `components/AddressAutofillField.tsx`
+- Modify: `components/AddressAutofillField.test.tsx`
+- Modify: `app/auth/signup/page.tsx`
+- Modify: `app/profile/ProfileCard.tsx`
+- Modify: `app/profile/actions.ts`
+- Modify: `supabase/schema.sql`
+
+**Interfaces:**
+- Consumes: nothing new.
+- Produces: `resolveStateCode(input: string | null | undefined): string` (exported from `lib/usStates.ts`) — resolves a state given either as a 2-letter code or a full name to its 2-letter code, or `''` if unrecognized. `AddressAutofillField`'s `Props` type drops `defaultLat`/`defaultLng` entirely (breaking change from Tasks 1-4, intentional).
+
+- [ ] **Step 1: Add `resolveStateCode` — write the failing tests**
+
+In `lib/usStates.test.ts`, add this new `describe` block at the end of the file (after the existing `describe('isValidStateCode', ...)` block):
+
+```ts
+describe('resolveStateCode', () => {
+  it('returns the code unchanged when given a valid code', () => {
+    expect(resolveStateCode('IL')).toBe('IL')
+  })
+
+  it('resolves a full state name to its code', () => {
+    expect(resolveStateCode('Illinois')).toBe('IL')
+  })
+
+  it('resolves a full state name case-insensitively', () => {
+    expect(resolveStateCode('illinois')).toBe('IL')
+  })
+
+  it('resolves District of Columbia to DC', () => {
+    expect(resolveStateCode('District of Columbia')).toBe('DC')
+  })
+
+  it('returns empty string for an unrecognized value', () => {
+    expect(resolveStateCode('Nowhere')).toBe('')
+  })
+
+  it('returns empty string for a two-letter code that is not a real state', () => {
+    expect(resolveStateCode('ZZ')).toBe('')
+  })
+
+  it('returns empty string for empty/null/undefined input', () => {
+    expect(resolveStateCode('')).toBe('')
+    expect(resolveStateCode(null)).toBe('')
+    expect(resolveStateCode(undefined)).toBe('')
+  })
+})
+```
+
+Update the import at the top of the file from:
+
+```ts
+import { describe, it, expect } from 'vitest'
+import { US_STATES, isValidStateCode } from './usStates'
+```
+
+to:
+
+```ts
+import { describe, it, expect } from 'vitest'
+import { US_STATES, isValidStateCode, resolveStateCode } from './usStates'
+```
+
+- [ ] **Step 2: Run the tests to verify they fail**
+
+Run: `npx vitest run lib/usStates.test.ts`
+Expected: FAIL — `resolveStateCode is not a function` (doesn't exist yet).
+
+- [ ] **Step 3: Implement `resolveStateCode`**
+
+In `lib/usStates.ts`, append this after the existing `isValidStateCode` function:
+
+```ts
+
+// Resolves an address-autocomplete result's state/region text — which may
+// arrive as a 2-letter code ("IL") or a full name ("Illinois") depending on
+// the source — to a valid 2-letter code, or '' if it doesn't match any of
+// the 51. Callers coerce '' to "no state," the same convention
+// isValidStateCode's callers already use.
+export function resolveStateCode(input: string | null | undefined): string {
+  if (!input) return ''
+  const trimmed = input.trim()
+  const upper = trimmed.toUpperCase()
+  if (isValidStateCode(upper)) return upper
+  const lower = trimmed.toLowerCase()
+  const match = US_STATES.find(s => s.name.toLowerCase() === lower)
+  return match ? match.code : ''
+}
+```
+
+- [ ] **Step 4: Run the tests to verify they pass**
+
+Run: `npx vitest run lib/usStates.test.ts`
+Expected: PASS (13 tests — 5 `US_STATES` + 8 `isValidStateCode` + 7 new `resolveStateCode`... count whatever the file actually has after your edit; just confirm all pass, none fail).
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add lib/usStates.ts lib/usStates.test.ts
+git commit -m "feat: add resolveStateCode for autofill results that return a full state name
+
+Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
+```
+
+- [ ] **Step 6: Rewrite `AddressAutofillField.tsx`** — drop coordinates, fix the response shape, use `resolveStateCode`
+
+Replace the entire contents of `components/AddressAutofillField.tsx` with:
+
+```tsx
+'use client'
+
+import { useState } from 'react'
+import { AddressAutofill } from '@mapbox/search-js-react'
+import StateSelect from '@/components/StateSelect'
+import { resolveStateCode } from '@/lib/usStates'
+
+// Mapbox's Address Autofill `retrieve()` payload is a GeoJSON FeatureCollection
+// of AddressAutofillFeatureSuggestion (see @mapbox/search-js-core's
+// dist/autofill/types.d.ts) — a flat, WHATWG-Autocomplete-shaped `properties`
+// object, not the nested `context.*` shape the standalone Geocoding/Search
+// Box APIs use. Only the fields this component reads are typed here.
+//
+// Coordinates are deliberately NOT read here: AddressAutofillCore.retrieve()'s
+// own JSDoc states its coordinates "should be used ephemerally and not
+// persisted" per the Mapbox Terms of Service — a different license than the
+// address text fields below, which Autofill is explicitly built to let you
+// store. See the design spec's Addendum for what a compliant coordinate
+// source would require.
+type AddressAutofillRetrieveResponse = {
+  features: {
+    properties?: {
+      address_level2?: string // city
+      address_level1?: string // state — may be a full name or a code; resolved via resolveStateCode
+      postcode?: string
+    }
+  }[]
+}
+
+type Props = {
+  defaultAddress?: string
+  defaultCity?: string
+  defaultState?: string
+  defaultZip?: string
+  inputClassName: string
+  inputStyle: React.CSSProperties
+  labelStyle: React.CSSProperties
+  requiredMark?: React.ReactNode
+}
+
+export default function AddressAutofillField({
+  defaultAddress = '',
+  defaultCity = '',
+  defaultState = '',
+  defaultZip = '',
+  inputClassName,
+  inputStyle,
+  labelStyle,
+  requiredMark,
+}: Props) {
+  const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || ''
+  const [city, setCity] = useState(defaultCity)
+  const [state, setState] = useState(defaultState)
+  const [zip, setZip] = useState(defaultZip)
+
+  function handleRetrieve(res: AddressAutofillRetrieveResponse) {
+    const props = res.features?.[0]?.properties
+    if (props?.address_level2) setCity(props.address_level2)
+    if (props?.address_level1) {
+      const code = resolveStateCode(props.address_level1)
+      if (code) setState(code)
+    }
+    if (props?.postcode) setZip(props.postcode)
+  }
+
+  const addressInput = (
+    <input
+      name="address"
+      type="text"
+      placeholder="e.g. 123 Main St"
+      defaultValue={defaultAddress}
+      autoComplete="address-line1"
+      className={inputClassName}
+      style={inputStyle}
+    />
+  )
+
+  return (
+    <>
+      <div>
+        <label className="block mb-1.5" style={labelStyle}>Street Address</label>
+        {MAPBOX_TOKEN ? (
+          <AddressAutofill accessToken={MAPBOX_TOKEN} options={{ country: 'us' }} onRetrieve={handleRetrieve}>
+            {addressInput}
+          </AddressAutofill>
+        ) : addressInput}
+      </div>
+
+      <div>
+        <label className="block mb-1.5" style={labelStyle}>City{requiredMark}</label>
+        <input
+          name="city"
+          type="text"
+          placeholder="e.g. Chicago"
+          value={city}
+          onChange={e => setCity(e.target.value)}
+          required
+          autoComplete="address-level2"
+          className={inputClassName}
+          style={inputStyle}
+        />
+      </div>
+
+      <div>
+        <label className="block mb-1.5" style={labelStyle}>State{requiredMark}</label>
+        <StateSelect
+          key={state}
+          name="state"
+          defaultValue={state}
+          required
+          placeholder="Select a state"
+          className={inputClassName}
+          style={inputStyle}
+        />
+      </div>
+
+      <div>
+        <label className="block mb-1.5" style={labelStyle}>Zip Code</label>
+        <input
+          name="zip"
+          type="text"
+          placeholder="e.g. 60614"
+          value={zip}
+          onChange={e => setZip(e.target.value)}
+          autoComplete="postal-code"
+          className={inputClassName}
+          style={inputStyle}
+        />
+      </div>
+    </>
+  )
+}
+```
+
+- [ ] **Step 7: Rewrite `AddressAutofillField.test.tsx`** to match the real response shape and drop lat/lng
+
+Replace the entire contents of `components/AddressAutofillField.test.tsx` with:
+
+```tsx
+import { render, screen, fireEvent } from '@testing-library/react'
+import { describe, it, expect, vi, afterEach } from 'vitest'
+import AddressAutofillField from './AddressAutofillField'
+
+// Stub out Mapbox's real <AddressAutofill> (a web component wrapper that
+// would otherwise try to reach the network in jsdom). The stub renders the
+// wrapped input as-is and exposes a button to simulate picking a suggestion,
+// calling the real onRetrieve prop with a representative Mapbox response.
+vi.mock('@mapbox/search-js-react', () => ({
+  AddressAutofill: ({ children, onRetrieve }: any) => (
+    <div>
+      {children}
+      <button type="button" onClick={() => onRetrieve(SAMPLE_RETRIEVE_RESPONSE)}>
+        simulate retrieve
+      </button>
+    </div>
+  ),
+}))
+
+// Matches the real (flat, WHATWG-shaped) AddressAutofillFeatureSuggestion
+// properties object from @mapbox/search-js-core — not the nested Geocoding/
+// Search Box API shape used elsewhere on this branch's /locations page.
+// address_level1 deliberately uses a full name here (not "IL") to exercise
+// resolveStateCode's name-to-code resolution, since real Autofill results
+// can return either form.
+const SAMPLE_RETRIEVE_RESPONSE = {
+  features: [
+    {
+      properties: {
+        address_level2: 'Chicago',
+        address_level1: 'Illinois',
+        postcode: '60614',
+      },
+    },
+  ],
+}
+
+const inputClassName = 'test-input'
+const inputStyle = {}
+const labelStyle = {}
+
+describe('AddressAutofillField', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
+  it('renders plain editable fields seeded with the given defaults', () => {
+    render(
+      <AddressAutofillField
+        defaultAddress="123 Main St"
+        defaultCity="Springfield"
+        defaultState="IL"
+        defaultZip="62704"
+        inputClassName={inputClassName}
+        inputStyle={inputStyle}
+        labelStyle={labelStyle}
+      />
+    )
+    expect(screen.getByPlaceholderText('e.g. 123 Main St')).toHaveValue('123 Main St')
+    expect(screen.getByPlaceholderText('e.g. Chicago')).toHaveValue('Springfield')
+    expect(screen.getByPlaceholderText('e.g. 60614')).toHaveValue('62704')
+  })
+
+  it('picking a suggestion fills city, state (resolved from a full name to its code), and zip', () => {
+    vi.stubEnv('NEXT_PUBLIC_MAPBOX_TOKEN', 'pk.test')
+    const { container } = render(
+      <AddressAutofillField
+        inputClassName={inputClassName}
+        inputStyle={inputStyle}
+        labelStyle={labelStyle}
+      />
+    )
+    fireEvent.click(screen.getByText('simulate retrieve'))
+
+    expect(screen.getByPlaceholderText('e.g. Chicago')).toHaveValue('Chicago')
+    expect(container.querySelector('select[name="state"]')).toHaveValue('IL')
+    expect(screen.getByPlaceholderText('e.g. 60614')).toHaveValue('60614')
+  })
+
+  it('renders plain input without Mapbox wrapper when no token is available', () => {
+    vi.stubEnv('NEXT_PUBLIC_MAPBOX_TOKEN', '')
+    render(
+      <AddressAutofillField
+        inputClassName={inputClassName}
+        inputStyle={inputStyle}
+        labelStyle={labelStyle}
+      />
+    )
+    // The mocked AddressAutofill renders a "simulate retrieve" button only when token is present
+    expect(screen.queryByText('simulate retrieve')).not.toBeInTheDocument()
+    // But the plain input should still be present and typable
+    const addressInput = screen.getByPlaceholderText('e.g. 123 Main St') as HTMLInputElement
+    expect(addressInput).toBeInTheDocument()
+    expect(addressInput.value).toBe('')
+  })
+})
+```
+
+- [ ] **Step 8: Run the focused tests to verify they pass**
+
+Run: `npx vitest run components/AddressAutofillField.test.tsx lib/usStates.test.ts`
+Expected: PASS — 3 tests in `AddressAutofillField.test.tsx` (down from 4; the lat/lng-preservation test is gone since lat/lng no longer exist), all `usStates.test.ts` tests including the new `resolveStateCode` ones.
+
+- [ ] **Step 9: Remove `lat`/`lng` from the signup page**
+
+In `app/auth/signup/page.tsx`, change:
+
+```tsx
+            zip:                (formData.get('zip') as string) || '',
+            lat:                formData.get('lat') ? parseFloat(formData.get('lat') as string) : undefined,
+            lng:                formData.get('lng') ? parseFloat(formData.get('lng') as string) : undefined,
+```
+
+to:
+
+```tsx
+            zip:                (formData.get('zip') as string) || '',
+```
+
+Nothing else in the file changes.
+
+- [ ] **Step 10: Remove `lat`/`lng` from profile edit**
+
+In `app/profile/ProfileCard.tsx`, change the `profile` prop type from:
+
+```tsx
+    zip?: string | null
+    lat?: number | null
+    lng?: number | null
+```
+
+to:
+
+```tsx
+    zip?: string | null
+```
+
+Then change the `AddressAutofillField` call site from:
+
+```tsx
+                <AddressAutofillField
+                  defaultAddress={profile?.address ?? ''}
+                  defaultCity={profile?.city ?? ''}
+                  defaultState={profile?.state ?? ''}
+                  defaultZip={profile?.zip ?? ''}
+                  defaultLat={profile?.lat ?? null}
+                  defaultLng={profile?.lng ?? null}
+                  inputClassName={inputClass}
+                  inputStyle={{ padding: '12px 16px' }}
+                  labelStyle={{ fontSize: 12, fontWeight: 900, color: '#888', textTransform: 'uppercase', letterSpacing: '0.5px' }}
+                />
+```
+
+to:
+
+```tsx
+                <AddressAutofillField
+                  defaultAddress={profile?.address ?? ''}
+                  defaultCity={profile?.city ?? ''}
+                  defaultState={profile?.state ?? ''}
+                  defaultZip={profile?.zip ?? ''}
+                  inputClassName={inputClass}
+                  inputStyle={{ padding: '12px 16px' }}
+                  labelStyle={{ fontSize: 12, fontWeight: 900, color: '#888', textTransform: 'uppercase', letterSpacing: '0.5px' }}
+                />
+```
+
+The read-only Zip `<Field>` line is unaffected — leave it as-is.
+
+In `app/profile/actions.ts`, change:
+
+```ts
+    zip:                (formData.get('zip')                as string) || '',
+    lat:                formData.get('lat') ? parseFloat(formData.get('lat') as string) : null,
+    lng:                formData.get('lng') ? parseFloat(formData.get('lng') as string) : null,
+```
+
+to:
+
+```ts
+    zip:                (formData.get('zip')                as string) || '',
+```
+
+- [ ] **Step 11: Remove `lat`/`lng` from `supabase/schema.sql`**
+
+Find the live `handle_new_user()` definition (the one immediately preceded by the comment `-- 9. Seed email_verified/phone_verified at signup...`). Change:
+
+```sql
+  insert into public.profiles (id, email, username, city, state, phone, contact_preference, address, address_unit, share_address, pickup_description, share_pickup, email_verified, phone_verified, zip, lat, lng)
+  values (
+    new.id,
+    new.email,
+    coalesce(new.raw_user_meta_data->>'username', ''),
+    coalesce(new.raw_user_meta_data->>'city', ''),
+    coalesce(new.raw_user_meta_data->>'state', ''),
+    coalesce(new.raw_user_meta_data->>'phone', ''),
+    coalesce(new.raw_user_meta_data->>'contact_preference', 'email'),
+    coalesce(new.raw_user_meta_data->>'address', ''),
+    coalesce(new.raw_user_meta_data->>'address_unit', ''),
+    coalesce((new.raw_user_meta_data->>'share_address')::boolean, true),
+    coalesce(new.raw_user_meta_data->>'pickup_description', ''),
+    coalesce((new.raw_user_meta_data->>'share_pickup')::boolean, true),
+    (new.email_confirmed_at is not null),
+    (new.phone_confirmed_at is not null),
+    coalesce(new.raw_user_meta_data->>'zip', ''),
+    (new.raw_user_meta_data->>'lat')::double precision,
+    (new.raw_user_meta_data->>'lng')::double precision
+  );
+```
+
+to:
+
+```sql
+  insert into public.profiles (id, email, username, city, state, phone, contact_preference, address, address_unit, share_address, pickup_description, share_pickup, email_verified, phone_verified, zip)
+  values (
+    new.id,
+    new.email,
+    coalesce(new.raw_user_meta_data->>'username', ''),
+    coalesce(new.raw_user_meta_data->>'city', ''),
+    coalesce(new.raw_user_meta_data->>'state', ''),
+    coalesce(new.raw_user_meta_data->>'phone', ''),
+    coalesce(new.raw_user_meta_data->>'contact_preference', 'email'),
+    coalesce(new.raw_user_meta_data->>'address', ''),
+    coalesce(new.raw_user_meta_data->>'address_unit', ''),
+    coalesce((new.raw_user_meta_data->>'share_address')::boolean, true),
+    coalesce(new.raw_user_meta_data->>'pickup_description', ''),
+    coalesce((new.raw_user_meta_data->>'share_pickup')::boolean, true),
+    (new.email_confirmed_at is not null),
+    (new.phone_confirmed_at is not null),
+    coalesce(new.raw_user_meta_data->>'zip', '')
+  );
+```
+
+Then find the migration block appended near the end of the file (`-- ── Migration: Mapbox address autofill (zip + coordinates) ───...`). Change:
+
+```sql
+-- ── Migration: Mapbox address autofill (zip + coordinates) ─────────────────────
+-- Run this block in Supabase SQL Editor. Backs the Address Autofill feature on
+-- signup/profile edit — see
+-- docs/superpowers/specs/2026-08-09-mapbox-address-autofill-design.md.
+-- lat/lng are nullable: a manually-typed address (no Mapbox suggestion picked)
+-- never has coordinates, and that's an expected, permanent state for some
+-- rows, not a to-be-filled-in-later gap.
+ALTER TABLE profiles
+  ADD COLUMN IF NOT EXISTS zip text NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS lat double precision,
+  ADD COLUMN IF NOT EXISTS lng double precision;
+-- ──────────────────────────────────────────────────────────────────────────────
+```
+
+to:
+
+```sql
+-- ── Migration: Mapbox address autofill (zip) ────────────────────────────────────
+-- Run this block in Supabase SQL Editor. Backs the Address Autofill feature on
+-- signup/profile edit — see
+-- docs/superpowers/specs/2026-08-09-mapbox-address-autofill-design.md.
+-- lat/lng were originally added here too and have been removed: Mapbox
+-- Address Autofill's retrieve() coordinates are licensed as ephemeral-only
+-- (see the spec's Addendum) and cannot be persisted. This migration was
+-- never run against a live database (the earlier version of this block was
+-- always deferred to a manual step — see the plan's Task 1 Step 5), so this
+-- edits the pending block directly rather than adding a follow-up
+-- drop-column migration on top of it.
+ALTER TABLE profiles
+  ADD COLUMN IF NOT EXISTS zip text NOT NULL DEFAULT '';
+-- ──────────────────────────────────────────────────────────────────────────────
+```
+
+- [ ] **Step 12: Run the full test suite**
+
+Run: `npx vitest run`
+Expected: PASS. Test count will be 261 (Task 4's baseline) − 1 (removed lat/lng test) + 7 (new `resolveStateCode` tests) = 267. Don't hardcode this number in your report as a pass/fail gate — just confirm 0 failures and sanity-check the total moved in the expected direction.
+
+- [ ] **Step 13: Typecheck**
+
+Run: `npx tsc --noEmit`
+Expected: The two errors this task exists to fix — `components/AddressAutofillField.test.tsx(40,3): error TS2304: Cannot find name 'afterEach'` and the `onRetrieve` response-shape mismatch in `components/AddressAutofillField.tsx` — must both be gone. Pre-existing, unrelated errors in `app/profile/HistorySection.test.tsx`, `app/profile/page.tsx` (the `[...new Set(...)]` iteration errors), and `app/sellers/[id]/reviews/page.tsx` are expected to remain — this repo does not target `--downlevelIteration`/ES2015+ and these predate this branch; do not attempt to fix them.
+
+- [ ] **Step 14: Commit**
+
+```bash
+git add components/AddressAutofillField.tsx components/AddressAutofillField.test.tsx app/auth/signup/page.tsx app/profile/ProfileCard.tsx app/profile/actions.ts supabase/schema.sql
+git commit -m "fix: remove coordinate storage (Mapbox ToS conflict); fix Autofill response shape
+
+AddressAutofillCore.retrieve()'s coordinates are licensed as ephemeral-only
+per Mapbox's own SDK docs and ToS — persisting them to profiles.lat/lng
+(added in an earlier commit on this branch) is not compliant. Removed
+entirely; a future distance-radius-search spec will need a compliant
+coordinate source (the standalone Permanent Geocoding API).
+
+Also fixes a real bug found in the same investigation: the installed
+@mapbox/search-js-core package's AddressAutofillFeatureSuggestion is a
+flat, WHATWG-Autocomplete-shaped object (address_level1/address_level2/
+postcode), not the nested context.{place,region,postcode} shape this
+component originally assumed (which matches the Geocoding/Search Box APIs,
+a different Mapbox product). City/State/Zip autofill would not actually
+have populated at runtime despite passing tests, because the test's mock
+response encoded the same wrong assumed shape. Adds resolveStateCode()
+(lib/usStates.ts) since the real address_level1 field may return a full
+state name instead of a 2-letter code.
+
+Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
+```
