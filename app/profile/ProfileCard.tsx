@@ -135,8 +135,10 @@ export default function ProfileCard({ profile, updateAction, success, error, sen
             <div>
               <EditLabel>Phone</EditLabel>
               {phoneVerified ? (
-                <div style={staticValueStyle}>
-                  {phone} <span style={{ color: '#059669' }}>✅ Verified</span>
+                <div className="flex items-center gap-2">
+                  <input name="phone" value={phone} readOnly type="tel"
+                    style={staticValueStyle} className="flex-1" />
+                  <span style={{ color: '#059669', fontWeight: 900, fontSize: 13 }}>✅ Verified</span>
                 </div>
               ) : (
                 <>

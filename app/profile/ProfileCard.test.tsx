@@ -70,6 +70,14 @@ describe('ProfileCard — edit mode', () => {
     expect(screen.getByText(/✅ Verified/)).toBeInTheDocument()
   })
 
+  it('submits the phone value in FormData even when locked (verified)', () => {
+    openEdit({ ...baseProfile, phone_verified: true })
+    const phoneInput = screen.getByDisplayValue('3125550100') as HTMLInputElement
+    expect(phoneInput.tagName).toBe('INPUT')
+    expect(phoneInput).toHaveAttribute('name', 'phone')
+    expect(phoneInput).toHaveAttribute('readonly')
+  })
+
   it('shows the error banner when an error prop is passed', () => {
     render(<ProfileCard profile={baseProfile} {...baseProps} error="That username is already taken — try another." />)
     expect(screen.getByText('That username is already taken — try another.')).toBeInTheDocument()
