@@ -27,7 +27,7 @@ export default function SignInPage({
 
       if (!identifier.includes('@')) {
         const { data: profile } = await supabase
-          .from('profiles').select('email').eq('username', identifier.toLowerCase()).single()
+          .from('profiles').select('email').eq('username', identifier).single()
         if (!profile?.email) go(`/auth/signin?error=${encodeURIComponent('No account found with that username.')}`)
         email = profile!.email
       }
