@@ -37,11 +37,17 @@ export default function SignUpPage({
         },
       })
       if (error) {
-        const msg = error.message || error.code || ''
+        const rawMsg = error.message || error.code || ''
+        // GoTrue sometimes can't produce a normal error body when the
+        // handle_new_user() database trigger fails (e.g. the profiles.username
+        // unique constraint rejects a duplicate) — supabase-js falls back to a
+        // raw, unhelpful string like "{}" in that case. Don't show that to the
+        // user; fall back to a friendly message instead.
+        const msg = rawMsg && !/^\{.*\}$/.test(rawMsg.trim()) ? rawMsg : ''
         if (msg.toLowerCase().includes('already registered') || msg.toLowerCase().includes('already exists') || (error as any).code === 'user_already_exists') {
           redirect('/auth/signin?info=already_registered')
         }
-        redirect(`/auth/signup?error=${encodeURIComponent(msg || 'Signup failed')}`)
+        redirect(`/auth/signup?error=${encodeURIComponent(msg || 'That username may already be taken, or something else went wrong. Please try a different username, or try again in a moment.')}`)
       }
       redirect('/?welcome=1')
     } catch (err: any) {
