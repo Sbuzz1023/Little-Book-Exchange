@@ -2,12 +2,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState, useEffect, useRef } from 'react'
-
-function initials(name: string) {
-  const parts = name.split(/[\s._\-]+/).filter(Boolean)
-  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase()
-  return name.slice(0, 2).toUpperCase()
-}
+import { avatarInitials } from '@/lib/avatarInitials'
 
 function readDemoUser(): string | null {
   if (typeof document === 'undefined') return null
@@ -105,7 +100,7 @@ export default function Nav({ userName: serverUserName, isAdmin, unreadCount }: 
                   boxShadow: '0 3px 0 #c2410c',
                   userSelect: 'none',
                 }}>
-                  {initials(userName)}
+                  {avatarInitials(userName)}
                 </summary>
                 <div style={{
                   position: 'fixed',
@@ -145,7 +140,7 @@ export default function Nav({ userName: serverUserName, isAdmin, unreadCount }: 
               className="flex items-center justify-center font-black text-[13px] text-white rounded-full"
               style={{ width: 34, height: 34, background: '#f97316', boxShadow: '0 2px 0 #c2410c', letterSpacing: '0.5px' }}
             >
-              {initials(userName)}
+              {avatarInitials(userName)}
             </div>
           )}
           <button
