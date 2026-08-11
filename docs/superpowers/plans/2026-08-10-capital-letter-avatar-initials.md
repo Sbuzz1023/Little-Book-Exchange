@@ -415,7 +415,7 @@ Expected: sign-in succeeds — confirms the case-insensitive lookup works end-to
 
 Sign out. Go to `/auth/signup` and attempt to register a new account using a case-variant of the existing username (e.g. `seanb` if `SeanB` is already taken), with a different email address.
 
-Expected: signup fails with the "That username is already taken" error (or equivalent duplicate-key handling), not a successful second account.
+Expected: signup fails — no second account is created. Note: unlike profile edit (which catches Postgres error code `23505` and shows the friendly "That username is already taken" message), the signup page has no duplicate-username handler — the unique-constraint violation propagates from the `handle_new_user` database trigger and surfaces via Supabase Auth as a generic "Database error saving new user" message. That generic error is the *correct* outcome here (it means the constraint did its job); don't mistake the ugly wording for a failed verification. This is pre-existing signup behavior, not something introduced by this feature.
 
 - [ ] **Step 6: Confirm an existing (pre-migration) lowercase username still works**
 
