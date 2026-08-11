@@ -68,11 +68,11 @@ describe('updateProfile', () => {
     expect(updateMock).toHaveBeenCalledWith(expect.objectContaining({ username: 'newname' }))
   })
 
-  it('lowercases and strips whitespace from the submitted username, matching signup', async () => {
+  it('preserves casing and strips whitespace from the submitted username, matching signup', async () => {
     updateResult = { error: null }
     await expect(updateProfile(buildFormData({ ...baseFields, username: ' New Name ' })))
       .rejects.toThrow('REDIRECT:/profile?tab=account&success=1')
-    expect(updateMock).toHaveBeenCalledWith(expect.objectContaining({ username: 'newname' }))
+    expect(updateMock).toHaveBeenCalledWith(expect.objectContaining({ username: 'NewName' }))
   })
 
   it('redirects with a clear message when the username is already taken', async () => {

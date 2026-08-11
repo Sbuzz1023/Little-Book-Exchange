@@ -19,7 +19,7 @@ export async function updateProfile(formData: FormData) {
 
   const rawState = (formData.get('state') as string) ?? ''
   const state = isValidStateCode(rawState) ? rawState : ''
-  const username = ((formData.get('username') as string) || '').toLowerCase().replace(/\s+/g, '')
+  const username = ((formData.get('username') as string) || '').replace(/\s+/g, '')
 
   if (!username) {
     redirect(`/profile?tab=account&error=${encodeURIComponent('Please enter a username.')}`)

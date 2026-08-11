@@ -22,7 +22,7 @@ export default function SignUpPage({
         password: formData.get('password') as string,
         options: {
           data: {
-            username:           (formData.get('username') as string).toLowerCase().replace(/\s+/g, ''),
+            username:           (formData.get('username') as string).replace(/\s+/g, ''),
             city:               formData.get('city') as string,
             state,
             phone:              formData.get('phone') as string,
