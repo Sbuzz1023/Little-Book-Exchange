@@ -54,4 +54,10 @@ describe('Nav', () => {
     render(<Nav userName={null} unreadCount={3} />)
     expect(screen.queryByTestId('dashboard-badge')).not.toBeInTheDocument()
   })
+
+  it('renders avatar initials from the capital letters in the username', () => {
+    render(<Nav userName="SeanB" />)
+    const avatars = screen.getAllByText('SB')
+    expect(avatars.length).toBeGreaterThan(0)
+  })
 })

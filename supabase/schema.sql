@@ -1367,3 +1367,21 @@ ALTER TABLE listings ADD COLUMN IF NOT EXISTS isbn text;
 ALTER TABLE profiles
   ADD COLUMN IF NOT EXISTS zip text NOT NULL DEFAULT '';
 -- ──────────────────────────────────────────────────────────────────────────────
+
+-- ── Migration: case-insensitive usernames (capital-letter avatar initials) ─────
+-- Run this block in Supabase SQL Editor. Backs the capital-letter avatar
+-- initials feature — see
+-- docs/superpowers/specs/2026-08-10-capital-letter-avatar-initials-design.md.
+--
+-- Converts profiles.username from `text` to `citext` (case-insensitive
+-- text). This keeps username uniqueness and sign-in lookups working
+-- correctly once the app stops force-lowercasing usernames on save —
+-- "SeanB" and "seanb" are treated as the same username for comparison and
+-- uniqueness, while the exact casing typed by the user is still what gets
+-- stored and returned. Safe against existing data: every username stored
+-- before this migration is already all-lowercase (a side effect of the
+-- app's old .toLowerCase() calls), so there are no case collisions to
+-- resolve.
+CREATE EXTENSION IF NOT EXISTS citext;
+ALTER TABLE profiles ALTER COLUMN username TYPE citext;
+-- ──────────────────────────────────────────────────────────────────────────────
