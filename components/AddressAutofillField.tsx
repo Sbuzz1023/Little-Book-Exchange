@@ -12,7 +12,7 @@ import { resolveStateCode } from '@/lib/usStates'
 // initial HTML, so a static top-level import still gets evaluated on the
 // server. Loading it via next/dynamic with ssr:false defers the actual
 // import() to the browser only, matching the identical fix this codebase
-// already uses for react-leaflet in app/locations/LocationsClient.tsx, for
+// already uses for mapbox-gl in app/locations/MapView.tsx, for
 // the same underlying reason. Only this piece is skipped during SSR — the
 // rest of the form (City/State/Zip, and the plain fallback input below)
 // still renders on the server normally.
