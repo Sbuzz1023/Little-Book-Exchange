@@ -66,8 +66,6 @@ interface Props {
   onBoundsChange: (b: Bounds) => void
 }
 
-const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || ''
-
 // mapbox-gl-js renders every Marker/Popup as its own absolutely-positioned
 // DOM element stacked on top of the map canvas, and (per a longstanding
 // react-map-gl issue: https://github.com/visgl/react-map-gl/issues/304) a
@@ -88,17 +86,37 @@ export default function MapView({
   const mapRef = useRef<MapRef>(null)
   const [openPopupId, setOpenPopupId] = useState<string | null>(null)
   const [pendingPopupOpen, setPendingPopupOpen] = useState(false)
+  // react-map-gl v8 creates the underlying mapbox-gl map instance
+  // asynchronously (it dynamically imports mapbox-gl before populating the
+  // ref), so mapRef.current?.getMap() can be undefined for a beat after
+  // first mount. mapReady flips true once <Map>'s onLoad fires, gating the
+  // effects below so a flyTo/cursor update present on first render isn't
+  // silently dropped while the map is still initializing.
+  const [mapReady, setMapReady] = useState(false)
+
+  const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || ''
 
   // Incoming flyTo.center is [lat, lng] (this project's convention — see
   // LocationsClient.tsx's applyLocation/selectLocation). mapbox-gl's native
   // flyTo() wants [lng, lat] — deliberately swapped below.
   useEffect(() => {
-    if (!flyTo) return
+    if (!flyTo || !mapReady) return
     const map = mapRef.current?.getMap()
     if (!map) return
     map.flyTo({ center: [flyTo.center[1], flyTo.center[0]], zoom: flyTo.zoom, duration: 1200 })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [flyTo?.nonce])
+  }, [flyTo?.nonce, mapReady])
+
+  // mapbox-gl.css sets cursor:grab on the canvas itself, which overrides any
+  // inline `cursor` style set on <Map>'s outer container (that style lands
+  // on an ancestor, not the canvas). Apply the cursor directly to the
+  // canvas instead, once it exists, and only while addMode is true — a
+  // clearer affordance than an always-on crosshair, since clicking the map
+  // only does something in addMode.
+  useEffect(() => {
+    const canvas = mapRef.current?.getMap()?.getCanvas()
+    if (canvas) canvas.style.cursor = addMode ? 'crosshair' : ''
+  }, [addMode, mapReady])
 
   // A pending pin's popup should start closed every time a *new* pin is
   // dropped, not carry over "open" from a previous drop. Every add-flow
@@ -107,6 +125,15 @@ export default function MapView({
   useEffect(() => {
     if (!pendingPin) setPendingPopupOpen(false)
   }, [pendingPin])
+
+  // `locations` here is caller-filtered (LocationsClient.tsx passes bounds-
+  // and type-filtered results). If the open popup's location gets filtered
+  // out — panning away, or changing the type filter — the Popup unmounts
+  // but openPopupId itself would otherwise stick around, so panning back or
+  // clearing the filter would silently reopen it with no new click.
+  useEffect(() => {
+    if (openPopupId && !locations.some(l => l.id === openPopupId)) setOpenPopupId(null)
+  }, [locations, openPopupId])
 
   if (!MAPBOX_TOKEN) {
     return (
@@ -122,7 +149,8 @@ export default function MapView({
       mapboxAccessToken={MAPBOX_TOKEN}
       initialViewState={{ longitude: -98.35, latitude: 39.5, zoom: 4 }}
       mapStyle="mapbox://styles/mapbox/streets-v12"
-      style={{ width: '100%', height: '100%', cursor: 'crosshair' }}
+      style={{ width: '100%', height: '100%' }}
+      onLoad={() => setMapReady(true)}
       onClick={e => {
         if (clickedMarkerOrPopup(e.originalEvent.target)) return
         if (addMode) {
