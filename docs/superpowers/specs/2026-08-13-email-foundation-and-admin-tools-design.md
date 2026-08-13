@@ -37,11 +37,11 @@ Build a real email foundation covering:
 
 **Email provider:** [Resend](https://resend.com) — free tier (3,000 emails/month, 100/day) is far more than current volume needs. Sends use Resend's placeholder sending address until a real domain is added.
 
-**Confirmation & password reset stay security-correct:** Supabase Auth continues to generate the actual secure, time-limited confirmation/reset tokens and links — nothing about that changes. What changes is *who sends the email carrying that link*. Supabase's [Send Email Hook](https://supabase.com/docs/guides/auth/auth-hooks/send-email-hook) is configured to fire instead of Supabase's built-in mailer; a Supabase Edge Function receives the hook payload (user info, the token/redirect link, and which action it's for — signup or recovery), looks up the matching row in `email_templates`, fills in the placeholders, and sends via Resend's API. This requires:
+**Confirmation & password reset stay security-correct:** Supabase Auth continues to generate the actual secure, time-limited confirmation/reset tokens and links — nothing about that changes. What changes is *who sends the email carrying that link*. Supabase's [Send Email Hook](https://supabase.com/docs/guides/auth/auth-hooks/send-email-hook) is configured to fire instead of Supabase's built-in mailer, POSTing to a plain HTTPS endpoint — no separate Supabase Edge Function deployment needed. That endpoint is a new Next.js Route Handler (`app/api/auth/email-hook/route.ts`), deployed to Vercel exactly like the rest of the app. It receives the hook payload (user info, the token/redirect link, and which action it's for — signup or recovery), verifies the request is genuinely from Supabase (standard webhook signing, via the `standardwebhooks` npm package and a shared secret), looks up the matching row in `email_templates`, fills in the placeholders, and sends via Resend's API. This requires:
 
-- Deploying one Supabase Edge Function (new infra alongside the Next.js app — deployed via the Supabase CLI, not Vercel).
-- Storing the Resend API key and the hook's signing secret as Edge Function secrets (not in the Next.js app's env).
-- Registering the hook in the Supabase dashboard (one-time setup).
+- Adding the `resend` and `standardwebhooks` npm packages.
+- Storing the Resend API key and the hook's signing secret as environment variables (same place as the app's other secrets — Vercel env vars / `.env.local`).
+- Registering the hook's URL in the Supabase dashboard (one-time setup, done after the endpoint is deployed).
 
 **Broadcast/admin-composed emails** are simpler: sent directly from a Next.js server action using the Resend API, no hook involved, since there's no Supabase Auth event to intercept.
 

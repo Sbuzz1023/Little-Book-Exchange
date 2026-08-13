@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx vitest run *)",
+      "Bash(npx tsc --noEmit)",
+      "Bash(npm run test:run)",
+      "Bash(npm run dev)",
+      "Bash(git merge-base *)"
+    ]
+  }
+}
