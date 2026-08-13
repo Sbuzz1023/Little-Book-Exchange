@@ -44,8 +44,23 @@ export async function POST(request: NextRequest) {
 
   const supabase = createServiceRoleClient()
 
-  const { data: template } = await supabase
+  const { data: template, error: templateError } = await supabase
     .from('email_templates').select('subject, body').eq('type', templateType).single()
+
+  if (templateError || !template) {
+    // Fail loudly rather than falling through to renderTemplate(undefined)
+    // and sending — and logging as 'sent' — a blank email.
+    await supabase.from('email_log').insert({
+      kind: templateType,
+      recipient_user_id: payload.user.id,
+      recipient_email: payload.user.email,
+      subject: '(template unavailable)',
+      status: 'failed',
+      error: templateError?.message ?? `No ${templateType} email template is configured.`,
+    })
+    return NextResponse.json({ error: { http_code: 500, message: 'Email template is not configured.' } }, { status: 500 })
+  }
+
   const { data: profile } = await supabase
     .from('profiles').select('username').eq('id', payload.user.id).single()
 
@@ -53,8 +68,8 @@ export async function POST(request: NextRequest) {
   const link = `${siteUrl}/auth/confirm?token_hash=${payload.email_data.token_hash}&type=${payload.email_data.email_action_type}&next=${encodeURIComponent(next)}`
   const vars = { username: profile?.username || 'there', link }
 
-  const subject = renderTemplate(template?.subject ?? '', vars)
-  const text = renderTemplate(template?.body ?? '', vars)
+  const subject = renderTemplate(template.subject, vars)
+  const text = renderTemplate(template.body, vars)
 
   const result = await sendEmail({ to: payload.user.email, subject, text })
 

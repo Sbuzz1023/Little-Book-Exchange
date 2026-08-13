@@ -19,12 +19,13 @@ const { sendEmailMock } = vi.hoisted(() => ({ sendEmailMock: vi.fn() }))
 vi.mock('@/lib/email/resend', () => ({ sendEmail: sendEmailMock }))
 
 let templateRow: { subject: string; body: string } | null
+let templateError: { message: string } | null
 let profileRow: { username: string } | null
 const insertMock = vi.fn(() => Promise.resolve({ error: null }))
 
 const fromMock = vi.fn((table: string) => {
   if (table === 'email_templates') {
-    return { select: () => ({ eq: () => ({ single: () => Promise.resolve({ data: templateRow }) }) }) }
+    return { select: () => ({ eq: () => ({ single: () => Promise.resolve({ data: templateRow, error: templateError }) }) }) }
   }
   if (table === 'profiles') {
     return { select: () => ({ eq: () => ({ single: () => Promise.resolve({ data: profileRow }) }) }) }
@@ -56,6 +57,7 @@ describe('POST /api/auth/email-hook', () => {
     insertMock.mockClear()
     process.env.NEXT_PUBLIC_SITE_URL = 'http://localhost:3000'
     templateRow = { subject: 'Hi {{username}}', body: 'Click {{link}}, {{username}}' }
+    templateError = null
     profileRow = { username: 'seanb' }
   })
 
@@ -111,5 +113,47 @@ describe('POST /api/auth/email-hook', () => {
 
     expect(res.status).toBe(500)
     expect(insertMock).toHaveBeenCalledWith(expect.objectContaining({ status: 'failed', error: 'Invalid API key' }))
+  })
+
+  it('rejects an unsupported email action type without sending', async () => {
+    verifyMock.mockReturnValue({
+      user: { id: 'user-1', email: 'user@example.com' },
+      email_data: { token_hash: 'th_999', email_action_type: 'magiclink' },
+    })
+
+    const res = await POST(buildRequest({}))
+
+    expect(res.status).toBe(400)
+    expect(sendEmailMock).not.toHaveBeenCalled()
+  })
+
+  it('fails loudly instead of sending a blank email when the template lookup errors', async () => {
+    templateRow = null
+    templateError = { message: 'connection reset' }
+    verifyMock.mockReturnValue({
+      user: { id: 'user-1', email: 'user@example.com' },
+      email_data: { token_hash: 'th_111', email_action_type: 'recovery' },
+    })
+
+    const res = await POST(buildRequest({}))
+
+    expect(res.status).toBe(500)
+    expect(sendEmailMock).not.toHaveBeenCalled()
+    expect(insertMock).toHaveBeenCalledWith(expect.objectContaining({ status: 'failed', recipient_email: 'user@example.com' }))
+    expect(insertMock).not.toHaveBeenCalledWith(expect.objectContaining({ status: 'sent' }))
+  })
+
+  it('fails loudly instead of sending a blank email when the template row is simply missing', async () => {
+    templateRow = null
+    templateError = null
+    verifyMock.mockReturnValue({
+      user: { id: 'user-1', email: 'user@example.com' },
+      email_data: { token_hash: 'th_222', email_action_type: 'signup' },
+    })
+
+    const res = await POST(buildRequest({}))
+
+    expect(res.status).toBe(500)
+    expect(sendEmailMock).not.toHaveBeenCalled()
   })
 })
