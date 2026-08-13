@@ -1716,6 +1716,8 @@ SUPABASE_EMAIL_HOOK_SECRET=placeholder-until-step-6
 
 Push this branch / merge to `master` so `little-book-exchange.vercel.app/api/auth/email-hook` actually exists on the internet — Supabase needs to be able to reach it. Add the same four env vars to Vercel (Project → Settings → Environment Variables, for Production and Preview).
 
+**Also confirm `NEXT_PUBLIC_SITE_URL` is set to the real production URL in Vercel** (`https://little-book-exchange.vercel.app`), not left unset or pointing at `localhost`. This branch is the first code that actually reads this variable — every emailed confirmation/reset/unsubscribe link is built from it (`app/api/auth/email-hook/route.ts`, `lib/actions/emailAdmin.ts`), so if it's missing in Production, every link in every email will silently point at `http://localhost:3000` instead of the live site. Check Project → Settings → Environment Variables now, before Step 7's live test.
+
 - [ ] **Step 6: Register the Send Email Hook in Supabase**
 
 In the Supabase dashboard: **Authentication → Hooks**. Add a "Send Email" hook, type **HTTPS**, URL `https://little-book-exchange.vercel.app/api/auth/email-hook`. Supabase will show a generated signing secret when you save it — copy that value and set it as `SUPABASE_EMAIL_HOOK_SECRET` in both `.env.local` and Vercel's env vars (replacing the placeholder from Step 4), then redeploy so Vercel picks up the real value.
