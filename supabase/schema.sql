@@ -1385,3 +1385,56 @@ ALTER TABLE profiles
 CREATE EXTENSION IF NOT EXISTS citext;
 ALTER TABLE profiles ALTER COLUMN username TYPE citext;
 -- ──────────────────────────────────────────────────────────────────────────────
+
+-- ── Migration: email foundation (templates, send log, marketing opt-out) ─────
+-- Run this block in Supabase SQL Editor:
+
+create table if not exists email_templates (
+  id uuid primary key default gen_random_uuid(),
+  type text not null unique check (type in ('welcome_confirmation', 'password_reset')),
+  subject text not null,
+  body text not null, -- plain text; supports {{username}} and {{link}} placeholders
+  updated_at timestamptz not null default now(),
+  updated_by uuid references profiles(id)
+);
+
+alter table email_templates enable row level security;
+
+create policy "Admins can view email templates" on email_templates
+  for select using (exists (select 1 from profiles p where p.id = auth.uid() and p.is_admin = true));
+
+create policy "Admins can update email templates" on email_templates
+  for update using (exists (select 1 from profiles p where p.id = auth.uid() and p.is_admin = true));
+
+insert into email_templates (type, subject, body) values
+  ('welcome_confirmation',
+   'Welcome to Little Book Exchange, {{username}}! Confirm your email',
+   E'Hi {{username}},\n\nWelcome to Little Book Exchange! Please confirm your email address by clicking the link below:\n\n{{link}}\n\nHappy trading!\n— The Little Book Exchange Team'),
+  ('password_reset',
+   'Reset your Little Book Exchange password',
+   E'Hi {{username}},\n\nWe received a request to reset your password. Click the link below to choose a new one:\n\n{{link}}\n\nIf you did not request this, you can safely ignore this email — your password has not been changed.\n\n— The Little Book Exchange Team')
+on conflict (type) do nothing;
+
+create table if not exists email_log (
+  id uuid primary key default gen_random_uuid(),
+  kind text not null check (kind in ('welcome_confirmation', 'password_reset', 'broadcast')),
+  -- one row per recipient per send (a broadcast to 42 people creates 42 rows);
+  -- null only if the recipient somehow isn't a registered user
+  recipient_user_id uuid references profiles(id),
+  recipient_email text not null,
+  subject text not null,
+  status text not null check (status in ('sent', 'failed')),
+  error text,
+  sent_at timestamptz not null default now()
+);
+
+alter table email_log enable row level security;
+
+create policy "Admins can view email log" on email_log
+  for select using (exists (select 1 from profiles p where p.id = auth.uid() and p.is_admin = true));
+
+create policy "Admins can insert email log" on email_log
+  for insert with check (exists (select 1 from profiles p where p.id = auth.uid() and p.is_admin = true));
+
+alter table profiles add column if not exists marketing_opt_out boolean not null default false;
+-- ──────────────────────────────────────────────────────────────────────────────
