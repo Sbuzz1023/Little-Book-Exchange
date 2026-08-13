@@ -55,6 +55,18 @@ export default function SignInPage({
           </div>
         )}
 
+        {searchParams.info === 'confirmed' && (
+          <div className="bg-teal-50 border-2 border-teal-200 rounded-xl px-4 py-3 text-teal-700 font-bold text-sm mb-4">
+            Email confirmed! You can sign in now.
+          </div>
+        )}
+
+        {searchParams.info === 'password_reset' && (
+          <div className="bg-teal-50 border-2 border-teal-200 rounded-xl px-4 py-3 text-teal-700 font-bold text-sm mb-4">
+            Password updated! Sign in with your new password.
+          </div>
+        )}
+
         {searchParams.error && (
           <div className="bg-red-50 border-2 border-red-200 rounded-xl px-4 py-3 text-red-700 font-bold text-sm mb-4">
             {decodeURIComponent(searchParams.error)}
