@@ -80,3 +80,34 @@ export async function sendBroadcastEmail(target: BroadcastTarget, subject: strin
 
   return { ok: true, sent, failed }
 }
+
+async function lookupUserEmail(supabase: ReturnType<typeof createClient>, userId: string): Promise<string | null> {
+  const { data } = await supabase.from('profiles').select('email').eq('id', userId).single()
+  return data?.email ?? null
+}
+
+export async function resendConfirmationEmail(userId: string): Promise<{ ok: boolean; error?: string }> {
+  const supabase = createClient()
+  const admin = await requireAdmin(supabase)
+  if (!admin.ok) return { ok: false, error: admin.error }
+
+  const email = await lookupUserEmail(supabase, userId)
+  if (!email) return { ok: false, error: 'No email on file for that user.' }
+
+  const { error } = await supabase.auth.resend({ type: 'signup', email })
+  if (error) return { ok: false, error: error.message }
+  return { ok: true }
+}
+
+export async function resendPasswordResetEmail(userId: string): Promise<{ ok: boolean; error?: string }> {
+  const supabase = createClient()
+  const admin = await requireAdmin(supabase)
+  if (!admin.ok) return { ok: false, error: admin.error }
+
+  const email = await lookupUserEmail(supabase, userId)
+  if (!email) return { ok: false, error: 'No email on file for that user.' }
+
+  const { error } = await supabase.auth.resetPasswordForEmail(email)
+  if (error) return { ok: false, error: error.message }
+  return { ok: true }
+}
