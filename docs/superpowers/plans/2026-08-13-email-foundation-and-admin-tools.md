@@ -965,39 +965,116 @@ git commit -m "feat: add admin actions for reading/editing email templates"
 ### Task 7: Admin actions — broadcast compose
 
 **Files:**
+- Create: `lib/email/broadcastRecipients.ts`
+- Test: `lib/email/broadcastRecipients.test.ts`
 - Modify: `lib/actions/emailAdmin.ts` (append)
 
 **Interfaces:**
 - Consumes: `sendEmail` (Task 2), `makeUnsubscribeToken` (Task 5), `requireAdmin`/`createClient` (as Task 6).
-- Produces: `BroadcastTarget`, `resolveBroadcastRecipients(target)`, `sendBroadcastEmail(target, subject, body)`. Consumed by Task 10's UI.
+- Produces: `filterRecipients(profiles, target)` (pure, unit-tested — see below), `BroadcastTarget`, `resolveBroadcastRecipients(target)`, `sendBroadcastEmail(target, subject, body)`. Consumed by Task 10's UI.
 
-- [ ] **Step 1: Append to `lib/actions/emailAdmin.ts`**
+The city/state/opt-out targeting logic is real conditional behavior worth testing directly, unlike the single-call admin actions elsewhere in this codebase — so it's pulled out of the Supabase-wired action into a plain function that takes an already-fetched profile list and returns who should get the email. `fetchRecipients` becomes a thin fetch-then-filter wrapper around it. For this app's scale, fetching all profile rows and filtering in JS is simpler than building conditional `.eq()` chains and is not a performance concern.
+
+- [ ] **Step 1: Write the failing test for `filterRecipients`**
 
 ```typescript
-// (append to lib/actions/emailAdmin.ts, keep existing imports and add:)
-import { sendEmail } from '@/lib/email/resend'
-import { makeUnsubscribeToken } from '@/lib/email/unsubscribeToken'
+// lib/email/broadcastRecipients.test.ts
+import { describe, it, expect } from 'vitest'
+import { filterRecipients, type BroadcastTarget } from './broadcastRecipients'
 
+const PROFILES = [
+  { id: '1', email: 'a@example.com', city: 'Chicago', state: 'IL', marketing_opt_out: false },
+  { id: '2', email: 'b@example.com', city: 'Chicago', state: 'IL', marketing_opt_out: true },
+  { id: '3', email: 'c@example.com', city: 'Austin', state: 'TX', marketing_opt_out: false },
+  { id: '4', email: null, city: 'Austin', state: 'TX', marketing_opt_out: false },
+]
+
+describe('filterRecipients', () => {
+  it('"all" returns every opted-in user with an email, excluding opt-outs', () => {
+    const target: BroadcastTarget = { kind: 'all' }
+    expect(filterRecipients(PROFILES, target)).toEqual([
+      { id: '1', email: 'a@example.com' },
+      { id: '3', email: 'c@example.com' },
+    ])
+  })
+
+  it('"user" returns only that user, even if they are opted out', () => {
+    const target: BroadcastTarget = { kind: 'user', userId: '2' }
+    expect(filterRecipients(PROFILES, target)).toEqual([{ id: '2', email: 'b@example.com' }])
+  })
+
+  it('"user" returns nothing if the id does not match any profile', () => {
+    const target: BroadcastTarget = { kind: 'user', userId: 'nope' }
+    expect(filterRecipients(PROFILES, target)).toEqual([])
+  })
+
+  it('"filtered" by city narrows to that city, still excluding opt-outs', () => {
+    const target: BroadcastTarget = { kind: 'filtered', city: 'Chicago' }
+    expect(filterRecipients(PROFILES, target)).toEqual([{ id: '1', email: 'a@example.com' }])
+  })
+
+  it('"filtered" by city and state applies both', () => {
+    const target: BroadcastTarget = { kind: 'filtered', city: 'Austin', state: 'TX' }
+    expect(filterRecipients(PROFILES, target)).toEqual([{ id: '3', email: 'c@example.com' }])
+  })
+
+  it('excludes profiles with no email regardless of target', () => {
+    const target: BroadcastTarget = { kind: 'filtered', city: 'Austin' }
+    expect(filterRecipients(PROFILES, target).find(r => r.id === '4')).toBeUndefined()
+  })
+})
+```
+
+- [ ] **Step 2: Run it to verify it fails**
+
+Run: `npm run test:run -- lib/email/broadcastRecipients.test.ts`
+Expected: FAIL — `Cannot find module './broadcastRecipients'`
+
+- [ ] **Step 3: Implement `filterRecipients`**
+
+```typescript
+// lib/email/broadcastRecipients.ts
 export type BroadcastTarget =
   | { kind: 'all' }
   | { kind: 'user'; userId: string }
   | { kind: 'filtered'; city?: string; state?: string }
 
-type Recipient = { id: string; email: string }
+export type ProfileRow = { id: string; email: string | null; city: string; state: string; marketing_opt_out: boolean }
+export type Recipient = { id: string; email: string }
+
+export function filterRecipients(profiles: ProfileRow[], target: BroadcastTarget): Recipient[] {
+  if (target.kind === 'user') {
+    const match = profiles.find(p => p.id === target.userId)
+    return match?.email ? [{ id: match.id, email: match.email }] : []
+  }
+
+  return profiles
+    .filter(p => !p.marketing_opt_out)
+    .filter(p => !!p.email)
+    .filter(p => target.kind !== 'filtered' || !target.city || p.city === target.city)
+    .filter(p => target.kind !== 'filtered' || !target.state || p.state === target.state)
+    .map(p => ({ id: p.id, email: p.email as string }))
+}
+```
+
+- [ ] **Step 4: Run the test to verify it passes**
+
+Run: `npm run test:run -- lib/email/broadcastRecipients.test.ts`
+Expected: PASS (6 tests)
+
+- [ ] **Step 5: Append to `lib/actions/emailAdmin.ts`**
+
+```typescript
+// (append to lib/actions/emailAdmin.ts, keep existing imports and add:)
+import { sendEmail } from '@/lib/email/resend'
+import { makeUnsubscribeToken } from '@/lib/email/unsubscribeToken'
+import { filterRecipients, type BroadcastTarget, type Recipient, type ProfileRow } from '@/lib/email/broadcastRecipients'
+
+export type { BroadcastTarget }
 
 async function fetchRecipients(supabase: ReturnType<typeof createClient>, target: BroadcastTarget): Promise<Recipient[]> {
-  if (target.kind === 'user') {
-    const { data } = await supabase.from('profiles').select('id, email').eq('id', target.userId).single()
-    return data?.email ? [{ id: data.id, email: data.email }] : []
-  }
-
-  let query = supabase.from('profiles').select('id, email').eq('marketing_opt_out', false).not('email', 'is', null)
-  if (target.kind === 'filtered') {
-    if (target.city) query = query.eq('city', target.city)
-    if (target.state) query = query.eq('state', target.state)
-  }
-  const { data } = await query
-  return (data ?? []).filter((r): r is Recipient => !!r.email)
+  const { data } = await supabase.from('profiles').select('id, email, city, state, marketing_opt_out')
+  return filterRecipients((data ?? []) as ProfileRow[], target)
 }
 
 export async function resolveBroadcastRecipients(target: BroadcastTarget): Promise<{ ok: boolean; recipients?: Recipient[]; error?: string }> {
@@ -1041,15 +1118,15 @@ export async function sendBroadcastEmail(target: BroadcastTarget, subject: strin
 }
 ```
 
-- [ ] **Step 2: Type-check**
+- [ ] **Step 6: Type-check**
 
 Run: `npx tsc --noEmit`
 Expected: no new errors.
 
-- [ ] **Step 3: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
-git add lib/actions/emailAdmin.ts
+git add lib/email/broadcastRecipients.ts lib/email/broadcastRecipients.test.ts lib/actions/emailAdmin.ts
 git commit -m "feat: add admin broadcast-email action with recipient targeting and opt-out"
 ```
 
