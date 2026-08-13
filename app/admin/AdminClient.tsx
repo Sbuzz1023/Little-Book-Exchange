@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/client'
 import { adminUpdateReview, adminDeleteReview } from '@/lib/actions/reviews'
 import { adminUpdateUserCredits } from '@/lib/actions/admin'
 import LocationsAdminTab from './LocationsAdminTab'
+import EmailsAdminTab from './EmailsAdminTab'
 
 const WEEKLY_ACTIVITY = [
   { week:'May 5',  posts:4,  signups:2, trades:3 },
@@ -29,7 +30,7 @@ const RECENT_ACTIVITY = [
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-type Tab = 'dashboard' | 'users' | 'locations' | 'reviews'
+type Tab = 'dashboard' | 'users' | 'locations' | 'reviews' | 'emails'
 type User = {
   id: string
   username: string
@@ -567,6 +568,7 @@ const TABS: { id: Tab; label: string; icon: string }[] = [
   { id:'users',     label:'Users',      icon:'👥' },
   { id:'locations', label:'Locations',  icon:'📍' },
   { id:'reviews',   label:'Reviews',    icon:'⭐' },
+  { id:'emails',    label:'Emails',     icon:'✉️' },
 ]
 
 export default function AdminClient() {
@@ -742,6 +744,7 @@ export default function AdminClient() {
           )}
           {tab === 'locations' && <LocationsAdminTab onPendingCountChange={handleTabPendingCountChange} />}
           {tab === 'reviews'   && <ReviewsTab reviews={reviews} setReviews={setReviews} />}
+          {tab === 'emails'    && <EmailsAdminTab users={users} />}
         </div>
       </div>
     </div>
