@@ -5,8 +5,8 @@ export default function ResetPasswordPage({ searchParams }: { searchParams: { er
     const password = formData.get('password') as string
     const confirm = formData.get('confirm') as string
 
-    if (!password || password.length < 8) {
-      redirect(`/auth/reset-password?error=${encodeURIComponent('Password must be at least 8 characters.')}`)
+    if (!password || password.length < 6) {
+      redirect(`/auth/reset-password?error=${encodeURIComponent('Password must be at least 6 characters.')}`)
     }
     if (password !== confirm) {
       redirect(`/auth/reset-password?error=${encodeURIComponent('Passwords do not match.')}`)
@@ -39,7 +39,7 @@ export default function ResetPasswordPage({ searchParams }: { searchParams: { er
               New Password
             </label>
             <input
-              name="password" type="password" placeholder="At least 8 characters" required minLength={8}
+              name="password" type="password" placeholder="At least 6 characters" required minLength={6}
               autoComplete="new-password"
               className="w-full border-2 border-[#fed7aa] rounded-[14px] px-4 bg-cream font-bold text-[15px] focus:outline-none focus:border-bk-orange"
               style={{ padding: '13px 16px' }}
@@ -50,7 +50,7 @@ export default function ResetPasswordPage({ searchParams }: { searchParams: { er
               Confirm Password
             </label>
             <input
-              name="confirm" type="password" placeholder="Re-enter password" required minLength={8}
+              name="confirm" type="password" placeholder="Re-enter password" required minLength={6}
               autoComplete="new-password"
               className="w-full border-2 border-[#fed7aa] rounded-[14px] px-4 bg-cream font-bold text-[15px] focus:outline-none focus:border-bk-orange"
               style={{ padding: '13px 16px' }}
