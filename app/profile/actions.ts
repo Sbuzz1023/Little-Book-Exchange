@@ -77,26 +77,98 @@ export async function updateListingStatus(formData: FormData) {
   redirect('/profile')
 }
 
-export async function completeExchange(formData: FormData) {
+export async function markPickedUp(formData: FormData) {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/auth/signin')
   const conversationId = formData.get('conversation_id') as string
 
-  await supabase.from('conversations')
-    .update({ exchange_status: 'completed', completed_at: new Date().toISOString() })
+  const { data: convo } = await supabase
+    .from('conversations')
+    .select('buyer_id, seller_id')
+    .eq('id', conversationId)
+    .single()
+
+  const isSeller = convo?.seller_id === user.id
+  const isBuyer = convo?.buyer_id === user.id
+  if (!convo || (!isSeller && !isBuyer)) redirect('/profile?tab=exchanges')
+
+  const column = isSeller ? 'seller_picked_up_at' : 'buyer_picked_up_at'
+
+  // is(column, null) guards against a double-click re-firing the message
+  // below for a party who already confirmed once.
+  const { data: updated } = await supabase
+    .from('conversations')
+    .update({ [column]: new Date().toISOString() })
     .eq('id', conversationId)
     .eq('exchange_status', 'confirmed')
-    .or(`buyer_id.eq.${user.id},seller_id.eq.${user.id}`)
+    .is(column, null)
+    .select('id')
+    .maybeSingle()
 
-  await supabase.from('messages').insert({
-    conversation_id: conversationId,
-    sender_id: user.id,
-    body: '📚 Book picked up! Thanks so much!',
-    kind: 'pickup',
-  })
+  if (updated) {
+    const { data: result } = await supabase.rpc('resolve_pickup', {
+      p_conversation_id: conversationId,
+      p_actor_id: user.id,
+    })
+
+    if (result === 'waiting') {
+      const { data: profile } = await supabase.from('profiles').select('username').eq('id', user.id).single()
+      await supabase.from('messages').insert({
+        conversation_id: conversationId,
+        sender_id: user.id,
+        body: `📦 ${profile?.username ?? 'They'} marked this picked up! Please confirm on your end within 48 hours.`,
+        kind: 'pickup',
+      })
+    }
+  }
 
   redirect('/profile?tab=exchanges')
+}
+
+export async function fileDispute(formData: FormData): Promise<{ ok: boolean; error?: string }> {
+  const supabase = createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { ok: false, error: 'Please sign in.' }
+
+  const conversationId = formData.get('conversation_id') as string
+  const message = ((formData.get('message') as string) || '').trim()
+  if (!message) return { ok: false, error: 'Please describe the issue.' }
+
+  const { data: convo } = await supabase
+    .from('conversations')
+    .select('buyer_id, seller_id, listing_id')
+    .eq('id', conversationId)
+    .single()
+  if (!convo || (convo.buyer_id !== user.id && convo.seller_id !== user.id)) {
+    return { ok: false, error: 'Exchange not found.' }
+  }
+
+  const { error } = await supabase.from('disputes').insert({
+    conversation_id: conversationId,
+    reporter_id: user.id,
+    message,
+  })
+  if (error) return { ok: false, error: 'Could not file the dispute. Please try again.' }
+
+  // Best-effort admin alert — the dispute row inserted above is what actually
+  // freezes the exchange; a failed email here doesn't undo that.
+  try {
+    const { data: listing } = await supabase.from('listings').select('title').eq('id', convo.listing_id).single()
+    const { data: admins } = await supabase.from('profiles').select('email').eq('is_admin', true)
+    const { sendEmail } = await import('@/lib/email/resend')
+    for (const admin of admins ?? []) {
+      if (admin.email) {
+        await sendEmail({
+          to: admin.email,
+          subject: `Dispute filed: ${listing?.title ?? 'an exchange'}`,
+          text: `A dispute was filed on an exchange.\n\nMessage:\n${message}\n\nConversation ID: ${conversationId}`,
+        })
+      }
+    }
+  } catch {}
+
+  return { ok: true }
 }
 
 export async function hideExchangeHistory(formData: FormData) {
