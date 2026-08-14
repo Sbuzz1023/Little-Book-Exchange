@@ -42,7 +42,7 @@ export default function EmailComposeTab({ users }: { users: ComposeUser[] }) {
 
     const res = await resolveBroadcastRecipients(target)
     if (!res.ok) { setError(res.error ?? 'Failed to look up recipients.'); return }
-    setRecipientCount(res.recipients?.length ?? 0)
+    setRecipientCount(res.count ?? 0)
     setConfirming(true)
   }
 
@@ -50,6 +50,7 @@ export default function EmailComposeTab({ users }: { users: ComposeUser[] }) {
     const target = currentTarget()
     if (!target) return
     setSending(true)
+    setError(null)
     const res = await sendBroadcastEmail(target, subject, body)
     setSending(false)
     setConfirming(false)
@@ -58,6 +59,8 @@ export default function EmailComposeTab({ users }: { users: ComposeUser[] }) {
       setSubject('')
       setBody('')
     } else {
+      // Deliberately does NOT clear subject/body — on a failure the admin keeps
+      // the draft they typed and can retry.
       setError(res.error ?? 'Failed to send.')
     }
   }

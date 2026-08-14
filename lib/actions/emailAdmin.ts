@@ -36,18 +36,29 @@ export async function updateEmailTemplate(type: EmailTemplateType, subject: stri
 
 export type { BroadcastTarget }
 
-async function fetchRecipients(supabase: ReturnType<typeof createClient>, target: BroadcastTarget): Promise<Recipient[]> {
-  const { data } = await supabase.from('profiles').select('id, email, city, state, marketing_opt_out')
-  return filterRecipients((data ?? []) as ProfileRow[], target)
+// Returns either the recipients or the query error — never an empty list
+// standing in for a failed query. Collapsing those two cases made a broken
+// profiles query look like a successful send to zero people.
+async function fetchRecipients(
+  supabase: ReturnType<typeof createClient>,
+  target: BroadcastTarget
+): Promise<{ recipients?: Recipient[]; error?: string }> {
+  const { data, error } = await supabase.from('profiles').select('id, email, city, state, marketing_opt_out')
+  if (error) return { error: error.message }
+  return { recipients: filterRecipients((data ?? []) as ProfileRow[], target) }
 }
 
-export async function resolveBroadcastRecipients(target: BroadcastTarget): Promise<{ ok: boolean; recipients?: Recipient[]; error?: string }> {
+// Only the count is returned — the confirmation dialog is the sole consumer and
+// only needs a number, so there's no reason to ship every user's email address
+// to the browser.
+export async function resolveBroadcastRecipients(target: BroadcastTarget): Promise<{ ok: boolean; count?: number; error?: string }> {
   const supabase = createClient()
   const admin = await requireAdmin(supabase)
   if (!admin.ok) return { ok: false, error: admin.error }
 
-  const recipients = await fetchRecipients(supabase, target)
-  return { ok: true, recipients }
+  const { recipients, error } = await fetchRecipients(supabase, target)
+  if (error || !recipients) return { ok: false, error: error ?? 'Failed to look up recipients.' }
+  return { ok: true, count: recipients.length }
 }
 
 export async function sendBroadcastEmail(target: BroadcastTarget, subject: string, body: string): Promise<{ ok: boolean; sent: number; failed: number; error?: string }> {
@@ -57,7 +68,13 @@ export async function sendBroadcastEmail(target: BroadcastTarget, subject: strin
 
   if (!subject.trim() || !body.trim()) return { ok: false, sent: 0, failed: 0, error: 'Subject and body cannot be empty.' }
 
-  const recipients = await fetchRecipients(supabase, target)
+  const { recipients, error: recipientsError } = await fetchRecipients(supabase, target)
+  if (recipientsError || !recipients) {
+    // Reporting `ok: true, sent: 0` here told the admin the send succeeded and
+    // wiped their draft — surface the real failure instead.
+    return { ok: false, sent: 0, failed: 0, error: recipientsError ?? 'Failed to look up recipients.' }
+  }
+
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
 
   let sent = 0, failed = 0
@@ -66,7 +83,7 @@ export async function sendBroadcastEmail(target: BroadcastTarget, subject: strin
     const text = `${body}\n\n---\nDon't want these emails? Unsubscribe: ${unsubLink}`
     const result = await sendEmail({ to: recipient.email, subject, text })
 
-    await supabase.from('email_log').insert({
+    const { error: logError } = await supabase.from('email_log').insert({
       kind: 'broadcast',
       recipient_user_id: recipient.id,
       recipient_email: recipient.email,
@@ -74,6 +91,9 @@ export async function sendBroadcastEmail(target: BroadcastTarget, subject: strin
       status: result.ok ? 'sent' : 'failed',
       error: result.ok ? null : result.error,
     })
+    // The email really was sent — a failed audit-log write shouldn't change the
+    // outcome reported to the admin, but it must not vanish either.
+    if (logError) console.error('sendBroadcastEmail: failed to write email_log row', logError)
 
     if (result.ok) sent++; else failed++
   }
