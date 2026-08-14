@@ -9,6 +9,7 @@ import MessagesTab from './MessagesTab'
 import HistorySection, { type HistoryExchange } from './HistorySection'
 import TbrAddForm from './TbrAddForm'
 import PhoneVerify from '@/components/PhoneVerify'
+import StateSelect from '@/components/StateSelect'
 import { createClient } from '@/lib/supabase/client'
 
 type Tab = 'listings' | 'exchanges' | 'tbr' | 'saved' | 'wallet' | 'account' | 'messages'
@@ -54,6 +55,9 @@ type Exchange = {
   completed_at: string | null
   buyer_hidden: boolean
   seller_hidden: boolean
+  confirmed_address?: string | null
+  confirmed_address_unit?: string | null
+  confirmed_pickup?: string | null
   sellerRating: { average: number; count: number } | null
   reviewed: boolean
   listings: {
@@ -69,14 +73,12 @@ type Exchange = {
     name?: string | null
     city?: string | null
     state?: string | null
-    phone?: string | null
   }
   seller: {
     username?: string | null
     name?: string | null
     city?: string | null
     state?: string | null
-    phone?: string | null
     address?: string | null
     address_unit?: string | null
     share_address?: boolean | null
@@ -187,6 +189,15 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
   const [phoneNumber, setPhoneNumber] = useState(profile?.phone ?? '')
   const [emailResendMessage, setEmailResendMessage] = useState<string | null>(null)
   const [emailResendOk, setEmailResendOk] = useState(false)
+  const [confirmModal, setConfirmModal] = useState<{
+    conversationId: string
+    title: string
+    address: string
+    addressUnit: string
+    city: string
+    state: string
+    pickup: string
+  } | null>(null)
 
   async function markTabRead(tabId: Tab) {
     if (isDemo || !profile?.id) return
@@ -479,20 +490,14 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
                     <div className="mt-2 rounded-[10px] px-3 py-2" style={{ background: '#f0fdf4', border: '1.5px solid #bbf7d0' }}>
                       <p className="font-extrabold text-[12px]" style={{ color: '#166534' }}>📍 Ready for Pick Up!</p>
                       {location && <p className="font-semibold text-[11px] mt-0.5" style={{ color: '#166534' }}>📌 {location}</p>}
-                      {ex.seller?.phone && (
-                        <p className="font-semibold text-[11px]" style={{ color: '#166534' }}>📞 {ex.seller.phone}</p>
-                      )}
-                      {ex.seller?.share_address && (ex.seller?.address || ex.seller?.address_unit) && (
+                      {(ex.confirmed_address || ex.confirmed_address_unit) && (
                         <p className="font-semibold text-[11px]" style={{ color: '#166534' }}>
-                          🏠 {[ex.seller.address, ex.seller.address_unit].filter(Boolean).join(' ')}
+                          🏠 {[ex.confirmed_address, ex.confirmed_address_unit].filter(Boolean).join(' ')}
                         </p>
                       )}
-                      {ex.seller?.share_pickup && (() => {
-                        const pickup = ex.listings?.pickup_description || ex.seller?.pickup_description
-                        return pickup
-                          ? <p className="font-semibold text-[11px]" style={{ color: '#166534' }}>📦 Pickup: {pickup}</p>
-                          : null
-                      })()}
+                      {ex.confirmed_pickup && (
+                        <p className="font-semibold text-[11px]" style={{ color: '#166534' }}>📦 Pickup: {ex.confirmed_pickup}</p>
+                      )}
                       <p className="font-semibold text-[11px]" style={{ color: '#166534' }}>Contact: <strong>{otherName}</strong></p>
                     </div>
                   )}
@@ -518,13 +523,21 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
               <div className="flex gap-2 mt-3 flex-wrap" style={{ paddingLeft: 58 }}>
                 {/* Seller: confirm a purchase request */}
                 {role === 'seller' && status === 'requested' && (
-                  <form action={confirmExchange}>
-                    <input type="hidden" name="conversation_id" value={ex.id} />
-                    <button className="font-extrabold text-[12px] text-white hover:opacity-90"
-                      style={{ background: '#0d9488', border: 'none', padding: '7px 18px', borderRadius: 999, cursor: 'pointer', fontFamily: 'inherit', boxShadow: '0 2px 0 #0f766e' }}>
-                      ✅ Confirm — Send My Contact Info
-                    </button>
-                  </form>
+                  <button
+                    type="button"
+                    onClick={() => setConfirmModal({
+                      conversationId: ex.id,
+                      title: ex.listings?.title ?? 'this book',
+                      address: profile?.address ?? '',
+                      addressUnit: profile?.address_unit ?? '',
+                      city: profile?.city ?? '',
+                      state: profile?.state ?? '',
+                      pickup: ex.listings?.pickup_description || profile?.pickup_description || '',
+                    })}
+                    className="font-extrabold text-[12px] text-white hover:opacity-90"
+                    style={{ background: '#0d9488', border: 'none', padding: '7px 18px', borderRadius: 999, cursor: 'pointer', fontFamily: 'inherit', boxShadow: '0 2px 0 #0f766e' }}>
+                    ✅ Confirm — Send My Contact Info
+                  </button>
                 )}
 
                 {/* Seller: deny a purchase request */}
@@ -610,6 +623,96 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
               hideExchangeHistory={hideExchangeHistory}
               submitReview={submitReview}
             />
+
+            {/* Confirm-and-review popup */}
+            {confirmModal && (
+              <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
+                <form
+                  action={confirmExchange}
+                  onSubmit={() => setConfirmModal(null)}
+                  style={{ background: '#fff', borderRadius: 20, padding: 24, width: 380, maxWidth: '90vw', position: 'relative' }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setConfirmModal(null)}
+                    aria-label="Close"
+                    style={{ position: 'absolute', top: 16, right: 16, background: 'none', border: 'none', color: '#aaa', cursor: 'pointer', fontSize: 18, fontWeight: 900, lineHeight: 1 }}
+                  >
+                    ✕
+                  </button>
+                  <h3 className="font-display text-[18px] mb-1" style={{ paddingRight: 24 }}>Confirm exchange</h3>
+                  <p className="font-semibold text-[12px] mb-4" style={{ color: '#aaa' }}>
+                    Review the pickup info for <strong style={{ color: '#555' }}>{confirmModal.title}</strong> before it's sent to the buyer.
+                  </p>
+                  <input type="hidden" name="conversation_id" value={confirmModal.conversationId} />
+
+                  <label className="font-extrabold text-[11px]" style={{ color: '#555' }}>Address</label>
+                  <input
+                    name="address"
+                    value={confirmModal.address}
+                    onChange={e => setConfirmModal({ ...confirmModal, address: e.target.value })}
+                    placeholder="Street address"
+                    className="w-full border-2 border-gray-100 rounded-xl font-semibold text-[13px] mt-1 mb-3"
+                    style={{ padding: 10 }}
+                  />
+
+                  <label className="font-extrabold text-[11px]" style={{ color: '#555' }}>Apt / Unit (optional)</label>
+                  <input
+                    name="address_unit"
+                    value={confirmModal.addressUnit}
+                    onChange={e => setConfirmModal({ ...confirmModal, addressUnit: e.target.value })}
+                    placeholder="Apt, suite, unit"
+                    className="w-full border-2 border-gray-100 rounded-xl font-semibold text-[13px] mt-1 mb-3"
+                    style={{ padding: 10 }}
+                  />
+
+                  <div className="flex gap-2 mb-3">
+                    <div className="flex-1">
+                      <label className="font-extrabold text-[11px]" style={{ color: '#555' }}>City</label>
+                      <input
+                        name="city"
+                        value={confirmModal.city}
+                        onChange={e => setConfirmModal({ ...confirmModal, city: e.target.value })}
+                        placeholder="City"
+                        className="w-full border-2 border-gray-100 rounded-xl font-semibold text-[13px] mt-1"
+                        style={{ padding: 10 }}
+                      />
+                    </div>
+                    <div style={{ width: 120 }}>
+                      <label className="font-extrabold text-[11px]" style={{ color: '#555' }}>State</label>
+                      <StateSelect
+                        name="state"
+                        defaultValue={confirmModal.state}
+                        placeholder="State"
+                        className="w-full border-2 border-gray-100 rounded-xl font-semibold text-[13px] mt-1"
+                        style={{ padding: 10 }}
+                      />
+                    </div>
+                  </div>
+
+                  <label className="font-extrabold text-[11px]" style={{ color: '#555' }}>Pickup spot</label>
+                  <textarea
+                    name="pickup"
+                    value={confirmModal.pickup}
+                    onChange={e => setConfirmModal({ ...confirmModal, pickup: e.target.value })}
+                    placeholder="e.g. front porch, behind the garden gnome"
+                    className="w-full border-2 border-gray-100 rounded-xl font-semibold text-[13px] mt-1"
+                    style={{ padding: 10, minHeight: 60 }}
+                  />
+
+                  <div className="flex justify-end gap-2 mt-4">
+                    <button type="button" onClick={() => setConfirmModal(null)} className="font-extrabold text-[13px]"
+                      style={{ background: 'none', border: 'none', color: '#aaa', cursor: 'pointer' }}>
+                      Cancel
+                    </button>
+                    <button type="submit" className="font-extrabold text-[13px] text-white"
+                      style={{ background: '#0d9488', padding: '9px 20px', borderRadius: 999, border: 'none', cursor: 'pointer', boxShadow: '0 2px 0 #0f766e' }}>
+                      ✅ Submit Confirmation
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
           </div>
         )
       })()}

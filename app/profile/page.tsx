@@ -57,13 +57,12 @@ export default async function ProfilePage({
               city: pl.city ?? null,
               state: pl.state ?? null,
             },
-            buyer:  { username: 'demouser', name: 'Demo User', city: 'Chicago', state: 'IL', phone: '(312) 555-0100' },
+            buyer:  { username: 'demouser', name: 'Demo User', city: 'Chicago', state: 'IL' },
             seller: {
               username: pl.profiles?.username ?? pl.profiles?.name ?? 'neighbor',
               name: pl.profiles?.name ?? 'Neighbor',
               city: pl.city ?? null,
               state: pl.state ?? null,
-              phone: null,
             },
             messages: [],
           },
@@ -186,10 +185,12 @@ export default async function ProfilePage({
         const lm: Record<string, any> = {}
         for (const l of listingRows ?? []) lm[l.id] = l
 
-        // Fetch profiles separately
+        // Fetch profiles separately. Deliberately no `phone` here — a user's
+        // phone number must never be sent to the client for anyone but
+        // themself, and this map covers both parties in every exchange.
         const profileIds = [...new Set(merged.flatMap((r: any) => [r.buyer_id, r.seller_id]).filter(Boolean))]
         const { data: profileRows, error: profilesErr } = await supabase
-          .from('profiles').select('id, username, city, state, phone, address, address_unit, share_address, pickup_description, share_pickup').in('id', profileIds)
+          .from('profiles').select('id, username, city, state, address, address_unit, share_address, pickup_description, share_pickup').in('id', profileIds)
         if (profilesErr) console.error('profile page: profiles lookup failed', profilesErr)
         const pm: Record<string, any> = {}
         for (const p of profileRows ?? []) pm[p.id] = p
@@ -217,13 +218,13 @@ export default async function ProfilePage({
         for (const r of ratingRows ?? []) (ratingsBySeller[r.seller_id] ??= []).push(r.rating)
 
         exchanges = merged.map((row: any) => {
-          const sellerData = pm[row.seller_id] ?? { username: null, city: null, state: null, phone: null }
+          const sellerData = pm[row.seller_id] ?? { username: null, city: null, state: null }
           const isConfirmed = (row.exchange_status ?? 'none') === 'confirmed'
           return {
             ...row,
             exchange_status: row.exchange_status ?? 'none',
             listings: lm[row.listing_id] ?? { title: 'Unknown', author: '', photo_url: null, city: null, state: null },
-            buyer:    pm[row.buyer_id]   ?? { username: null, city: null, state: null, phone: null },
+            buyer:    pm[row.buyer_id]   ?? { username: null, city: null, state: null },
             seller: {
               ...sellerData,
               address:            isConfirmed ? sellerData.address            : null,

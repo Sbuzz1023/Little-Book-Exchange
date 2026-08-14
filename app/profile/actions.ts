@@ -32,9 +32,7 @@ export async function updateProfile(formData: FormData) {
     address:            (formData.get('address')            as string) || '',
     address_unit:       (formData.get('address_unit')       as string) || '',
     zip:                (formData.get('zip')                as string) || '',
-    share_address:      formData.get('share_address')       === 'true',
     pickup_description: (formData.get('pickup_description') as string) || '',
-    share_pickup:       formData.get('share_pickup')        === 'true',
     notify_message:          formData.get('notify_message')          === 'true',
     notify_purchase_request: formData.get('notify_purchase_request') === 'true',
     notify_purchase_decision: formData.get('notify_purchase_decision') === 'true',
@@ -151,9 +149,26 @@ export async function confirmExchange(formData: FormData) {
   if (!user) redirect('/auth/signin')
 
   const conversationId = formData.get('conversation_id') as string
+  // These come from the seller's confirm-and-review popup — a one-time
+  // override for this exchange only. Address/pickup are stored on the
+  // conversation itself (not written back to profiles/listings) so the
+  // confirmation message and the buyer's "Ready for Pick Up" summary always
+  // agree. City/state have no equivalent summary to stay in sync with, so
+  // they only flow into the message below.
+  const address     = ((formData.get('address') as string) || '').trim()
+  const addressUnit = ((formData.get('address_unit') as string) || '').trim()
+  const rawState    = (formData.get('state') as string) || ''
+  const city        = ((formData.get('city') as string) || '').trim()
+  const state       = isValidStateCode(rawState) ? rawState : ''
+  const pickup      = ((formData.get('pickup') as string) || '').trim()
 
   await supabase.from('conversations')
-    .update({ exchange_status: 'confirmed' })
+    .update({
+      exchange_status: 'confirmed',
+      confirmed_address: address || null,
+      confirmed_address_unit: addressUnit || null,
+      confirmed_pickup: pickup || null,
+    })
     .eq('id', conversationId)
     .eq('seller_id', user.id)
 
@@ -166,24 +181,16 @@ export async function confirmExchange(formData: FormData) {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('username, city, state, phone, address, address_unit, share_address, pickup_description, share_pickup')
+    .select('username')
     .eq('id', user.id)
     .single()
 
-  let listingPickup: string | null = null
   const { data: convo } = await supabase
     .from('conversations')
     .select('listing_id')
     .eq('id', conversationId)
     .single()
   if (convo?.listing_id) {
-    const { data: listing } = await supabase
-      .from('listings')
-      .select('pickup_description')
-      .eq('id', convo.listing_id)
-      .single()
-    listingPickup = listing?.pickup_description ?? null
-
     await supabase
       .from('listings')
       .update({ status: 'sold' })
@@ -193,16 +200,12 @@ export async function confirmExchange(formData: FormData) {
 
   if (profile) {
     const body = buildConfirmationMessage({
-      username:       profile.username,
-      city:           profile.city,
-      state:          profile.state,
-      phone:          profile.phone,
-      address:        profile.address,
-      address_unit:   profile.address_unit,
-      share_address:  profile.share_address,
-      listing_pickup: listingPickup,
-      profile_pickup: profile.pickup_description,
-      share_pickup:   profile.share_pickup,
+      username: profile.username,
+      city,
+      state,
+      address,
+      address_unit: addressUnit,
+      pickup,
     })
     await supabase.from('messages').insert({
       conversation_id: conversationId,

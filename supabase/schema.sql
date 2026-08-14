@@ -1438,3 +1438,21 @@ create policy "Admins can insert email log" on email_log
 
 alter table profiles add column if not exists marketing_opt_out boolean not null default false;
 -- ──────────────────────────────────────────────────────────────────────────────
+
+-- ── Migration: store what the seller actually confirmed on the exchange ──────
+-- Run this block in Supabase SQL Editor:
+--
+-- The seller's "Confirm" popup lets them review/edit their address and pickup
+-- spot for this one exchange, without changing their saved profile/listing
+-- defaults. That edited info is stored here (not just in the chat message) so
+-- the buyer's "Ready for Pick Up" dashboard summary always matches exactly
+-- what the confirmation message said, even if the seller's profile changes
+-- later. Also: share_address / share_pickup are no longer read by the app —
+-- the seller confirming the exchange is now the only gate on sharing this
+-- info, so the old opt-in toggles were removed from Signup/Profile Edit. The
+-- columns themselves are left in place, unused, rather than migrated out.
+alter table conversations
+  add column if not exists confirmed_address text,
+  add column if not exists confirmed_address_unit text,
+  add column if not exists confirmed_pickup text;
+-- ──────────────────────────────────────────────────────────────────────────────
