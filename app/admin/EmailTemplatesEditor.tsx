@@ -1,10 +1,19 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { getEmailTemplates, updateEmailTemplate, type EmailTemplate, type EmailTemplateType } from '@/lib/actions/emailAdmin'
+import { renderTemplate } from '@/lib/email/renderTemplate'
 
 const LABELS: Record<EmailTemplateType, string> = {
   welcome_confirmation: 'Welcome / Confirm Email',
   password_reset: 'Password Reset',
+}
+
+// renderTemplate deliberately leaves unknown placeholders untouched, so a typo
+// like {{user}} survives into the real email. Rendering the draft against these
+// sample values makes that visible before Save rather than after the send.
+const SAMPLE_VARS = {
+  username: 'Sean',
+  link: 'https://littlebookexchange.com/auth/confirm?token_hash=example&type=signup',
 }
 
 export default function EmailTemplatesEditor() {
@@ -69,6 +78,31 @@ export default function EmailTemplatesEditor() {
               className="w-full border-2 border-[#e2e8f0] rounded-xl px-3 py-2.5 font-semibold text-[13px] focus:outline-none focus:border-bk-orange resize-y"
             />
           </div>
+          {(() => {
+            const draft = drafts[t.type] ?? { subject: '', body: '' }
+            const previewSubject = renderTemplate(draft.subject, SAMPLE_VARS)
+            const previewBody = renderTemplate(draft.body, SAMPLE_VARS)
+            // Anything still in {{…}} form after rendering is a placeholder we
+            // don't fill — almost always a typo in the template.
+            const unresolved = Array.from(new Set(
+              `${previewSubject}\n${previewBody}`.match(/\{\{\w+\}\}/g) ?? []
+            ))
+            return (
+              <div>
+                <label className="block text-[12px] font-extrabold text-[#475569] mb-1 uppercase tracking-wide">Preview (sample data)</label>
+                <div className="border-2 border-dashed border-[#e2e8f0] rounded-xl px-3 py-2.5 bg-[#f8fafc]">
+                  <p className="font-black text-[14px] text-[#1e293b] break-words">{previewSubject || <span className="text-[#94a3b8]">(no subject)</span>}</p>
+                  <p className="mt-2 font-semibold text-[13px] text-[#334155] whitespace-pre-wrap break-words">{previewBody}</p>
+                </div>
+                {unresolved.length > 0 && (
+                  <p className="mt-1.5 text-[12px] font-bold text-[#b45309]">
+                    ⚠️ Unknown placeholder{unresolved.length > 1 ? 's' : ''} {unresolved.join(', ')} — these will be sent exactly as written. Only {'{{username}}'} and {'{{link}}'} are filled in.
+                  </p>
+                )}
+              </div>
+            )
+          })()}
+
           <div className="flex items-center gap-3">
             <button
               onClick={() => save(t.type)}

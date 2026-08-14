@@ -40,6 +40,10 @@ export async function updateProfile(formData: FormData) {
     notify_purchase_decision: formData.get('notify_purchase_decision') === 'true',
     notify_tbr_match:        formData.get('notify_tbr_match')        === 'true',
     notify_pickup:           formData.get('notify_pickup')           === 'true',
+    // The UI presents this as an opt-IN toggle ("Announcement emails: ON"),
+    // while the column stores the opposite (marketing_opt_out). Invert here —
+    // this is the only self-serve way to undo a one-click unsubscribe.
+    marketing_opt_out:       formData.get('marketing_emails')        !== 'true',
   }
 
   // Once a phone number is verified, only the verification flow itself may

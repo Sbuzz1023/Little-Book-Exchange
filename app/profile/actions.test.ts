@@ -111,6 +111,18 @@ describe('updateProfile', () => {
     expect(payload).toEqual(expect.objectContaining({ username: 'newname', city: 'Chicago' }))
   })
 
+  it('writes the inverse of the opt-IN announcements toggle to marketing_opt_out', async () => {
+    updateResult = { error: null }
+    await expect(updateProfile(buildFormData({ ...baseFields, marketing_emails: 'true' }))).rejects.toThrow()
+    expect(updateMock).toHaveBeenCalledWith(expect.objectContaining({ marketing_opt_out: false }))
+  })
+
+  it('opts the user out when the announcements toggle is off (the reversible counterpart to the unsubscribe link)', async () => {
+    updateResult = { error: null }
+    await expect(updateProfile(buildFormData({ ...baseFields, marketing_emails: 'false' }))).rejects.toThrow()
+    expect(updateMock).toHaveBeenCalledWith(expect.objectContaining({ marketing_opt_out: true }))
+  })
+
   it('rejects an empty username without touching the database', async () => {
     updateResult = { error: null }
     await expect(updateProfile(buildFormData({ ...baseFields, username: '   ' })))

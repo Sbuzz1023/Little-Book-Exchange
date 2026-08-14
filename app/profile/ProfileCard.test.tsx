@@ -9,6 +9,7 @@ const baseProfile = {
   state: 'IL',
   phone: '3125550100',
   phone_verified: false,
+  marketing_opt_out: false,
   created_at: '2026-01-15T00:00:00.000Z',
 }
 
@@ -82,6 +83,19 @@ describe('ProfileCard — edit mode', () => {
     expect(phoneInput.tagName).toBe('INPUT')
     expect(phoneInput).toHaveAttribute('name', 'phone')
     expect(phoneInput).toHaveAttribute('readonly')
+  })
+
+  it('offers an Announcement emails toggle, defaulted ON, so a one-click unsubscribe is undoable', () => {
+    openEdit()
+    const field = document.querySelector('input[name="marketing_emails"]') as HTMLInputElement
+    expect(field).toBeTruthy()
+    expect(field.value).toBe('true')
+  })
+
+  it('renders the announcements toggle OFF for a user who is already opted out', () => {
+    openEdit({ ...baseProfile, marketing_opt_out: true })
+    const field = document.querySelector('input[name="marketing_emails"]') as HTMLInputElement
+    expect(field.value).toBe('false')
   })
 
   it('shows the error banner when an error prop is passed', () => {

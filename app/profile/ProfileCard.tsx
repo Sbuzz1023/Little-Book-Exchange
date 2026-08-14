@@ -26,6 +26,7 @@ type Props = {
     notify_purchase_decision?: boolean | null
     notify_tbr_match?: boolean | null
     notify_pickup?: boolean | null
+    marketing_opt_out?: boolean | null
     created_at?: string | null
   } | null
   updateAction: (formData: FormData) => Promise<void>
@@ -241,6 +242,15 @@ export default function ProfileCard({ profile, updateAction, success, error, sen
                   defaultValue={profile?.notify_pickup ?? true}
                   label="Pickup confirmations"
                   hint="Get notified when the other party marks a book picked up."
+                />
+                {/* Opt-IN from the user's point of view; the column it writes
+                    (marketing_opt_out) is inverted in updateProfile. This is
+                    the way back in after a one-click unsubscribe link. */}
+                <ShareToggle
+                  name="marketing_emails"
+                  defaultValue={!(profile?.marketing_opt_out ?? false)}
+                  label="Announcement emails"
+                  hint="📢 Get occasional announcements from the Little Book Exchange team. Turning this off unsubscribes you."
                 />
               </div>
             </div>
