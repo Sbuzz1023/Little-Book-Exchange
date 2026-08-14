@@ -1456,3 +1456,101 @@ alter table conversations
   add column if not exists confirmed_address_unit text,
   add column if not exists confirmed_pickup text;
 -- ──────────────────────────────────────────────────────────────────────────────
+
+-- ── Migration: dual pickup confirmation, 48hr auto-complete, disputes ────────
+-- Run this block in Supabase SQL Editor:
+
+-- 1. Per-party pickup confirmation timestamps + how an exchange finished.
+alter table conversations
+  add column if not exists seller_picked_up_at timestamptz,
+  add column if not exists buyer_picked_up_at timestamptz,
+  add column if not exists completion_type text check (completion_type in ('manual', 'auto_timeout'));
+
+-- 2. Disputes. Filing one freezes resolve_pickup() below for that exchange
+-- until an admin resolves it.
+create table if not exists disputes (
+  id uuid primary key default gen_random_uuid(),
+  conversation_id uuid references conversations(id) on delete cascade not null,
+  reporter_id uuid references profiles(id) not null,
+  message text not null,
+  status text not null default 'open' check (status in ('open', 'resolved')),
+  created_at timestamptz not null default now(),
+  resolved_at timestamptz
+);
+
+alter table disputes enable row level security;
+
+create policy "Participants and admins can view disputes" on disputes
+  for select using (
+    exists (select 1 from conversations c where c.id = conversation_id and auth.uid() in (c.buyer_id, c.seller_id))
+    or exists (select 1 from profiles p where p.id = auth.uid() and p.is_admin = true)
+  );
+
+create policy "A participant can file a dispute on their own exchange" on disputes
+  for insert with check (
+    reporter_id = auth.uid()
+    and exists (select 1 from conversations c where c.id = conversation_id and auth.uid() in (c.buyer_id, c.seller_id))
+  );
+
+create policy "Admins can resolve disputes" on disputes
+  for update using (exists (select 1 from profiles p where p.id = auth.uid() and p.is_admin = true));
+
+create index if not exists disputes_conversation_idx on disputes (conversation_id);
+create index if not exists disputes_open_idx on disputes (status) where status = 'open';
+
+-- 3. resolve_pickup() — the single source of truth for "is this exchange
+-- eligible to complete right now?" Called from: markPickedUp (a real user
+-- just confirmed, p_actor_id set), the daily cron job (nobody's acting,
+-- p_actor_id null), and an admin resolving a dispute (p_actor_id null).
+create or replace function resolve_pickup(p_conversation_id uuid, p_actor_id uuid default null)
+returns text as $$
+declare
+  v_conv conversations%rowtype;
+  v_completion_type text;
+  v_book_title text;
+begin
+  select * into v_conv from conversations where id = p_conversation_id for update;
+  if not found or v_conv.exchange_status <> 'confirmed' then
+    return 'not_applicable';
+  end if;
+
+  if exists (select 1 from disputes where conversation_id = p_conversation_id and status = 'open') then
+    return 'blocked_dispute';
+  end if;
+
+  if v_conv.buyer_picked_up_at is not null and v_conv.seller_picked_up_at is not null then
+    v_completion_type := 'manual';
+  elsif v_conv.buyer_picked_up_at is not null or v_conv.seller_picked_up_at is not null then
+    if now() < coalesce(v_conv.buyer_picked_up_at, v_conv.seller_picked_up_at) + interval '48 hours' then
+      return 'waiting';
+    end if;
+    v_completion_type := 'auto_timeout';
+  else
+    return 'waiting';
+  end if;
+
+  update conversations
+  set exchange_status = 'completed', completed_at = now(), completion_type = v_completion_type
+  where id = p_conversation_id;
+
+  select title into v_book_title from listings where id = v_conv.listing_id;
+
+  if v_completion_type = 'manual' and p_actor_id is not null then
+    insert into messages (conversation_id, sender_id, body, kind)
+    values (p_conversation_id, p_actor_id, '✅ Exchange completed — thanks for confirming pickup!', 'pickup');
+  else
+    insert into notifications (user_id, type, entity_id, title, body)
+    select id, 'pickup', p_conversation_id, 'Exchange auto-completed',
+      '⏱️ ' || coalesce(v_book_title, 'Your exchange') || ' auto-completed after 48 hours.'
+    from profiles where id in (v_conv.buyer_id, v_conv.seller_id) and notify_pickup = true;
+  end if;
+
+  return 'completed_' || v_completion_type;
+exception when others then
+  raise warning 'resolve_pickup failed: %', sqlerrm;
+  return 'error';
+end;
+$$ language plpgsql security definer set search_path = public, pg_temp;
+
+grant execute on function resolve_pickup(uuid, uuid) to authenticated, service_role;
+-- ──────────────────────────────────────────────────────────────────────────────
