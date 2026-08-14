@@ -40,6 +40,7 @@ vi.mock('@/lib/supabase/serviceRole', () => ({
   createServiceRoleClient: () => ({ from: fromMock }),
 }))
 
+import { Webhook } from 'standardwebhooks'
 import { POST } from './route'
 
 function buildRequest(body: unknown) {
@@ -55,17 +56,80 @@ describe('POST /api/auth/email-hook', () => {
     verifyMock.mockReset()
     sendEmailMock.mockReset()
     insertMock.mockClear()
+    vi.mocked(Webhook).mockClear()
     process.env.NEXT_PUBLIC_SITE_URL = 'http://localhost:3000'
+    process.env.SUPABASE_EMAIL_HOOK_SECRET = 'whsec_c2VjcmV0'
     templateRow = { subject: 'Hi {{username}}', body: 'Click {{link}}, {{username}}' }
     templateError = null
     profileRow = { username: 'seanb' }
   })
 
   it('rejects a request with an invalid signature', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
     verifyMock.mockImplementation(() => { throw new Error('bad signature') })
     const res = await POST(buildRequest({}))
     expect(res.status).toBe(401)
     expect(sendEmailMock).not.toHaveBeenCalled()
+    expect(consoleError).toHaveBeenCalledWith(expect.stringContaining('SIGNATURE REJECTED'), expect.anything())
+    consoleError.mockRestore()
+  })
+
+  it('strips the leading `v1,` Supabase shows in its dashboard, without breaking the happy path', async () => {
+    // Supabase displays the Send Email Hook secret as `v1,whsec_<base64>`, but
+    // standardwebhooks only strips `whsec_` — the `v1,` makes its base64 decode
+    // throw, which used to surface as a bogus 401 "invalid signature".
+    process.env.SUPABASE_EMAIL_HOOK_SECRET = 'v1,whsec_c2VjcmV0'
+    verifyMock.mockReturnValue({
+      user: { id: 'user-1', email: 'user@example.com' },
+      email_data: { token_hash: 'th_v1', email_action_type: 'recovery' },
+    })
+    sendEmailMock.mockResolvedValue({ ok: true })
+
+    const res = await POST(buildRequest({}))
+
+    expect(Webhook).toHaveBeenCalledWith('whsec_c2VjcmV0')
+    expect(res.status).toBe(200)
+    expect(sendEmailMock).toHaveBeenCalled()
+  })
+
+  it('passes a `whsec_`-prefixed or bare secret through unchanged', async () => {
+    verifyMock.mockReturnValue({
+      user: { id: 'user-1', email: 'user@example.com' },
+      email_data: { token_hash: 'th_x', email_action_type: 'recovery' },
+    })
+    sendEmailMock.mockResolvedValue({ ok: true })
+
+    process.env.SUPABASE_EMAIL_HOOK_SECRET = 'whsec_c2VjcmV0'
+    await POST(buildRequest({}))
+    expect(Webhook).toHaveBeenCalledWith('whsec_c2VjcmV0')
+
+    vi.mocked(Webhook).mockClear()
+    process.env.SUPABASE_EMAIL_HOOK_SECRET = 'c2VjcmV0'
+    await POST(buildRequest({}))
+    expect(Webhook).toHaveBeenCalledWith('c2VjcmV0')
+  })
+
+  it('logs a config error — distinct from a rejected signature — when the secret cannot build a verifier', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    vi.mocked(Webhook).mockImplementationOnce(() => { throw new Error('Invalid base64 string') })
+
+    const res = await POST(buildRequest({}))
+
+    expect(res.status).toBe(401)
+    expect(verifyMock).not.toHaveBeenCalled()
+    expect(consoleError).toHaveBeenCalledWith(expect.stringContaining('CONFIG ERROR'), expect.anything())
+    consoleError.mockRestore()
+  })
+
+  it('returns 400 rather than throwing when a signature-valid payload has no email_data', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    verifyMock.mockReturnValue({ user: { id: 'user-1', email: 'user@example.com' } })
+
+    const res = await POST(buildRequest({}))
+
+    expect(res.status).toBe(400)
+    expect(sendEmailMock).not.toHaveBeenCalled()
+    consoleError.mockRestore()
   })
 
   it('renders the password_reset template and sends via Resend for a recovery action', async () => {

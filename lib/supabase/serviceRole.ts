@@ -1,3 +1,6 @@
+// Turns an accidental client-side import of this module into a build error
+// rather than a route that quietly ships the service role key to the browser.
+import 'server-only'
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 
 // Server-only. Bypasses Row Level Security entirely — use this ONLY for code
