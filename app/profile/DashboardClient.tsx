@@ -805,7 +805,7 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
                             fd.set('message', disputeMessage)
                             const result = await fileDispute(fd)
                             setDisputeSubmitting(false)
-                            if (result.ok) setDisputeSubmitted(true)
+                            if (result.ok) { setDisputeSubmitted(true); router.refresh() }
                             else setDisputeError(result.error ?? 'Could not send this. Please try again.')
                           }}
                           className="font-extrabold text-[13px] text-white"
