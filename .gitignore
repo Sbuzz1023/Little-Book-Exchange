@@ -33,6 +33,7 @@ yarn-error.log*
 
 # worktrees
 /.worktrees
+/.claude/worktrees
 
 # typescript
 *.tsbuildinfo
