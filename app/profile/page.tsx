@@ -185,12 +185,15 @@ export default async function ProfilePage({
         const lm: Record<string, any> = {}
         for (const l of listingRows ?? []) lm[l.id] = l
 
-        // Fetch profiles separately. Deliberately no `phone` here — a user's
-        // phone number must never be sent to the client for anyone but
-        // themself, and this map covers both parties in every exchange.
+        // Fetch profiles separately. Deliberately no `phone` and no raw
+        // address/pickup columns here — a user's phone number and home address
+        // must never be sent to the client for anyone but themself, and this
+        // map covers both parties in every exchange. The buyer sees only what
+        // the seller chose to share per-exchange, via the conversation's own
+        // confirmed_address / confirmed_address_unit / confirmed_pickup.
         const profileIds = [...new Set(merged.flatMap((r: any) => [r.buyer_id, r.seller_id]).filter(Boolean))]
         const { data: profileRows, error: profilesErr } = await supabase
-          .from('profiles').select('id, username, city, state, address, address_unit, share_address, pickup_description, share_pickup').in('id', profileIds)
+          .from('profiles').select('id, username, city, state').in('id', profileIds)
         if (profilesErr) console.error('profile page: profiles lookup failed', profilesErr)
         const pm: Record<string, any> = {}
         for (const p of profileRows ?? []) pm[p.id] = p
@@ -225,19 +228,13 @@ export default async function ProfilePage({
 
         exchanges = merged.map((row: any) => {
           const sellerData = pm[row.seller_id] ?? { username: null, city: null, state: null }
-          const isConfirmed = (row.exchange_status ?? 'none') === 'confirmed'
           return {
             ...row,
             hasOpenDispute: disputedConvoIds.has(row.id),
             exchange_status: row.exchange_status ?? 'none',
             listings: lm[row.listing_id] ?? { title: 'Unknown', author: '', photo_url: null, city: null, state: null },
             buyer:    pm[row.buyer_id]   ?? { username: null, city: null, state: null },
-            seller: {
-              ...sellerData,
-              address:            isConfirmed ? sellerData.address            : null,
-              address_unit:       isConfirmed ? sellerData.address_unit       : null,
-              pickup_description: isConfirmed ? sellerData.pickup_description : null,
-            },
+            seller: sellerData,
             messages: mm[row.id] ?? [],
             sellerRating: averageRating(ratingsBySeller[row.seller_id] ?? []),
             reviewed: reviewedSet.has(row.id),

@@ -47,9 +47,9 @@ export default function DisputesAdminTab() {
     for (const l of listings ?? []) listingMap[l.id] = l.title
 
     const userIds = Array.from(new Set((convos ?? []).flatMap(c => [c.buyer_id, c.seller_id])))
-    const { data: profiles } = await supabase.from('profiles').select('id, username, name').in('id', userIds)
+    const { data: profiles } = await supabase.from('profiles').select('id, username').in('id', userIds)
     const nameMap: Record<string, string> = {}
-    for (const p of profiles ?? []) nameMap[p.id] = (p as any).name || p.username || 'Unknown'
+    for (const p of profiles ?? []) nameMap[p.id] = p.username || 'Unknown'
 
     setDisputes(rows.map(r => {
       const convo = convoMap[r.conversation_id]

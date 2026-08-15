@@ -1514,6 +1514,20 @@ begin
     return 'not_applicable';
   end if;
 
+  -- Caller authorization. This is security definer and granted to authenticated,
+  -- so without this guard any signed-in user could resolve ANY conversation and
+  -- spoof the completion message by passing an arbitrary p_actor_id.
+  -- A null auth.uid() means the service-role key (the 48-hour cron job), which
+  -- must keep working. Otherwise the caller must be a participant or an admin.
+  -- Checked before the dispute check on purpose, so an unauthorized caller gets
+  -- the same generic answer and learns nothing about whether a dispute exists.
+  if auth.uid() is not null
+     and auth.uid() not in (v_conv.buyer_id, v_conv.seller_id)
+     and not exists (select 1 from profiles p where p.id = auth.uid() and p.is_admin = true)
+  then
+    return 'not_applicable';
+  end if;
+
   if exists (select 1 from disputes where conversation_id = p_conversation_id and status = 'open') then
     return 'blocked_dispute';
   end if;
@@ -1539,9 +1553,16 @@ begin
     insert into messages (conversation_id, sender_id, body, kind)
     values (p_conversation_id, p_actor_id, '✅ Exchange completed — thanks for confirming pickup!', 'pickup');
   else
+    -- Reached for auto_timeout, and also for a manual completion with no live
+    -- actor (e.g. an admin resolving a dispute where both parties had already
+    -- confirmed), so the wording has to branch on the completion type.
     insert into notifications (user_id, type, entity_id, title, body)
-    select id, 'pickup', p_conversation_id, 'Exchange auto-completed',
-      '⏱️ ' || coalesce(v_book_title, 'Your exchange') || ' auto-completed after 48 hours.'
+    select id, 'pickup', p_conversation_id,
+      case when v_completion_type = 'manual' then 'Exchange completed' else 'Exchange auto-completed' end,
+      case when v_completion_type = 'manual'
+        then '✅ ' || coalesce(v_book_title, 'Your exchange') || ' — pickup confirmed by both of you.'
+        else '⏱️ ' || coalesce(v_book_title, 'Your exchange') || ' auto-completed after 48 hours.'
+      end
     from profiles where id in (v_conv.buyer_id, v_conv.seller_id) and notify_pickup = true;
   end if;
 

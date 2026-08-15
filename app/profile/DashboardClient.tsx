@@ -84,11 +84,6 @@ type Exchange = {
     name?: string | null
     city?: string | null
     state?: string | null
-    address?: string | null
-    address_unit?: string | null
-    share_address?: boolean | null
-    pickup_description?: string | null
-    share_pickup?: boolean | null
   }
   messages: { id: string; body: string; sender_id: string; created_at: string }[]
 }
