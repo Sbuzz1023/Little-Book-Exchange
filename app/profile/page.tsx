@@ -3,7 +3,7 @@ import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import DashboardClient from './DashboardClient'
 import { MOCK_PROFILE, MOCK_LISTINGS, MOCK_USER_ID, MOCK_CONVERSATIONS } from '@/lib/mock-data'
-import { updateProfile, updateListingStatus, completeExchange, hideExchangeHistory, confirmExchange, denyPurchase, cancelPurchase } from './actions'
+import { updateProfile, updateListingStatus, markPickedUp, fileDispute, hideExchangeHistory, confirmExchange, denyPurchase, cancelPurchase } from './actions'
 import { submitReview } from '@/lib/actions/reviews'
 import { averageRating } from '@/lib/reviewAverages'
 import { removeSavedListing } from '@/lib/actions/savedListings'
@@ -217,11 +217,18 @@ export default async function ProfilePage({
         const ratingsBySeller: Record<string, number[]> = {}
         for (const r of ratingRows ?? []) (ratingsBySeller[r.seller_id] ??= []).push(r.rating)
 
+        const { data: openDisputeRows } = await supabase
+          .from('disputes').select('conversation_id')
+          .in('conversation_id', merged.map((r: any) => r.id))
+          .eq('status', 'open')
+        const disputedConvoIds = new Set((openDisputeRows ?? []).map((d: any) => d.conversation_id))
+
         exchanges = merged.map((row: any) => {
           const sellerData = pm[row.seller_id] ?? { username: null, city: null, state: null }
           const isConfirmed = (row.exchange_status ?? 'none') === 'confirmed'
           return {
             ...row,
+            hasOpenDispute: disputedConvoIds.has(row.id),
             exchange_status: row.exchange_status ?? 'none',
             listings: lm[row.listing_id] ?? { title: 'Unknown', author: '', photo_url: null, city: null, state: null },
             buyer:    pm[row.buyer_id]   ?? { username: null, city: null, state: null },
@@ -257,7 +264,8 @@ export default async function ProfilePage({
       transactions={transactions}
       updateAction={updateProfile}
       updateListingStatus={updateListingStatus}
-      completeExchange={completeExchange}
+      markPickedUp={markPickedUp}
+      fileDispute={fileDispute}
       hideExchangeHistory={hideExchangeHistory}
       submitReview={submitReview}
       confirmExchange={confirmExchange}
