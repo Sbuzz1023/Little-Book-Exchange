@@ -24,7 +24,8 @@ const baseProps = {
   transactions: [],
   updateAction: vi.fn(() => Promise.resolve()),
   updateListingStatus: vi.fn(() => Promise.resolve()),
-  completeExchange: vi.fn(() => Promise.resolve()),
+  markPickedUp: vi.fn(() => Promise.resolve()),
+  fileDispute: vi.fn(() => Promise.resolve({ ok: true })),
   hideExchangeHistory: vi.fn(() => Promise.resolve()),
   submitReview: vi.fn(() => Promise.resolve({ ok: true })),
   confirmExchange: vi.fn(() => Promise.resolve()),
@@ -151,6 +152,62 @@ describe('DashboardClient — notification badges and highlighting', () => {
     expect(screen.queryByTestId('thread-title-back')).not.toBeNull()
     fireEvent.click(screen.getByText('Messages').closest('button')!)
     expect(screen.queryByTestId('thread-title-back')).toBeNull()
+  })
+})
+
+describe('DashboardClient — dual pickup confirmation', () => {
+  const confirmedExchange = {
+    id: 'convo-2', listing_id: 'listing-2', buyer_id: 'them', seller_id: 'me',
+    created_at: '2026-08-01T00:00:00.000Z',
+    exchange_status: 'confirmed' as const, completed_at: null, buyer_hidden: false, seller_hidden: false,
+    sellerRating: null, reviewed: false,
+    seller_picked_up_at: null as string | null,
+    buyer_picked_up_at: null as string | null,
+    completion_type: null,
+    hasOpenDispute: false,
+    listings: { title: 'Dune', author: 'Frank Herbert' },
+    buyer: { name: 'Neighbor' }, seller: { name: 'Me' },
+    messages: [],
+  }
+
+  it('shows the seller their Mark Picked Up and Dispute buttons when neither party has confirmed', () => {
+    render(<DashboardClient {...baseProps} exchanges={[confirmedExchange]} defaultTab="exchanges" />)
+    expect(screen.getByText('📦 Mark Picked Up')).toBeInTheDocument()
+    expect(screen.getByText('🚩 Dispute')).toBeInTheDocument()
+  })
+
+  it('shows the buyer their I Got It and Dispute buttons when neither party has confirmed', () => {
+    const asBuyer = { ...confirmedExchange, id: 'convo-3', buyer_id: 'me', seller_id: 'them' }
+    render(<DashboardClient {...baseProps} exchanges={[asBuyer]} defaultTab="exchanges" />)
+    expect(screen.getByText('📚 I Got It!')).toBeInTheDocument()
+    expect(screen.getByText('🚩 Dispute')).toBeInTheDocument()
+  })
+
+  it('shows a waiting state instead of the button once the seller has confirmed', () => {
+    const sellerConfirmed = { ...confirmedExchange, seller_picked_up_at: '2026-08-01T00:00:00.000Z' }
+    render(<DashboardClient {...baseProps} exchanges={[sellerConfirmed]} defaultTab="exchanges" />)
+    expect(screen.queryByText('📦 Mark Picked Up')).not.toBeInTheDocument()
+    expect(screen.getByText(/You confirmed — waiting for/)).toBeInTheDocument()
+  })
+
+  it('shows a dispute-pending state instead of both buttons when there is an open dispute', () => {
+    const disputed = { ...confirmedExchange, hasOpenDispute: true }
+    render(<DashboardClient {...baseProps} exchanges={[disputed]} defaultTab="exchanges" />)
+    expect(screen.queryByText('📦 Mark Picked Up')).not.toBeInTheDocument()
+    expect(screen.queryByText('🚩 Dispute')).not.toBeInTheDocument()
+    expect(screen.getByText(/Dispute pending review/)).toBeInTheDocument()
+  })
+
+  it('opens the dispute popup and submits a message via fileDispute', async () => {
+    const fileDispute = vi.fn(() => Promise.resolve({ ok: true }))
+    render(<DashboardClient {...baseProps} exchanges={[confirmedExchange]} defaultTab="exchanges" fileDispute={fileDispute} />)
+
+    fireEvent.click(screen.getByText('🚩 Dispute'))
+    const textarea = await screen.findByPlaceholderText(/describe the issue/i)
+    fireEvent.change(textarea, { target: { value: 'The book was damaged.' } })
+    fireEvent.click(screen.getByRole('button', { name: /Send to Admin/i }))
+
+    await waitFor(() => expect(fileDispute).toHaveBeenCalled())
   })
 })
 

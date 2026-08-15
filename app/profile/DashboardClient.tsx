@@ -11,6 +11,7 @@ import TbrAddForm from './TbrAddForm'
 import PhoneVerify from '@/components/PhoneVerify'
 import StateSelect from '@/components/StateSelect'
 import { createClient } from '@/lib/supabase/client'
+import { pickupState, formatDeadline } from '@/lib/pickupStatus'
 
 type Tab = 'listings' | 'exchanges' | 'tbr' | 'saved' | 'wallet' | 'account' | 'messages'
 
@@ -58,6 +59,10 @@ type Exchange = {
   confirmed_address?: string | null
   confirmed_address_unit?: string | null
   confirmed_pickup?: string | null
+  seller_picked_up_at?: string | null
+  buyer_picked_up_at?: string | null
+  completion_type?: string | null
+  hasOpenDispute?: boolean
   sellerRating: { average: number; count: number } | null
   reviewed: boolean
   listings: {
@@ -115,7 +120,8 @@ type Props = {
   transactions: { id: string; amount: number; reason: string; created_at: string }[]
   updateAction: (formData: FormData) => Promise<void>
   updateListingStatus: (formData: FormData) => Promise<void>
-  completeExchange: (formData: FormData) => Promise<void>
+  markPickedUp: (formData: FormData) => Promise<void>
+  fileDispute: (formData: FormData) => Promise<{ ok: boolean; error?: string }>
   hideExchangeHistory: (formData: FormData) => Promise<void>
   submitReview: (formData: FormData) => Promise<{ ok: boolean; error?: string }>
   confirmExchange: (formData: FormData) => Promise<void>
@@ -181,7 +187,7 @@ function statusLabel(status: string) {
   return 'Active'
 }
 
-export default function DashboardClient({ profile, listings, exchanges, savedListings, tbrEntries, transactions, updateAction, updateListingStatus, completeExchange, hideExchangeHistory, submitReview, confirmExchange, denyPurchase, cancelPurchase, removeSavedListing, addTbrEntry, removeTbrEntry, success, defaultTab, queryError, tbrError, error, isDemo, initialConversationId, unreadCounts, unreadEntityIds, resendEmailConfirmation, sendPhoneOtp, verifyPhoneOtp }: Props) {
+export default function DashboardClient({ profile, listings, exchanges, savedListings, tbrEntries, transactions, updateAction, updateListingStatus, markPickedUp, fileDispute, hideExchangeHistory, submitReview, confirmExchange, denyPurchase, cancelPurchase, removeSavedListing, addTbrEntry, removeTbrEntry, success, defaultTab, queryError, tbrError, error, isDemo, initialConversationId, unreadCounts, unreadEntityIds, resendEmailConfirmation, sendPhoneOtp, verifyPhoneOtp }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>(defaultTab ?? 'listings')
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(initialConversationId ?? null)
   const booksPosted = listings.reduce((sum, l: any) => sum + (l.book_count ?? 1), 0)
@@ -198,6 +204,11 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
     state: string
     pickup: string
   } | null>(null)
+  const [disputeModal, setDisputeModal] = useState<{ conversationId: string; title: string } | null>(null)
+  const [disputeMessage, setDisputeMessage] = useState('')
+  const [disputeSubmitting, setDisputeSubmitting] = useState(false)
+  const [disputeError, setDisputeError] = useState<string | null>(null)
+  const [disputeSubmitted, setDisputeSubmitted] = useState(false)
 
   async function markTabRead(tabId: Tab) {
     if (isDemo || !profile?.id) return
@@ -551,16 +562,58 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
                   </form>
                 )}
 
-                {/* Seller: mark picked up after confirmed */}
-                {role === 'seller' && status === 'confirmed' && (
-                  <form action={completeExchange}>
-                    <input type="hidden" name="conversation_id" value={ex.id} />
-                    <button className="font-extrabold text-[12px] hover:opacity-80"
-                      style={{ background: '#fff7ed', border: '1.5px solid #fed7aa', color: '#f97316', padding: '7px 18px', borderRadius: 999, cursor: 'pointer', fontFamily: 'inherit' }}>
-                      📦 Mark Picked Up
-                    </button>
-                  </form>
-                )}
+                {/* Both roles: dual pickup confirmation, once status is confirmed */}
+                {status === 'confirmed' && (() => {
+                  const state = pickupState({
+                    role,
+                    exchangeStatus: status,
+                    sellerPickedUpAt: ex.seller_picked_up_at ?? null,
+                    buyerPickedUpAt: ex.buyer_picked_up_at ?? null,
+                    hasOpenDispute: !!ex.hasOpenDispute,
+                  })
+
+                  if (state.kind === 'disputed') {
+                    return (
+                      <span className="font-extrabold text-[12px]"
+                        style={{ color: '#b45309', background: '#fffbeb', border: '1.5px solid #fcd34d', padding: '7px 18px', borderRadius: 999 }}>
+                        ⚠️ Dispute pending review
+                      </span>
+                    )
+                  }
+
+                  if (state.kind === 'waiting') {
+                    return (
+                      <span className="font-extrabold text-[12px]"
+                        style={{ color: '#166534', background: '#f0fdf4', border: '1.5px solid #bbf7d0', padding: '7px 18px', borderRadius: 999 }}>
+                        ✅ You confirmed — waiting for {otherName} (auto-completes {formatDeadline(state.deadline)})
+                      </span>
+                    )
+                  }
+
+                  return (
+                    <>
+                      <form action={markPickedUp}>
+                        <input type="hidden" name="conversation_id" value={ex.id} />
+                        <button className="font-extrabold text-[12px] hover:opacity-80"
+                          style={{ background: '#fff7ed', border: '1.5px solid #fed7aa', color: '#f97316', padding: '7px 18px', borderRadius: 999, cursor: 'pointer', fontFamily: 'inherit' }}>
+                          {role === 'seller' ? '📦 Mark Picked Up' : '📚 I Got It!'}
+                        </button>
+                      </form>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDisputeModal({ conversationId: ex.id, title: ex.listings?.title ?? 'this book' })
+                          setDisputeMessage('')
+                          setDisputeError(null)
+                          setDisputeSubmitted(false)
+                        }}
+                        className="font-extrabold text-[12px] hover:opacity-80"
+                        style={{ background: '#fff1f2', border: '1.5px solid #fca5a5', color: '#dc2626', padding: '7px 18px', borderRadius: 999, cursor: 'pointer', fontFamily: 'inherit' }}>
+                        🚩 Dispute
+                      </button>
+                    </>
+                  )
+                })()}
 
                 {/* Buyer: cancel before seller confirms */}
                 {role === 'buyer' && status === 'requested' && (
@@ -573,16 +626,6 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
                   </form>
                 )}
 
-                {/* Buyer: "I got it" after confirmed */}
-                {role === 'buyer' && status === 'confirmed' && (
-                  <form action={completeExchange}>
-                    <input type="hidden" name="conversation_id" value={ex.id} />
-                    <button className="font-extrabold text-[12px] hover:opacity-80"
-                      style={{ background: '#f0fdf4', border: '1.5px solid #bbf7d0', color: '#166534', padding: '7px 18px', borderRadius: 999, cursor: 'pointer', fontFamily: 'inherit' }}>
-                      📚 I Got It!
-                    </button>
-                  </form>
-                )}
               </div>
             </div>
           )
@@ -711,6 +754,68 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
                     </button>
                   </div>
                 </form>
+              </div>
+            )}
+
+            {/* Dispute popup */}
+            {disputeModal && (
+              <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
+                <div style={{ background: '#fff', borderRadius: 20, padding: 24, width: 380, maxWidth: '90vw', position: 'relative' }}>
+                  <button
+                    type="button"
+                    onClick={() => setDisputeModal(null)}
+                    aria-label="Close"
+                    style={{ position: 'absolute', top: 16, right: 16, background: 'none', border: 'none', color: '#aaa', cursor: 'pointer', fontSize: 18, fontWeight: 900, lineHeight: 1 }}
+                  >
+                    ✕
+                  </button>
+                  <h3 className="font-display text-[18px] mb-1" style={{ paddingRight: 24 }}>Report an issue</h3>
+                  <p className="font-semibold text-[12px] mb-4" style={{ color: '#aaa' }}>
+                    Tell us what's wrong with <strong style={{ color: '#555' }}>{disputeModal.title}</strong> — this pauses the exchange until an admin looks into it.
+                  </p>
+
+                  {disputeSubmitted ? (
+                    <p className="font-bold text-[13px]" style={{ color: '#166534' }}>
+                      We've notified the admin team. This exchange is paused until it's resolved.
+                    </p>
+                  ) : (
+                    <>
+                      <textarea
+                        value={disputeMessage}
+                        onChange={e => setDisputeMessage(e.target.value)}
+                        placeholder="Describe the issue..."
+                        className="w-full border-2 border-gray-100 rounded-xl font-semibold text-[13px]"
+                        style={{ padding: 10, minHeight: 90 }}
+                      />
+                      {disputeError && <p className="font-bold text-[12px] mt-2" style={{ color: '#dc2626' }}>{disputeError}</p>}
+                      <div className="flex justify-end gap-2 mt-4">
+                        <button type="button" onClick={() => setDisputeModal(null)} className="font-extrabold text-[13px]"
+                          style={{ background: 'none', border: 'none', color: '#aaa', cursor: 'pointer' }}>
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          disabled={disputeSubmitting}
+                          onClick={async () => {
+                            if (!disputeMessage.trim()) { setDisputeError('Please describe the issue.'); return }
+                            setDisputeSubmitting(true)
+                            setDisputeError(null)
+                            const fd = new FormData()
+                            fd.set('conversation_id', disputeModal.conversationId)
+                            fd.set('message', disputeMessage)
+                            const result = await fileDispute(fd)
+                            setDisputeSubmitting(false)
+                            if (result.ok) setDisputeSubmitted(true)
+                            else setDisputeError(result.error ?? 'Could not send this. Please try again.')
+                          }}
+                          className="font-extrabold text-[13px] text-white"
+                          style={{ background: '#dc2626', padding: '9px 20px', borderRadius: 999, border: 'none', cursor: 'pointer' }}>
+                          {disputeSubmitting ? 'Sending...' : 'Send to Admin'}
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
             )}
           </div>
