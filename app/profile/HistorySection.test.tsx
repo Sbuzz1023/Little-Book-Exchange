@@ -132,3 +132,44 @@ describe('HistorySection', () => {
     expect(container.textContent).toContain('No completed exchanges yet')
   })
 })
+
+describe('HistorySection — auto-completed tag and unread highlight', () => {
+  let hideExchangeHistory: ReturnType<typeof vi.fn>
+  let submitReview: ReturnType<typeof vi.fn>
+
+  beforeEach(() => {
+    hideExchangeHistory = vi.fn(() => Promise.resolve())
+    submitReview = vi.fn(() => Promise.resolve({ ok: true }))
+  })
+
+  it('shows an Auto-completed tag when completion_type is auto_timeout', () => {
+    const autoCompleted = { ...baseExchange, id: 'convo-auto', completion_type: 'auto_timeout' }
+    const { container } = render(
+      <HistorySection exchanges={[autoCompleted]} userId="me" hideExchangeHistory={hideExchangeHistory} submitReview={submitReview} />
+    )
+    expect(container.textContent).toContain('Auto-completed')
+  })
+
+  it('does not show the tag for a normal completion', () => {
+    const { container } = render(
+      <HistorySection exchanges={[baseExchange]} userId="me" hideExchangeHistory={hideExchangeHistory} submitReview={submitReview} />
+    )
+    expect(container.textContent).not.toContain('Auto-completed')
+  })
+
+  it('highlights a row whose conversation id is in unreadConversationIds', () => {
+    const { container } = render(
+      <HistorySection exchanges={[baseExchange]} userId="me" hideExchangeHistory={hideExchangeHistory} submitReview={submitReview}
+        unreadConversationIds={['convo-1']} />
+    )
+    expect(container.querySelector('[data-testid="history-row-highlighted"]')).not.toBeNull()
+  })
+
+  it('does not highlight a row not in unreadConversationIds', () => {
+    const { container } = render(
+      <HistorySection exchanges={[baseExchange]} userId="me" hideExchangeHistory={hideExchangeHistory} submitReview={submitReview}
+        unreadConversationIds={['some-other-convo']} />
+    )
+    expect(container.querySelector('[data-testid="history-row-highlighted"]')).toBeNull()
+  })
+})

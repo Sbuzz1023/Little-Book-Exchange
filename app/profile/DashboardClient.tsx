@@ -665,6 +665,7 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
               userId={userId}
               hideExchangeHistory={hideExchangeHistory}
               submitReview={submitReview}
+              unreadConversationIds={unreadEntityIds.decisionOrPickup}
             />
 
             {/* Confirm-and-review popup */}

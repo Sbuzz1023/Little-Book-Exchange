@@ -31,6 +31,7 @@ export type HistoryExchange = {
   seller_id: string
   exchange_status: string
   completed_at: string | null
+  completion_type?: string | null
   listings: { title: string; author: string; photo_url?: string | null }
   buyer: { username?: string | null; name?: string | null }
   seller: { username?: string | null; name?: string | null }
@@ -49,12 +50,13 @@ const cardStyle = {
 } as React.CSSProperties
 
 export default function HistorySection({
-  exchanges, userId, hideExchangeHistory, submitReview,
+  exchanges, userId, hideExchangeHistory, submitReview, unreadConversationIds = [],
 }: {
   exchanges: HistoryExchange[]
   userId: string
   hideExchangeHistory: (formData: FormData) => Promise<void>
   submitReview: (formData: FormData) => Promise<{ ok: boolean; error?: string }>
+  unreadConversationIds?: string[]
 }) {
   const [ratingTarget, setRatingTarget] = useState<HistoryExchange | null>(null)
   const [stars, setStars] = useState(5)
@@ -115,9 +117,18 @@ export default function HistorySection({
           const otherName = other?.name || other?.username || 'Neighbor'
           const reviewed = ex.reviewed || !!reviewedOverride[ex.id]
           const isDeclined = ex.exchange_status === 'declined'
+          const isUnread = unreadConversationIds.includes(ex.id)
 
           return (
-            <div key={ex.id} className="flex items-center gap-3" style={{ padding: '12px 0', borderBottom: '2px solid #f3f4f6' }}>
+            <div
+              key={ex.id}
+              data-testid={isUnread ? 'history-row-highlighted' : undefined}
+              className="flex items-center gap-3"
+              style={{
+                padding: '12px 0 12px 12px', borderBottom: '2px solid #f3f4f6',
+                ...(isUnread ? { background: '#fff7ed', borderRadius: 12, boxShadow: 'inset 3px 0 0 #f97316' } : {}),
+              }}
+            >
               <div className="relative shrink-0 overflow-hidden" style={{ width: 42, height: 42, borderRadius: 10, background: coverGradient(ex.listing_id) }}>
                 {ex.listings?.photo_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -150,6 +161,12 @@ export default function HistorySection({
                 }}>
                 {isDeclined ? 'Declined' : (role === 'seller' ? 'Sold' : 'Bought')}
               </span>
+              {!isDeclined && ex.completion_type === 'auto_timeout' && (
+                <span className="font-extrabold text-[10px] whitespace-nowrap shrink-0"
+                  style={{ padding: '3px 10px', borderRadius: 999, background: '#fffbeb', color: '#b45309' }}>
+                  ⏱️ Auto-completed
+                </span>
+              )}
 
               {!isDeclined && role === 'buyer' && (
                 reviewed ? (
