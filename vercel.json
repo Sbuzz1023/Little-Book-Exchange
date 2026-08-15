@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/resolve-pickups",
+      "schedule": "0 6 * * *"
+    }
+  ]
+}
