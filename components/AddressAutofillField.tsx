@@ -53,6 +53,10 @@ type Props = {
   inputStyle: React.CSSProperties
   labelStyle: React.CSSProperties
   requiredMark?: React.ReactNode
+  // Rendered directly under the Street Address field, above City — a slot
+  // for a privacy/help note that belongs with the address specifically,
+  // not after the whole City/State/Zip block below it.
+  noteAfterAddress?: React.ReactNode
 }
 
 export default function AddressAutofillField({
@@ -64,6 +68,7 @@ export default function AddressAutofillField({
   inputStyle,
   labelStyle,
   requiredMark,
+  noteAfterAddress,
 }: Props) {
   const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || ''
   const [city, setCity] = useState(defaultCity)
@@ -117,6 +122,8 @@ export default function AddressAutofillField({
           </AddressAutofill>
         ) : addressInput}
       </div>
+
+      {noteAfterAddress}
 
       <div>
         <label className="block mb-1.5" style={labelStyle}>City{requiredMark}</label>

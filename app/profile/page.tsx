@@ -3,7 +3,7 @@ import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import DashboardClient from './DashboardClient'
 import { MOCK_PROFILE, MOCK_LISTINGS, MOCK_USER_ID, MOCK_CONVERSATIONS } from '@/lib/mock-data'
-import { updateProfile, updateListingStatus, completeExchange, hideExchangeHistory, confirmExchange, denyPurchase, cancelPurchase } from './actions'
+import { updateProfile, updateListingStatus, markPickedUp, fileDispute, hideExchangeHistory, confirmExchange, denyPurchase, cancelPurchase } from './actions'
 import { submitReview } from '@/lib/actions/reviews'
 import { averageRating } from '@/lib/reviewAverages'
 import { removeSavedListing } from '@/lib/actions/savedListings'
@@ -57,13 +57,12 @@ export default async function ProfilePage({
               city: pl.city ?? null,
               state: pl.state ?? null,
             },
-            buyer:  { username: 'demouser', name: 'Demo User', city: 'Chicago', state: 'IL', phone: '(312) 555-0100' },
+            buyer:  { username: 'demouser', name: 'Demo User', city: 'Chicago', state: 'IL' },
             seller: {
               username: pl.profiles?.username ?? pl.profiles?.name ?? 'neighbor',
               name: pl.profiles?.name ?? 'Neighbor',
               city: pl.city ?? null,
               state: pl.state ?? null,
-              phone: null,
             },
             messages: [],
           },
@@ -186,10 +185,15 @@ export default async function ProfilePage({
         const lm: Record<string, any> = {}
         for (const l of listingRows ?? []) lm[l.id] = l
 
-        // Fetch profiles separately
+        // Fetch profiles separately. Deliberately no `phone` and no raw
+        // address/pickup columns here — a user's phone number and home address
+        // must never be sent to the client for anyone but themself, and this
+        // map covers both parties in every exchange. The buyer sees only what
+        // the seller chose to share per-exchange, via the conversation's own
+        // confirmed_address / confirmed_address_unit / confirmed_pickup.
         const profileIds = [...new Set(merged.flatMap((r: any) => [r.buyer_id, r.seller_id]).filter(Boolean))]
         const { data: profileRows, error: profilesErr } = await supabase
-          .from('profiles').select('id, username, city, state, phone, address, address_unit, share_address, pickup_description, share_pickup').in('id', profileIds)
+          .from('profiles').select('id, username, city, state').in('id', profileIds)
         if (profilesErr) console.error('profile page: profiles lookup failed', profilesErr)
         const pm: Record<string, any> = {}
         for (const p of profileRows ?? []) pm[p.id] = p
@@ -216,20 +220,21 @@ export default async function ProfilePage({
         const ratingsBySeller: Record<string, number[]> = {}
         for (const r of ratingRows ?? []) (ratingsBySeller[r.seller_id] ??= []).push(r.rating)
 
+        const { data: openDisputeRows } = await supabase
+          .from('disputes').select('conversation_id')
+          .in('conversation_id', merged.map((r: any) => r.id))
+          .eq('status', 'open')
+        const disputedConvoIds = new Set((openDisputeRows ?? []).map((d: any) => d.conversation_id))
+
         exchanges = merged.map((row: any) => {
-          const sellerData = pm[row.seller_id] ?? { username: null, city: null, state: null, phone: null }
-          const isConfirmed = (row.exchange_status ?? 'none') === 'confirmed'
+          const sellerData = pm[row.seller_id] ?? { username: null, city: null, state: null }
           return {
             ...row,
+            hasOpenDispute: disputedConvoIds.has(row.id),
             exchange_status: row.exchange_status ?? 'none',
             listings: lm[row.listing_id] ?? { title: 'Unknown', author: '', photo_url: null, city: null, state: null },
-            buyer:    pm[row.buyer_id]   ?? { username: null, city: null, state: null, phone: null },
-            seller: {
-              ...sellerData,
-              address:            isConfirmed ? sellerData.address            : null,
-              address_unit:       isConfirmed ? sellerData.address_unit       : null,
-              pickup_description: isConfirmed ? sellerData.pickup_description : null,
-            },
+            buyer:    pm[row.buyer_id]   ?? { username: null, city: null, state: null },
+            seller: sellerData,
             messages: mm[row.id] ?? [],
             sellerRating: averageRating(ratingsBySeller[row.seller_id] ?? []),
             reviewed: reviewedSet.has(row.id),
@@ -256,7 +261,8 @@ export default async function ProfilePage({
       transactions={transactions}
       updateAction={updateProfile}
       updateListingStatus={updateListingStatus}
-      completeExchange={completeExchange}
+      markPickedUp={markPickedUp}
+      fileDispute={fileDispute}
       hideExchangeHistory={hideExchangeHistory}
       submitReview={submitReview}
       confirmExchange={confirmExchange}

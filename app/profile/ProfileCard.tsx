@@ -170,6 +170,11 @@ export default function ProfileCard({ profile, updateAction, success, error, sen
                   inputClassName={inputClass}
                   inputStyle={{ padding: '12px 16px' }}
                   labelStyle={{ fontSize: 12, fontWeight: 900, color: '#888', textTransform: 'uppercase', letterSpacing: '0.5px' }}
+                  noteAfterAddress={
+                    <p style={{ fontSize: 11, color: '#bbb', fontWeight: 600 }}>
+                      🔒 Your street address is only shared with a buyer after you confirm their purchase.
+                    </p>
+                  }
                 />
                 <div>
                   <EditLabel>Apt / Unit #</EditLabel>
@@ -177,12 +182,6 @@ export default function ProfileCard({ profile, updateAction, success, error, sen
                     placeholder="e.g. Apt 2B"
                     className={inputClass} style={{ padding: '12px 16px' }} />
                 </div>
-                <ShareToggle
-                  name="share_address"
-                  defaultValue={profile?.share_address ?? true}
-                  label="Share address after approval"
-                  hint="🏠 Your street address is only revealed to a buyer after you approve their purchase request."
-                />
               </div>
             </div>
 
@@ -198,12 +197,6 @@ export default function ProfileCard({ profile, updateAction, success, error, sen
                     placeholder="e.g. front porch, behind the garden gnome"
                     className={inputClass} style={{ padding: '12px 16px' }} />
                 </div>
-                <ShareToggle
-                  name="share_pickup"
-                  defaultValue={profile?.share_pickup ?? true}
-                  label="Share pickup spot after approval"
-                  hint="📦 Only revealed to a buyer after you approve their purchase."
-                />
               </div>
             </div>
 

@@ -5,6 +5,7 @@ import { adminUpdateReview, adminDeleteReview } from '@/lib/actions/reviews'
 import { adminUpdateUserCredits } from '@/lib/actions/admin'
 import LocationsAdminTab from './LocationsAdminTab'
 import EmailsAdminTab from './EmailsAdminTab'
+import DisputesAdminTab from './DisputesAdminTab'
 
 const WEEKLY_ACTIVITY = [
   { week:'May 5',  posts:4,  signups:2, trades:3 },
@@ -30,7 +31,7 @@ const RECENT_ACTIVITY = [
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-type Tab = 'dashboard' | 'users' | 'locations' | 'reviews' | 'emails'
+type Tab = 'dashboard' | 'users' | 'locations' | 'reviews' | 'emails' | 'disputes'
 type User = {
   id: string
   username: string
@@ -569,6 +570,7 @@ const TABS: { id: Tab; label: string; icon: string }[] = [
   { id:'locations', label:'Locations',  icon:'📍' },
   { id:'reviews',   label:'Reviews',    icon:'⭐' },
   { id:'emails',    label:'Emails',     icon:'✉️' },
+  { id:'disputes',  label:'Disputes',   icon:'🚩' },
 ]
 
 export default function AdminClient() {
@@ -745,6 +747,7 @@ export default function AdminClient() {
           {tab === 'locations' && <LocationsAdminTab onPendingCountChange={handleTabPendingCountChange} />}
           {tab === 'reviews'   && <ReviewsTab reviews={reviews} setReviews={setReviews} />}
           {tab === 'emails'    && <EmailsAdminTab users={users} />}
+          {tab === 'disputes'  && <DisputesAdminTab />}
         </div>
       </div>
     </div>
