@@ -1575,3 +1575,130 @@ $$ language plpgsql security definer set search_path = public, pg_temp;
 
 grant execute on function resolve_pickup(uuid, uuid) to authenticated, service_role;
 -- ──────────────────────────────────────────────────────────────────────────────
+
+-- ── Migration: admin messaging (Email/Message tab) + support contact ─────────
+-- Run this block in Supabase SQL Editor:
+
+-- 1. conversations: relax NOT NULLs (type='admin' rows have no listing/buyer/
+-- seller — they use user_id instead), add type/user_id/repliable.
+alter table conversations alter column listing_id drop not null;
+alter table conversations alter column buyer_id drop not null;
+alter table conversations alter column seller_id drop not null;
+
+alter table conversations
+  add column if not exists type text not null default 'exchange' check (type in ('exchange', 'admin')),
+  add column if not exists user_id uuid references profiles(id) on delete cascade,
+  add column if not exists repliable boolean not null default true;
+
+-- The existing unique(listing_id, buyer_id) constraint is untouched — Postgres
+-- treats NULL as distinct from NULL in unique constraints, so any number of
+-- type='admin' rows (both columns always NULL) can coexist.
+
+-- 2. conversations RLS: additional permissive policies for type='admin' rows.
+-- Existing exchange-type policies are untouched — Postgres ORs multiple
+-- permissive policies together for the same command.
+create policy "Admin conversation visible to its user or any admin" on conversations
+  for select using (
+    type = 'admin' and (
+      user_id = auth.uid()
+      or exists (select 1 from profiles p where p.id = auth.uid() and p.is_admin = true)
+    )
+  );
+
+create policy "Admins or a user can start an admin conversation" on conversations
+  for insert with check (
+    type = 'admin' and (
+      exists (select 1 from profiles p where p.id = auth.uid() and p.is_admin = true)
+      or user_id = auth.uid()
+    )
+  );
+
+-- 3. messages RLS: additional permissive policies for type='admin' conversations.
+create policy "Admin conversation messages viewable by participant or admin" on messages
+  for select using (
+    exists (
+      select 1 from conversations c
+      where c.id = conversation_id and c.type = 'admin'
+      and (c.user_id = auth.uid() or exists (select 1 from profiles p where p.id = auth.uid() and p.is_admin = true))
+    )
+  );
+
+create policy "Admin conversation messages: admin always, user if repliable" on messages
+  for insert with check (
+    exists (
+      select 1 from conversations c
+      where c.id = conversation_id and c.type = 'admin'
+      and (
+        exists (select 1 from profiles p where p.id = auth.uid() and p.is_admin = true)
+        or (c.repliable = true and c.user_id = auth.uid())
+      )
+    )
+  );
+
+-- 4. notify_on_message(): teach it about type='admin' conversations. Admin →
+-- user sends notify the user like any other message; user → admin sends
+-- (support requests/replies) don't notify anyone — admins check the new
+-- Inbox tab instead, same as the existing Disputes tab has no notification.
+create or replace function notify_on_message()
+returns trigger as $$
+declare
+  v_conv conversations%rowtype;
+  v_recipient uuid;
+  v_type text;
+  v_pref boolean;
+  v_title text;
+begin
+  select * into v_conv from conversations where id = new.conversation_id;
+  if not found then
+    return new;
+  end if;
+
+  if v_conv.type = 'admin' then
+    if new.sender_id = v_conv.user_id then
+      return new;
+    end if;
+    v_recipient := v_conv.user_id;
+  else
+    v_recipient := case when new.sender_id = v_conv.buyer_id then v_conv.seller_id else v_conv.buyer_id end;
+  end if;
+
+  v_type := case new.kind
+    when 'purchase_request' then 'purchase_request'
+    when 'confirmation'     then 'purchase_decision'
+    when 'pickup'            then 'pickup'
+    else 'message'
+  end;
+
+  select case v_type
+    when 'purchase_request'  then notify_purchase_request
+    when 'purchase_decision' then notify_purchase_decision
+    when 'pickup'             then notify_pickup
+    else notify_message
+  end into v_pref
+  from profiles where id = v_recipient;
+
+  if v_pref is distinct from true then
+    return new;
+  end if;
+
+  v_title := case v_type
+    when 'purchase_request'  then 'New purchase request'
+    when 'purchase_decision' then 'Purchase request update'
+    when 'pickup'             then 'Book picked up'
+    else 'New message'
+  end;
+
+  insert into notifications (user_id, type, entity_id, title, body)
+  values (v_recipient, v_type, new.conversation_id, v_title, left(new.body, 200));
+
+  return new;
+exception when others then
+  raise warning 'notify_on_message failed: %', sqlerrm;
+  return new;
+end;
+$$ language plpgsql security definer set search_path = public, pg_temp;
+
+drop trigger if exists notify_on_message_trigger on messages;
+create trigger notify_on_message_trigger after insert on messages
+  for each row execute procedure notify_on_message();
+-- ──────────────────────────────────────────────────────────────────────────────
