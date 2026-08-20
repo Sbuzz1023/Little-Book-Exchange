@@ -1717,3 +1717,15 @@ drop trigger if exists notify_on_message_trigger on messages;
 create trigger notify_on_message_trigger after insert on messages
   for each row execute procedure notify_on_message();
 -- ──────────────────────────────────────────────────────────────────────────────
+
+-- ── Migration: admin can permanently delete a dispute ───────────────────────
+-- Run this block in Supabase SQL Editor:
+
+-- No delete policy exists on disputes today — only select/insert/update. This
+-- lets an admin permanently remove a dispute that never warranted a real
+-- record (filed in error, resolved without needing a lasting trace) —
+-- distinct from the existing Resolved/Unresolved status toggle, which keeps
+-- the row. Same admin-only shape as the existing "Admins can resolve
+-- disputes" update policy.
+create policy "Admins can delete disputes" on disputes
+  for delete using (exists (select 1 from profiles p where p.id = auth.uid() and p.is_admin = true));
