@@ -6,7 +6,8 @@ import { adminUpdateUserCredits } from '@/lib/actions/admin'
 import LocationsAdminTab from './LocationsAdminTab'
 import EmailsAdminTab from './EmailsAdminTab'
 import DisputesAdminTab from './DisputesAdminTab'
-import { enrichDisputes, type EnrichedDispute, type RawDispute, type ConversationParticipants } from '@/lib/disputeEnrichment'
+import DisputeRow from './DisputeRow'
+import { enrichDisputes, buildDisputeTally, type EnrichedDispute, type RawDispute, type ConversationParticipants } from '@/lib/disputeEnrichment'
 
 const WEEKLY_ACTIVITY = [
   { week:'May 5',  posts:4,  signups:2, trades:3 },
@@ -258,7 +259,26 @@ function Dashboard({ users, pendingLocationReports, reviews }: { users: User[]; 
 
 // ─── Users tab ───────────────────────────────────────────────────────────────
 
-function UsersTab({ users, setUsers, toggleAdmin }: { users: User[]; setUsers: React.Dispatch<React.SetStateAction<User[]>>; toggleAdmin: (id: string, current: boolean) => void }) {
+export function formatDisputeTally(t?: { filed: number; against: number }): string {
+  if (!t || (t.filed === 0 && t.against === 0)) return '—'
+  return `${t.filed} filed · ${t.against} against`
+}
+
+export function UsersTab({
+  users,
+  setUsers,
+  toggleAdmin,
+  disputeTally,
+  enrichedDisputes,
+  onDisputesChanged,
+}: {
+  users: User[]
+  setUsers: React.Dispatch<React.SetStateAction<User[]>>
+  toggleAdmin: (id: string, current: boolean) => void
+  disputeTally: Record<string, { filed: number; against: number }>
+  enrichedDisputes: EnrichedDispute[]
+  onDisputesChanged: () => void
+}) {
   const [search, setSearch] = useState('')
   const [editTarget, setEditTarget] = useState<User | null>(null)
   const [form, setForm] = useState<User | null>(null)
@@ -294,6 +314,11 @@ function UsersTab({ users, setUsers, toggleAdmin }: { users: User[]; setUsers: R
     setUsers(prev => prev.map(x => x.id === u.id ? { ...x, status: x.status === 'active' ? 'suspended' : 'active' } : x))
   }
 
+  const userDisputes = form
+    ? enrichedDisputes.filter(d => d.reporterId === form.id || d.otherPartyId === form.id)
+    : []
+  const cardTally = form ? (disputeTally[form.id] ?? { filed: 0, against: 0 }) : { filed: 0, against: 0 }
+
   return (
     <div>
       <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
@@ -310,14 +335,15 @@ function UsersTab({ users, setUsers, toggleAdmin }: { users: User[]; setUsers: R
           <table className="w-full">
             <thead>
               <tr className="border-b border-[#f1f5f9] bg-[#f8fafc]">
-                {['User','City','State','Books','Sold','Bought','Credits','Reviews','Status','Admin',''].map(h => (
+                {['User','City','State','Books','Sold','Bought','Credits','Reviews','Disputes','Status','Admin'].map(h => (
                   <th key={h} className="px-4 py-3 text-left text-[11px] font-extrabold text-[#94a3b8] uppercase tracking-wider whitespace-nowrap">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {filtered.map(u => (
-                <tr key={u.id} className="border-b border-[#f8fafc] hover:bg-[#fafafa] transition-colors">
+                <tr key={u.id} onClick={() => openEdit(u)} style={{ cursor: 'pointer' }}
+                  className="border-b border-[#f8fafc] hover:bg-[#fafafa] transition-colors">
                   <td className="px-4 py-3">
                     <div className="font-black text-[13px] text-[#1e293b]">{u.username}</div>
                     <div className="text-[11px] text-[#94a3b8] font-semibold">{u.email}</div>
@@ -330,22 +356,17 @@ function UsersTab({ users, setUsers, toggleAdmin }: { users: User[]; setUsers: R
                   <td className="px-4 py-3 text-[13px] font-extrabold text-[#8b5cf6] text-center">{u.booksBought}</td>
                   <td className="px-4 py-3 text-[13px] font-extrabold text-[#f59e0b] text-center">{u.credits}</td>
                   <td className="px-4 py-3 text-[13px] font-semibold text-[#64748b] text-center">{u.reviews}</td>
+                  <td className="px-4 py-3 text-[12px] font-semibold text-[#64748b] text-center whitespace-nowrap">{formatDisputeTally(disputeTally[u.id])}</td>
                   <td className="px-4 py-3">
-                    <button onClick={() => toggleStatus(u)}
+                    <button onClick={(e) => { e.stopPropagation(); toggleStatus(u) }}
                       className={`text-[11px] font-extrabold px-2.5 py-1 rounded-full ${u.status === 'active' ? 'bg-[#ecfdf5] text-[#059669]' : 'bg-[#fef2f2] text-[#dc2626]'}`}>
                       {u.status === 'active' ? '● Active' : '● Suspended'}
                     </button>
                   </td>
                   <td className="px-4 py-3">
-                    <button onClick={() => toggleAdmin(u.id, u.is_admin)}
+                    <button onClick={(e) => { e.stopPropagation(); toggleAdmin(u.id, u.is_admin) }}
                       className={`text-[11px] font-extrabold px-2.5 py-1 rounded-full transition-colors ${u.is_admin ? 'bg-[#f97316] text-white' : 'bg-[#f1f5f9] text-[#94a3b8] hover:bg-[#fed7aa] hover:text-[#c2410c]'}`}>
                       {u.is_admin ? '★ Admin' : '○ User'}
-                    </button>
-                  </td>
-                  <td className="px-4 py-3">
-                    <button onClick={() => openEdit(u)}
-                      className="text-[12px] font-bold text-bk-orange hover:underline whitespace-nowrap">
-                      Edit ✏️
                     </button>
                   </td>
                 </tr>
@@ -424,6 +445,22 @@ function UsersTab({ users, setUsers, toggleAdmin }: { users: User[]; setUsers: R
                 <div className="text-[20px] font-black text-[#64748b]">{form.reviews}</div>
                 <div className="text-[10px] font-bold text-[#94a3b8] uppercase">Reviews</div>
               </div>
+            </div>
+
+            {/* Disputes */}
+            <div className="mb-5">
+              <h3 className="font-black text-[14px] text-[#1e293b] mb-2">
+                🚩 Disputes <span className="text-[#94a3b8] font-bold text-[12px] ml-1">({cardTally.filed} filed · {cardTally.against} against)</span>
+              </h3>
+              {userDisputes.length === 0 ? (
+                <p className="font-bold text-[13px]" style={{ color: '#aaa' }}>No disputes.</p>
+              ) : (
+                <div className="flex flex-col" style={{ gap: 12 }}>
+                  {userDisputes.map(d => (
+                    <DisputeRow key={d.id} dispute={d} context="user-card" cardUserId={form.id} onChanged={onDisputesChanged} />
+                  ))}
+                </div>
+              )}
             </div>
 
             {saveError && (
@@ -739,6 +776,8 @@ export default function AdminClient() {
     return acc
   }, {})
 
+  const disputeTally = useMemo(() => buildDisputeTally(enrichedDisputes), [enrichedDisputes])
+
   function badge(id: Tab) {
     if (id === 'locations') return pendingLocationReports
     if (id === 'reviews') return flaggedReviews
@@ -798,6 +837,9 @@ export default function AdminClient() {
               users={users.map(u => ({ ...u, reviews: reviewCountBySeller[u.id] ?? 0 }))}
               setUsers={setUsers}
               toggleAdmin={toggleAdmin}
+              disputeTally={disputeTally}
+              enrichedDisputes={enrichedDisputes}
+              onDisputesChanged={refetchDisputes}
             />
           )}
           {tab === 'locations' && <LocationsAdminTab onPendingCountChange={handleTabPendingCountChange} />}
