@@ -565,12 +565,12 @@ function ReviewsTab({ reviews, setReviews }: { reviews: Review[]; setReviews: Re
 // ─── Main AdminClient ────────────────────────────────────────────────────────
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
-  { id:'dashboard', label:'Dashboard',  icon:'📊' },
-  { id:'users',     label:'Users',      icon:'👥' },
-  { id:'locations', label:'Locations',  icon:'📍' },
-  { id:'reviews',   label:'Reviews',    icon:'⭐' },
-  { id:'emails',    label:'Emails',     icon:'✉️' },
-  { id:'disputes',  label:'Disputes',   icon:'🚩' },
+  { id:'dashboard', label:'Dashboard',       icon:'📊' },
+  { id:'users',     label:'Users',           icon:'👥' },
+  { id:'locations', label:'Locations',       icon:'📍' },
+  { id:'reviews',   label:'Reviews',         icon:'⭐' },
+  { id:'emails',    label:'Email / Message', icon:'✉️' },
+  { id:'disputes',  label:'Disputes',        icon:'🚩' },
 ]
 
 export default function AdminClient() {
@@ -580,6 +580,7 @@ export default function AdminClient() {
   const [reviews, setReviews] = useState<Review[]>([])
   const [reviewSellerIds, setReviewSellerIds] = useState<string[]>([])
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [messagePrefillUserId, setMessagePrefillUserId] = useState<string | null>(null)
   const hasTabCount = useRef(false)
 
   useEffect(() => {
@@ -665,6 +666,11 @@ export default function AdminClient() {
     setPendingLocationReports(count)
   }
 
+  function handleMessageReporter(userId: string) {
+    setMessagePrefillUserId(userId)
+    setTab('emails')
+  }
+
   async function toggleAdmin(userId: string, current: boolean) {
     const supabase = createClient()
     const { error } = await supabase
@@ -746,8 +752,14 @@ export default function AdminClient() {
           )}
           {tab === 'locations' && <LocationsAdminTab onPendingCountChange={handleTabPendingCountChange} />}
           {tab === 'reviews'   && <ReviewsTab reviews={reviews} setReviews={setReviews} />}
-          {tab === 'emails'    && <EmailsAdminTab users={users} />}
-          {tab === 'disputes'  && <DisputesAdminTab />}
+          {tab === 'emails'    && (
+            <EmailsAdminTab
+              users={users}
+              messagePrefillUserId={messagePrefillUserId}
+              onPrefillConsumed={() => setMessagePrefillUserId(null)}
+            />
+          )}
+          {tab === 'disputes'  && <DisputesAdminTab onMessageReporter={handleMessageReporter} />}
         </div>
       </div>
     </div>

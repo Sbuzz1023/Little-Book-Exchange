@@ -1707,7 +1707,9 @@ As admin: Email/Message → Inbox. Confirm both conversations with that test use
 
 - [ ] **Step 5: Contact Support**
 
-As the non-admin test user: go to Profile → Support section → click "Message Support". Confirm it switches to the Messages tab and opens a new thread from "📣 Little Book Exchange Team" with an empty, working input box. Send a message. As admin: confirm it shows up in the Inbox as a new conversation (separate from the two dispute-unrelated ones above), and reply from there; confirm the reply reaches the user's Messages tab.
+**Correction (found during the final whole-branch review):** `startSupportConversation` reuses the caller's existing `repliable=true` admin conversation rather than always creating a new one — since Step 3 already created exactly such a conversation with this same test user, this step will land in *that* thread, not a brand-new empty one. To see the "create" path instead of the "reuse" path, either use a third test user who has no existing repliable admin conversation, or treat landing back in Step 3's thread as the correct (reuse) outcome.
+
+As the non-admin test user: go to Profile → Support section → click "Message Support". Confirm it switches to the Messages tab and opens a thread from "📣 Little Book Exchange Team" with a working input box (either newly created, or Step 3's existing repliable thread reused — see correction above). Send a message. As admin: confirm it shows up in the Inbox under that same conversation, and reply from there; confirm the reply reaches the user's Messages tab.
 
 - [ ] **Step 6: Dispute → Message button**
 

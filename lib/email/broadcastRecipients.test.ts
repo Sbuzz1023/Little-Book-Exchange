@@ -42,3 +42,30 @@ describe('filterRecipients', () => {
     expect(filterRecipients(PROFILES, target).find(r => r.id === '4')).toBeUndefined()
   })
 })
+
+describe('filterRecipients — message channel', () => {
+  it('"all" includes opted-out-of-marketing-email users and users with no email', () => {
+    const target: BroadcastTarget = { kind: 'all' }
+    const result = filterRecipients(PROFILES, target, 'message').map(r => r.id)
+    expect(result).toEqual(['1', '2', '3', '4'])
+  })
+
+  it('"user" returns that user even with no email on file', () => {
+    const target: BroadcastTarget = { kind: 'user', userId: '4' }
+    expect(filterRecipients(PROFILES, target, 'message')).toEqual([{ id: '4', email: '' }])
+  })
+
+  it('"filtered" by city still narrows the same way as the email channel', () => {
+    const target: BroadcastTarget = { kind: 'filtered', city: 'Austin' }
+    const result = filterRecipients(PROFILES, target, 'message').map(r => r.id)
+    expect(result).toEqual(['3', '4'])
+  })
+
+  it('defaults to the email channel when none is passed, unchanged from before', () => {
+    const target: BroadcastTarget = { kind: 'all' }
+    expect(filterRecipients(PROFILES, target)).toEqual([
+      { id: '1', email: 'a@example.com' },
+      { id: '3', email: 'c@example.com' },
+    ])
+  })
+})

@@ -3,7 +3,7 @@ import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import DashboardClient from './DashboardClient'
 import { MOCK_PROFILE, MOCK_LISTINGS, MOCK_USER_ID, MOCK_CONVERSATIONS } from '@/lib/mock-data'
-import { updateProfile, updateListingStatus, markPickedUp, fileDispute, hideExchangeHistory, confirmExchange, denyPurchase, cancelPurchase } from './actions'
+import { updateProfile, updateListingStatus, markPickedUp, fileDispute, hideExchangeHistory, confirmExchange, denyPurchase, cancelPurchase, startSupportConversation } from './actions'
 import { submitReview } from '@/lib/actions/reviews'
 import { averageRating } from '@/lib/reviewAverages'
 import { removeSavedListing } from '@/lib/actions/savedListings'
@@ -163,16 +163,17 @@ export default async function ProfilePage({
       }
 
       // Fetch conversations with NO joins — joins can silently fail due to RLS
-      const [{ data: asBuyer, error: buyerErr }, { data: asSeller, error: sellerErr }] =
+      const [{ data: asBuyer, error: buyerErr }, { data: asSeller, error: sellerErr }, { data: asAdminUser, error: adminErr }] =
        await Promise.all([
         supabase.from('conversations').select('*').eq('buyer_id', user.id).order('created_at', { ascending: false }),
         supabase.from('conversations').select('*').eq('seller_id', user.id).order('created_at', { ascending: false }),
+        supabase.from('conversations').select('*').eq('type', 'admin').eq('user_id', user.id).order('created_at', { ascending: false }),
       ])
 
       // Merge and deduplicate
       const merged: any[] = []
       const seen = new Set<string>()
-      for (const row of [...(asBuyer ?? []), ...(asSeller ?? [])]) {
+      for (const row of [...(asBuyer ?? []), ...(asSeller ?? []), ...(asAdminUser ?? [])]) {
         if (!seen.has(row.id)) { seen.add(row.id); merged.push(row) }
       }
 
@@ -215,7 +216,7 @@ export default async function ProfilePage({
           : { data: [] as any[] }
         const reviewedSet = new Set((reviewedRows ?? []).map((r: any) => r.conversation_id))
 
-        const sellerIds = [...new Set(merged.map((r: any) => r.seller_id))]
+        const sellerIds = [...new Set(merged.map((r: any) => r.seller_id).filter(Boolean))]
         const { data: ratingRows } = await supabase.from('reviews').select('seller_id, rating').in('seller_id', sellerIds)
         const ratingsBySeller: Record<string, number[]> = {}
         for (const r of ratingRows ?? []) (ratingsBySeller[r.seller_id] ??= []).push(r.rating)
@@ -232,7 +233,7 @@ export default async function ProfilePage({
             ...row,
             hasOpenDispute: disputedConvoIds.has(row.id),
             exchange_status: row.exchange_status ?? 'none',
-            listings: lm[row.listing_id] ?? { title: 'Unknown', author: '', photo_url: null, city: null, state: null },
+            listings: row.type === 'admin' ? null : (lm[row.listing_id] ?? { title: 'Unknown', author: '', photo_url: null, city: null, state: null }),
             buyer:    pm[row.buyer_id]   ?? { username: null, city: null, state: null },
             seller: sellerData,
             messages: mm[row.id] ?? [],
@@ -241,7 +242,7 @@ export default async function ProfilePage({
           }
         })
       } else {
-        queryError = buyerErr?.message || sellerErr?.message || null
+        queryError = buyerErr?.message || sellerErr?.message || adminErr?.message || null
         exchanges = []
       }
     } catch {
@@ -281,6 +282,7 @@ export default async function ProfilePage({
       resendEmailConfirmation={resendEmailConfirmation}
       sendPhoneOtp={sendPhoneOtp}
       verifyPhoneOtp={verifyPhoneOtp}
+      startSupportConversation={startSupportConversation}
       isDemo={demo}
       initialConversationId={searchParams.conversation ?? null}
     />

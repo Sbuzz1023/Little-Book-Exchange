@@ -137,6 +137,7 @@ type Props = {
   resendEmailConfirmation: () => Promise<{ ok: boolean; error?: string }>
   sendPhoneOtp: (formData: FormData) => Promise<{ ok: boolean; error?: string }>
   verifyPhoneOtp: (formData: FormData) => Promise<{ ok: boolean; error?: string }>
+  startSupportConversation: () => Promise<{ ok: boolean; conversationId?: string; error?: string }>
 }
 
 const TABS = [
@@ -182,7 +183,7 @@ function statusLabel(status: string) {
   return 'Active'
 }
 
-export default function DashboardClient({ profile, listings, exchanges, savedListings, tbrEntries, transactions, updateAction, updateListingStatus, markPickedUp, fileDispute, hideExchangeHistory, submitReview, confirmExchange, denyPurchase, cancelPurchase, removeSavedListing, addTbrEntry, removeTbrEntry, success, defaultTab, queryError, tbrError, error, isDemo, initialConversationId, unreadCounts, unreadEntityIds, resendEmailConfirmation, sendPhoneOtp, verifyPhoneOtp }: Props) {
+export default function DashboardClient({ profile, listings, exchanges, savedListings, tbrEntries, transactions, updateAction, updateListingStatus, markPickedUp, fileDispute, hideExchangeHistory, submitReview, confirmExchange, denyPurchase, cancelPurchase, removeSavedListing, addTbrEntry, removeTbrEntry, success, defaultTab, queryError, tbrError, error, isDemo, initialConversationId, unreadCounts, unreadEntityIds, resendEmailConfirmation, sendPhoneOtp, verifyPhoneOtp, startSupportConversation }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>(defaultTab ?? 'listings')
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(initialConversationId ?? null)
   const booksPosted = listings.reduce((sum, l: any) => sum + (l.book_count ?? 1), 0)
@@ -216,6 +217,17 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
       await supabase.from('notifications').update({ read: true })
         .eq('user_id', profile.id).eq('type', 'tbr_match')
     }
+  }
+
+  async function handleContactSupport(): Promise<{ ok: boolean; error?: string }> {
+    const res = await startSupportConversation()
+    if (res.ok && res.conversationId) {
+      setActiveTab('messages')
+      setSelectedConversationId(res.conversationId)
+      router.refresh()
+      return { ok: true }
+    }
+    return { ok: false, error: res.error }
   }
 
   function tabBadgeCount(id: Tab): number {
@@ -1113,6 +1125,7 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
             sendPhoneOtp={sendPhoneOtp}
             verifyPhoneOtp={verifyPhoneOtp}
             onPhoneVerified={() => router.refresh()}
+            onContactSupport={handleContactSupport}
           />
           <div style={{ borderTop: '2px dashed #e5e7eb', paddingTop: 16 }}>
             <form action="/auth/signout" method="post">

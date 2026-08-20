@@ -1,20 +1,32 @@
 // app/admin/EmailsAdminTab.tsx
 'use client'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import EmailTemplatesEditor from './EmailTemplatesEditor'
 import EmailComposeTab from './EmailComposeTab'
 import EmailResendTool from './EmailResendTool'
+import AdminInboxTab from './AdminInboxTab'
 
 type EmailUser = { id: string; username: string; email: string; city: string; state: string }
-type SubTab = 'templates' | 'compose' | 'resend'
+type SubTab = 'templates' | 'compose' | 'resend' | 'inbox'
 
-export default function EmailsAdminTab({ users }: { users: EmailUser[] }) {
+export default function EmailsAdminTab({
+  users, messagePrefillUserId, onPrefillConsumed,
+}: {
+  users: EmailUser[]
+  messagePrefillUserId?: string | null
+  onPrefillConsumed?: () => void
+}) {
   const [subTab, setSubTab] = useState<SubTab>('compose')
+
+  useEffect(() => {
+    if (messagePrefillUserId) setSubTab('compose')
+  }, [messagePrefillUserId])
 
   const SUB_TABS: { id: SubTab; label: string }[] = [
     { id: 'compose', label: 'Compose' },
     { id: 'templates', label: 'Templates' },
     { id: 'resend', label: 'Resend' },
+    { id: 'inbox', label: 'Inbox' },
   ]
 
   return (
@@ -28,9 +40,10 @@ export default function EmailsAdminTab({ users }: { users: EmailUser[] }) {
         ))}
       </div>
 
-      {subTab === 'compose' && <EmailComposeTab users={users} />}
+      {subTab === 'compose' && <EmailComposeTab users={users} prefillUserId={messagePrefillUserId} onPrefillConsumed={onPrefillConsumed} />}
       {subTab === 'templates' && <EmailTemplatesEditor />}
       {subTab === 'resend' && <EmailResendTool users={users} />}
+      {subTab === 'inbox' && <AdminInboxTab />}
     </div>
   )
 }

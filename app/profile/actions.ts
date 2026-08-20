@@ -339,3 +339,31 @@ export async function denyPurchase(formData: FormData) {
 
   redirect('/profile')
 }
+
+export async function startSupportConversation(): Promise<{ ok: boolean; conversationId?: string; error?: string }> {
+  const supabase = createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { ok: false, error: 'Please sign in.' }
+
+  const { data: existing, error: lookupError } = await supabase
+    .from('conversations')
+    .select('id')
+    .eq('type', 'admin')
+    .eq('user_id', user.id)
+    .eq('repliable', true)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (lookupError) return { ok: false, error: 'Could not start a support conversation. Please try again.' }
+  if (existing) return { ok: true, conversationId: existing.id }
+
+  const { data: created, error } = await supabase
+    .from('conversations')
+    .insert({ type: 'admin', user_id: user.id, repliable: true })
+    .select('id')
+    .single()
+
+  if (error || !created) return { ok: false, error: 'Could not start a support conversation. Please try again.' }
+  return { ok: true, conversationId: created.id }
+}
