@@ -15,7 +15,7 @@ type Dispute = {
   sellerName: string
 }
 
-export default function DisputesAdminTab() {
+export default function DisputesAdminTab({ onMessageReporter }: { onMessageReporter: (userId: string) => void }) {
   const [disputes, setDisputes] = useState<Dispute[]>([])
   const [loading, setLoading] = useState(true)
   const [resolvingId, setResolvingId] = useState<string | null>(null)
@@ -87,14 +87,23 @@ export default function DisputesAdminTab() {
             Buyer: {d.buyerName} · Seller: {d.sellerName} · Filed {new Date(d.created_at).toLocaleDateString()}
           </p>
           <p className="font-semibold text-[13px] mt-2" style={{ color: '#444' }}>{d.message}</p>
-          <button
-            type="button"
-            disabled={resolvingId === d.id}
-            onClick={() => handleResolve(d.id)}
-            className="font-extrabold text-[12px] text-white mt-3"
-            style={{ background: '#059669', padding: '7px 18px', borderRadius: 999, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
-            {resolvingId === d.id ? 'Resolving...' : '✓ Resolve'}
-          </button>
+          <div className="flex gap-2 mt-3">
+            <button
+              type="button"
+              disabled={resolvingId === d.id}
+              onClick={() => handleResolve(d.id)}
+              className="font-extrabold text-[12px] text-white"
+              style={{ background: '#059669', padding: '7px 18px', borderRadius: 999, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
+              {resolvingId === d.id ? 'Resolving...' : '✓ Resolve'}
+            </button>
+            <button
+              type="button"
+              onClick={() => onMessageReporter(d.reporter_id)}
+              className="font-extrabold text-[12px] text-white"
+              style={{ background: '#0ea5e9', padding: '7px 18px', borderRadius: 999, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
+              💬 Message
+            </button>
+          </div>
         </div>
       ))}
     </div>
