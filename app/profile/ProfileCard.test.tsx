@@ -18,6 +18,7 @@ const baseProps = {
   sendPhoneOtp: vi.fn(() => Promise.resolve({ ok: true })),
   verifyPhoneOtp: vi.fn(() => Promise.resolve({ ok: true })),
   onPhoneVerified: vi.fn(),
+  onContactSupport: vi.fn(() => Promise.resolve()),
 }
 
 describe('ProfileCard — view mode', () => {

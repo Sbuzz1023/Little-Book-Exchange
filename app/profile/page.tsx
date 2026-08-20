@@ -3,7 +3,7 @@ import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import DashboardClient from './DashboardClient'
 import { MOCK_PROFILE, MOCK_LISTINGS, MOCK_USER_ID, MOCK_CONVERSATIONS } from '@/lib/mock-data'
-import { updateProfile, updateListingStatus, markPickedUp, fileDispute, hideExchangeHistory, confirmExchange, denyPurchase, cancelPurchase } from './actions'
+import { updateProfile, updateListingStatus, markPickedUp, fileDispute, hideExchangeHistory, confirmExchange, denyPurchase, cancelPurchase, startSupportConversation } from './actions'
 import { submitReview } from '@/lib/actions/reviews'
 import { averageRating } from '@/lib/reviewAverages'
 import { removeSavedListing } from '@/lib/actions/savedListings'
@@ -282,6 +282,7 @@ export default async function ProfilePage({
       resendEmailConfirmation={resendEmailConfirmation}
       sendPhoneOtp={sendPhoneOtp}
       verifyPhoneOtp={verifyPhoneOtp}
+      startSupportConversation={startSupportConversation}
       isDemo={demo}
       initialConversationId={searchParams.conversation ?? null}
     />

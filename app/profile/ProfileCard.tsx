@@ -35,6 +35,7 @@ type Props = {
   sendPhoneOtp: (formData: FormData) => Promise<{ ok: boolean; error?: string }>
   verifyPhoneOtp: (formData: FormData) => Promise<{ ok: boolean; error?: string }>
   onPhoneVerified: () => void
+  onContactSupport: () => Promise<void>
 }
 
 const labelStyle: React.CSSProperties = {
@@ -74,11 +75,18 @@ function formatDate(iso?: string | null) {
   return new Date(iso).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
 }
 
-export default function ProfileCard({ profile, updateAction, success, error, sendPhoneOtp, verifyPhoneOtp, onPhoneVerified }: Props) {
+export default function ProfileCard({ profile, updateAction, success, error, sendPhoneOtp, verifyPhoneOtp, onPhoneVerified, onContactSupport }: Props) {
   const [editing, setEditing] = useState(false)
   const [phone, setPhone] = useState(profile?.phone ?? '')
+  const [contactingSupport, setContactingSupport] = useState(false)
   const phoneVerified = !!profile?.phone_verified
   const hasAddressInfo = !!(profile?.city || profile?.state || profile?.address || profile?.zip)
+
+  async function handleContactSupportClick() {
+    setContactingSupport(true)
+    await onContactSupport()
+    setContactingSupport(false)
+  }
 
   return (
     <div
@@ -299,6 +307,24 @@ export default function ProfileCard({ profile, updateAction, success, error, sen
           )}
         </div>
       )}
+
+      <div style={{ borderTop: '2px dashed #fed7aa', paddingTop: 16, marginTop: 20 }}>
+        <p style={sectionHeaderStyle}>🛟 Support</p>
+        <div className="flex items-center gap-4 flex-wrap">
+          <button
+            type="button"
+            onClick={handleContactSupportClick}
+            disabled={contactingSupport}
+            className="text-white font-extrabold text-[14px] shadow-[0_3px_0_#c2410c] disabled:opacity-60"
+            style={{ background: '#f97316', padding: '10px 22px', borderRadius: 12, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+          >
+            {contactingSupport ? 'Opening…' : '💬 Message Support'}
+          </button>
+          <a href="mailto:support@littlebookexchange.com" className="font-bold text-[13px]" style={{ color: '#888' }}>
+            Prefer email? support@littlebookexchange.com
+          </a>
+        </div>
+      </div>
     </div>
   )
 }
