@@ -963,7 +963,7 @@ Create `app/admin/AdminClient.test.tsx`:
 
 ```tsx
 import { useState } from 'react'
-import { render, fireEvent } from '@testing-library/react'
+import { render, fireEvent, within } from '@testing-library/react'
 import { describe, it, expect, vi } from 'vitest'
 import { UsersTab, formatDisputeTally } from './AdminClient'
 import type { EnrichedDispute } from '@/lib/disputeEnrichment'
@@ -1044,18 +1044,24 @@ describe('UsersTab', () => {
   })
 
   it('toggling status inside a row updates status but does not open the card', () => {
-    const { container, queryByText, getByText } = render(<Harness />)
-    fireEvent.click(getByText('● Active'))
+    const { container, queryByText } = render(<Harness />)
+    const alexRow = rowFor(container, 'Alex')
+    // Every row starts 'active', so '● Active' is not unique across the table
+    // — scope the query to Alex's own row.
+    fireEvent.click(within(alexRow).getByText('● Active'))
     expect(queryByText('Edit User')).toBeNull()
-    expect(getByText('● Suspended')).toBeTruthy()
+    expect(within(alexRow).getByText('● Suspended')).toBeTruthy()
   })
 
   it('toggling admin inside a row calls toggleAdmin but does not open the card', () => {
     const toggleAdmin = vi.fn()
-    const { queryByText, getByText } = render(
+    const { container, queryByText } = render(
       <UsersTab users={users} setUsers={vi.fn()} toggleAdmin={toggleAdmin} disputeTally={disputeTally} enrichedDisputes={disputes} onDisputesChanged={vi.fn()} />
     )
-    fireEvent.click(getByText('○ User'))
+    const alexRow = rowFor(container, 'Alex')
+    // Every row starts non-admin, so '○ User' is not unique across the table
+    // — scope the query to Alex's own row.
+    fireEvent.click(within(alexRow).getByText('○ User'))
     expect(queryByText('Edit User')).toBeNull()
     expect(toggleAdmin).toHaveBeenCalledWith('u1', false)
   })
