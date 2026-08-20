@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { render, fireEvent, within } from '@testing-library/react'
 import { describe, it, expect, vi } from 'vitest'
-import { UsersTab, formatDisputeTally } from './AdminClient'
+import { UsersTab, formatDisputeTally, formatDisputeCounts } from './AdminClient'
 import type { EnrichedDispute } from '@/lib/disputeEnrichment'
 
 vi.mock('@/lib/actions/admin', () => ({
@@ -31,7 +31,7 @@ const disputes: EnrichedDispute[] = [
 
 const disputeTally = { u1: { filed: 1, against: 0 }, u2: { filed: 0, against: 1 } }
 
-function Harness() {
+function Harness({ disputesLoaded = true }: { disputesLoaded?: boolean } = {}) {
   const [state, setState] = useState(users)
   return (
     <UsersTab
@@ -40,6 +40,7 @@ function Harness() {
       toggleAdmin={vi.fn()}
       disputeTally={disputeTally}
       enrichedDisputes={disputes}
+      disputesLoaded={disputesLoaded}
       onDisputesChanged={vi.fn()}
     />
   )
@@ -47,6 +48,10 @@ function Harness() {
 
 function rowFor(container: HTMLElement, name: string) {
   return Array.from(container.querySelectorAll('tbody tr')).find(r => r.textContent?.includes(name))!
+}
+
+function modalFor(container: HTMLElement) {
+  return container.querySelector('.fixed.inset-0') as HTMLElement
 }
 
 describe('formatDisputeTally', () => {
@@ -57,6 +62,13 @@ describe('formatDisputeTally', () => {
 
   it('renders the filed/against counts', () => {
     expect(formatDisputeTally({ filed: 2, against: 1 })).toBe('2 filed · 1 against')
+  })
+})
+
+describe('formatDisputeCounts', () => {
+  it('renders the filed/against counts with no em-dash special case, even at zero', () => {
+    expect(formatDisputeCounts({ filed: 0, against: 0 })).toBe('0 filed · 0 against')
+    expect(formatDisputeCounts({ filed: 2, against: 1 })).toBe('2 filed · 1 against')
   })
 })
 
@@ -92,7 +104,7 @@ describe('UsersTab', () => {
   it('toggling admin inside a row calls toggleAdmin but does not open the card', () => {
     const toggleAdmin = vi.fn()
     const { container, queryByText } = render(
-      <UsersTab users={users} setUsers={vi.fn()} toggleAdmin={toggleAdmin} disputeTally={disputeTally} enrichedDisputes={disputes} onDisputesChanged={vi.fn()} />
+      <UsersTab users={users} setUsers={vi.fn()} toggleAdmin={toggleAdmin} disputeTally={disputeTally} enrichedDisputes={disputes} disputesLoaded={true} onDisputesChanged={vi.fn()} />
     )
     const alexRow = rowFor(container, 'Alex')
     // Every row starts non-admin, so '○ User' is not unique across the table
@@ -106,7 +118,10 @@ describe('UsersTab', () => {
     const { container, getByText, getByTestId } = render(<Harness />)
     fireEvent.click(rowFor(container, 'Alex'))
     expect(getByText('🚩 Disputes')).toBeTruthy()
-    expect(container.textContent).toContain('1 filed · 0 against')
+    // Scoped to the modal itself — 'Alex' row in the table behind the modal
+    // also contains this text, so an unscoped assertion would still pass
+    // even if the card's own tally header were deleted.
+    expect(modalFor(container).textContent).toContain('1 filed · 0 against')
     expect(getByTestId('dispute-d1').textContent).toBe('user-card:u1')
   })
 
@@ -120,5 +135,14 @@ describe('UsersTab', () => {
     const { container, getByText } = render(<Harness />)
     fireEvent.click(rowFor(container, 'Jordan'))
     expect(getByText('No disputes.')).toBeTruthy()
+  })
+
+  it('shows a loading message in the card instead of a tally or "No disputes." while disputes have not loaded yet', () => {
+    const { container, getByText, queryByText } = render(<Harness disputesLoaded={false} />)
+    fireEvent.click(rowFor(container, 'Jordan'))
+    expect(within(modalFor(container)).getByText('Loading disputes...')).toBeTruthy()
+    expect(queryByText('No disputes.')).toBeNull()
+    expect(modalFor(container).textContent).not.toContain('filed')
+    expect(modalFor(container).textContent).not.toContain('against')
   })
 })

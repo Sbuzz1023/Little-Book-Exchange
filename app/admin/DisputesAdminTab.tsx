@@ -8,10 +8,12 @@ type Filter = 'open' | 'resolved' | 'all'
 
 export default function DisputesAdminTab({
   disputes,
+  disputesLoaded,
   onChanged,
   onMessageReporter,
 }: {
   disputes: EnrichedDispute[]
+  disputesLoaded: boolean
   onChanged: () => void
   onMessageReporter: (userId: string) => void
 }) {
@@ -33,8 +35,10 @@ export default function DisputesAdminTab({
           </button>
         ))}
       </div>
-      {shown.length === 0 ? (
-        <p className="font-bold text-[13px]" style={{ color: '#aaa' }}>No {filter === 'all' ? '' : filter} disputes.</p>
+      {!disputesLoaded ? (
+        <p className="font-bold text-[13px]" style={{ color: '#aaa' }}>Loading disputes...</p>
+      ) : shown.length === 0 ? (
+        <p className="font-bold text-[13px]" style={{ color: '#aaa' }}>{filter === 'all' ? 'No disputes.' : `No ${filter} disputes.`}</p>
       ) : (
         <div className="flex flex-col" style={{ gap: 12 }}>
           {shown.map(d => (

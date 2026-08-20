@@ -259,9 +259,13 @@ function Dashboard({ users, pendingLocationReports, reviews }: { users: User[]; 
 
 // ─── Users tab ───────────────────────────────────────────────────────────────
 
+export function formatDisputeCounts(t: { filed: number; against: number }): string {
+  return `${t.filed} filed · ${t.against} against`
+}
+
 export function formatDisputeTally(t?: { filed: number; against: number }): string {
   if (!t || (t.filed === 0 && t.against === 0)) return '—'
-  return `${t.filed} filed · ${t.against} against`
+  return formatDisputeCounts(t)
 }
 
 export function UsersTab({
@@ -270,6 +274,7 @@ export function UsersTab({
   toggleAdmin,
   disputeTally,
   enrichedDisputes,
+  disputesLoaded,
   onDisputesChanged,
 }: {
   users: User[]
@@ -277,6 +282,7 @@ export function UsersTab({
   toggleAdmin: (id: string, current: boolean) => void
   disputeTally: Record<string, { filed: number; against: number }>
   enrichedDisputes: EnrichedDispute[]
+  disputesLoaded: boolean
   onDisputesChanged: () => void
 }) {
   const [search, setSearch] = useState('')
@@ -449,17 +455,26 @@ export function UsersTab({
 
             {/* Disputes */}
             <div className="mb-5">
-              <h3 className="font-black text-[14px] text-[#1e293b] mb-2">
-                🚩 Disputes <span className="text-[#94a3b8] font-bold text-[12px] ml-1">({cardTally.filed} filed · {cardTally.against} against)</span>
-              </h3>
-              {userDisputes.length === 0 ? (
-                <p className="font-bold text-[13px]" style={{ color: '#aaa' }}>No disputes.</p>
+              {!disputesLoaded ? (
+                <>
+                  <h3 className="font-black text-[14px] text-[#1e293b] mb-2">🚩 Disputes</h3>
+                  <p className="font-bold text-[13px]" style={{ color: '#aaa' }}>Loading disputes...</p>
+                </>
               ) : (
-                <div className="flex flex-col" style={{ gap: 12 }}>
-                  {userDisputes.map(d => (
-                    <DisputeRow key={d.id} dispute={d} context="user-card" cardUserId={form.id} onChanged={onDisputesChanged} />
-                  ))}
-                </div>
+                <>
+                  <h3 className="font-black text-[14px] text-[#1e293b] mb-2">
+                    🚩 Disputes <span className="text-[#94a3b8] font-bold text-[12px] ml-1">({formatDisputeCounts(cardTally)})</span>
+                  </h3>
+                  {userDisputes.length === 0 ? (
+                    <p className="font-bold text-[13px]" style={{ color: '#aaa' }}>No disputes.</p>
+                  ) : (
+                    <div className="flex flex-col" style={{ gap: 12 }}>
+                      {userDisputes.map(d => (
+                        <DisputeRow key={d.id} dispute={d} context="user-card" cardUserId={form.id} onChanged={onDisputesChanged} />
+                      ))}
+                    </div>
+                  )}
+                </>
               )}
             </div>
 
@@ -621,6 +636,7 @@ export default function AdminClient() {
   const [messagePrefillUserId, setMessagePrefillUserId] = useState<string | null>(null)
   const hasTabCount = useRef(false)
   const [enrichedDisputes, setEnrichedDisputes] = useState<EnrichedDispute[]>([])
+  const [disputesLoaded, setDisputesLoaded] = useState(false)
   const [disputesVersion, setDisputesVersion] = useState(0)
 
   useEffect(() => {
@@ -712,7 +728,10 @@ export default function AdminClient() {
         .order('created_at', { ascending: false })
 
       if (!rows || rows.length === 0) {
-        if (!cancelled) setEnrichedDisputes([])
+        if (!cancelled) {
+          setEnrichedDisputes([])
+          setDisputesLoaded(true)
+        }
         return
       }
 
@@ -737,6 +756,7 @@ export default function AdminClient() {
 
       if (!cancelled) {
         setEnrichedDisputes(enrichDisputes(rows as RawDispute[], (convos ?? []) as ConversationParticipants[], listingTitles, userNames))
+        setDisputesLoaded(true)
       }
     }
 
@@ -839,6 +859,7 @@ export default function AdminClient() {
               toggleAdmin={toggleAdmin}
               disputeTally={disputeTally}
               enrichedDisputes={enrichedDisputes}
+              disputesLoaded={disputesLoaded}
               onDisputesChanged={refetchDisputes}
             />
           )}
@@ -854,6 +875,7 @@ export default function AdminClient() {
           {tab === 'disputes'  && (
             <DisputesAdminTab
               disputes={enrichedDisputes}
+              disputesLoaded={disputesLoaded}
               onChanged={refetchDisputes}
               onMessageReporter={handleMessageReporter}
             />
