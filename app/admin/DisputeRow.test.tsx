@@ -89,4 +89,15 @@ describe('DisputeRow', () => {
     )
     expect(container.textContent).toContain('Filed against this user')
   })
+
+  it('handles rejected server actions and re-enables the button', async () => {
+    vi.mocked(adminSetDisputeStatus).mockRejectedValue(new Error('network error'))
+    const onChanged = vi.fn()
+    const { getByText, findByText } = render(<DisputeRow dispute={openDispute} context="admin-tab" onChanged={onChanged} />)
+    fireEvent.click(getByText('✓ Resolve'))
+    expect(await findByText('Something went wrong.')).toBeTruthy()
+    expect(onChanged).not.toHaveBeenCalled()
+    const button = getByText('✓ Resolve') as HTMLButtonElement
+    expect(button.disabled).toBe(false)
+  })
 })

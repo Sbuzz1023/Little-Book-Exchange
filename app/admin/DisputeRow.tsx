@@ -22,13 +22,18 @@ export default function DisputeRow({
   async function run(action: () => Promise<{ ok: boolean; error?: string }>) {
     setBusy(true)
     setError(null)
-    const result = await action()
-    setBusy(false)
-    if (!result.ok) {
-      setError(result.error ?? 'Something went wrong.')
-      return
+    try {
+      const result = await action()
+      if (!result.ok) {
+        setError(result.error ?? 'Something went wrong.')
+        return
+      }
+      onChanged()
+    } catch (err) {
+      setError('Something went wrong.')
+    } finally {
+      setBusy(false)
     }
-    onChanged()
   }
 
   function handleDelete() {
