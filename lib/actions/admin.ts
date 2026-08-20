@@ -21,6 +21,63 @@ export async function adminUpdateUserCredits(userId: string, credits: number): P
   return { ok: true }
 }
 
+export async function adminSetDisputeStatus(disputeId: string, status: 'open' | 'resolved'): Promise<{ ok: boolean; error?: string }> {
+  const supabase = createClient()
+  const admin = await requireAdmin(supabase)
+  if (!admin.ok) return { ok: false, error: admin.error }
+
+  const { data: dispute, error: fetchError } = await supabase
+    .from('disputes')
+    .select('conversation_id')
+    .eq('id', disputeId)
+    .single()
+  if (fetchError || !dispute) return { ok: false, error: 'Dispute not found.' }
+
+  const { error } = await supabase
+    .from('disputes')
+    .update({ status, resolved_at: status === 'resolved' ? new Date().toISOString() : null })
+    .eq('id', disputeId)
+  if (error) return { ok: false, error: error.message }
+
+  // Only resolving can complete an exchange; reopening must never trigger
+  // completion. resolve_pickup() re-blocks automatically next time it runs
+  // anyway, since it checks live for any open dispute — no extra code needed
+  // on the reopen path.
+  if (status === 'resolved') {
+    await supabase.rpc('resolve_pickup', { p_conversation_id: dispute.conversation_id })
+  }
+
+  return { ok: true }
+}
+
+export async function adminDeleteDispute(disputeId: string): Promise<{ ok: boolean; error?: string }> {
+  const supabase = createClient()
+  const admin = await requireAdmin(supabase)
+  if (!admin.ok) return { ok: false, error: admin.error }
+
+  const { data: dispute, error: fetchError } = await supabase
+    .from('disputes')
+    .select('conversation_id, status')
+    .eq('id', disputeId)
+    .single()
+  if (fetchError || !dispute) return { ok: false, error: 'Dispute not found.' }
+
+  const { error } = await supabase
+    .from('disputes')
+    .delete()
+    .eq('id', disputeId)
+  if (error) return { ok: false, error: error.message }
+
+  // Deleting a frivolous OPEN dispute can immediately unblock a stuck
+  // exchange, same reasoning as resolving one. A resolved dispute is already
+  // non-blocking, so no need to call this again.
+  if (dispute.status === 'open') {
+    await supabase.rpc('resolve_pickup', { p_conversation_id: dispute.conversation_id })
+  }
+
+  return { ok: true }
+}
+
 export async function resolveDispute(disputeId: string): Promise<{ ok: boolean; error?: string }> {
   const supabase = createClient()
   const admin = await requireAdmin(supabase)
