@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { requireAdmin } from './libraryLocations'
 import { sendEmail } from '@/lib/email/resend'
 import { makeUnsubscribeToken } from '@/lib/email/unsubscribeToken'
-import { filterRecipients, type BroadcastTarget, type Recipient, type ProfileRow } from '@/lib/email/broadcastRecipients'
+import { filterRecipients, type BroadcastTarget, type Recipient, type ProfileRow, type BroadcastChannel } from '@/lib/email/broadcastRecipients'
 
 export type EmailTemplateType = 'welcome_confirmation' | 'password_reset'
 export type EmailTemplate = { type: EmailTemplateType; subject: string; body: string }
@@ -41,22 +41,23 @@ export type { BroadcastTarget }
 // profiles query look like a successful send to zero people.
 async function fetchRecipients(
   supabase: ReturnType<typeof createClient>,
-  target: BroadcastTarget
+  target: BroadcastTarget,
+  channel: BroadcastChannel = 'email'
 ): Promise<{ recipients?: Recipient[]; error?: string }> {
   const { data, error } = await supabase.from('profiles').select('id, email, city, state, marketing_opt_out')
   if (error) return { error: error.message }
-  return { recipients: filterRecipients((data ?? []) as ProfileRow[], target) }
+  return { recipients: filterRecipients((data ?? []) as ProfileRow[], target, channel) }
 }
 
 // Only the count is returned — the confirmation dialog is the sole consumer and
 // only needs a number, so there's no reason to ship every user's email address
 // to the browser.
-export async function resolveBroadcastRecipients(target: BroadcastTarget): Promise<{ ok: boolean; count?: number; error?: string }> {
+export async function resolveBroadcastRecipients(target: BroadcastTarget, channel: BroadcastChannel = 'email'): Promise<{ ok: boolean; count?: number; error?: string }> {
   const supabase = createClient()
   const admin = await requireAdmin(supabase)
   if (!admin.ok) return { ok: false, error: admin.error }
 
-  const { recipients, error } = await fetchRecipients(supabase, target)
+  const { recipients, error } = await fetchRecipients(supabase, target, channel)
   if (error || !recipients) return { ok: false, error: error ?? 'Failed to look up recipients.' }
   return { ok: true, count: recipients.length }
 }
@@ -96,6 +97,64 @@ export async function sendBroadcastEmail(target: BroadcastTarget, subject: strin
     if (logError) console.error('sendBroadcastEmail: failed to write email_log row', logError)
 
     if (result.ok) sent++; else failed++
+  }
+
+  return { ok: true, sent, failed }
+}
+
+async function findOrCreateAdminConversation(
+  supabase: ReturnType<typeof createClient>, userId: string, repliable: boolean
+): Promise<string> {
+  const { data: existing } = await supabase
+    .from('conversations')
+    .select('id')
+    .eq('type', 'admin')
+    .eq('user_id', userId)
+    .eq('repliable', repliable)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (existing) return existing.id
+
+  const { data: created, error } = await supabase
+    .from('conversations')
+    .insert({ type: 'admin', user_id: userId, repliable })
+    .select('id')
+    .single()
+
+  if (error || !created) throw error ?? new Error('Failed to create conversation')
+  return created.id
+}
+
+export async function sendBroadcastMessage(target: BroadcastTarget, body: string, repliable: boolean): Promise<{ ok: boolean; sent: number; failed: number; error?: string }> {
+  const supabase = createClient()
+  const admin = await requireAdmin(supabase)
+  if (!admin.ok) return { ok: false, sent: 0, failed: 0, error: admin.error }
+
+  if (!body.trim()) return { ok: false, sent: 0, failed: 0, error: 'Message cannot be empty.' }
+
+  const { recipients, error: recipientsError } = await fetchRecipients(supabase, target, 'message')
+  if (recipientsError || !recipients) {
+    return { ok: false, sent: 0, failed: 0, error: recipientsError ?? 'Failed to look up recipients.' }
+  }
+
+  let sent = 0, failed = 0
+  for (const recipient of recipients) {
+    try {
+      const conversationId = await findOrCreateAdminConversation(supabase, recipient.id, repliable)
+      const { error: msgError } = await supabase.from('messages').insert({
+        conversation_id: conversationId,
+        sender_id: admin.userId,
+        body: body.trim(),
+        kind: 'chat',
+      })
+      if (msgError) throw msgError
+      sent++
+    } catch (err) {
+      console.error('sendBroadcastMessage: failed for recipient', recipient.id, err)
+      failed++
+    }
   }
 
   return { ok: true, sent, failed }
