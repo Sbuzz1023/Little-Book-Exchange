@@ -8,7 +8,7 @@ vi.mock('./libraryLocations', () => ({
 
 let selectSingleResult: { data: any; error: unknown }
 let updateResult: { error: unknown }
-let deleteResult: { error: unknown }
+let deleteResult: { data: any; error: unknown }
 
 const singleMock = vi.fn(() => Promise.resolve(selectSingleResult))
 const selectEqMock = vi.fn(() => ({ single: singleMock }))
@@ -17,7 +17,8 @@ const selectMock = vi.fn(() => ({ eq: selectEqMock }))
 const updateEqMock = vi.fn(() => Promise.resolve(updateResult))
 const updateMock = vi.fn(() => ({ eq: updateEqMock }))
 
-const deleteEqMock = vi.fn(() => Promise.resolve(deleteResult))
+const deleteSelectMock = vi.fn(() => Promise.resolve(deleteResult))
+const deleteEqMock = vi.fn(() => ({ select: deleteSelectMock }))
 const deleteMock = vi.fn(() => ({ eq: deleteEqMock }))
 
 const fromMock = vi.fn(() => ({ select: selectMock, update: updateMock, delete: deleteMock }))
@@ -74,7 +75,7 @@ describe('adminDeleteDispute', () => {
     vi.clearAllMocks()
     requireAdminMock.mockResolvedValue({ ok: true, userId: 'admin-1' })
     selectSingleResult = { data: { conversation_id: 'convo-1', status: 'open' }, error: null }
-    deleteResult = { error: null }
+    deleteResult = { data: [{ id: 'dispute-1' }], error: null }
   })
 
   it('rejects a non-admin caller', async () => {
@@ -99,8 +100,15 @@ describe('adminDeleteDispute', () => {
   })
 
   it('returns an error when the delete fails', async () => {
-    deleteResult = { error: { message: 'db exploded' } }
+    deleteResult = { data: null, error: { message: 'db exploded' } }
     const result = await adminDeleteDispute('dispute-1')
     expect(result).toEqual({ ok: false, error: 'db exploded' })
+  })
+
+  it('returns an error when the delete is blocked by RLS (zero rows, no error)', async () => {
+    deleteResult = { data: [], error: null }
+    const result = await adminDeleteDispute('dispute-1')
+    expect(result).toEqual({ ok: false, error: 'Delete was blocked — the admin delete policy may not be applied yet.' })
+    expect(rpcMock).not.toHaveBeenCalled()
   })
 })

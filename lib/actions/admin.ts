@@ -40,9 +40,11 @@ export async function adminSetDisputeStatus(disputeId: string, status: 'open' | 
   if (error) return { ok: false, error: error.message }
 
   // Only resolving can complete an exchange; reopening must never trigger
-  // completion. resolve_pickup() re-blocks automatically next time it runs
-  // anyway, since it checks live for any open dispute — no extra code needed
-  // on the reopen path.
+  // completion. Reopening never calls resolve_pickup — it only re-blocks a
+  // *not-yet-completed* exchange (resolve_pickup checks live for any open
+  // dispute on its next call). If the exchange already completed when this
+  // dispute was resolved, reopening cannot undo that completion or reverse
+  // the credit transfer — it only clears the flag other UI reads.
   if (status === 'resolved') {
     await supabase.rpc('resolve_pickup', { p_conversation_id: dispute.conversation_id })
   }
@@ -62,11 +64,15 @@ export async function adminDeleteDispute(disputeId: string): Promise<{ ok: boole
     .single()
   if (fetchError || !dispute) return { ok: false, error: 'Dispute not found.' }
 
-  const { error } = await supabase
+  const { data: deleted, error } = await supabase
     .from('disputes')
     .delete()
     .eq('id', disputeId)
+    .select('id')
   if (error) return { ok: false, error: error.message }
+  if (!deleted || deleted.length === 0) {
+    return { ok: false, error: 'Delete was blocked — the admin delete policy may not be applied yet.' }
+  }
 
   // Deleting a frivolous OPEN dispute can immediately unblock a stuck
   // exchange, same reasoning as resolving one. A resolved dispute is already
