@@ -283,4 +283,29 @@ describe('MessagesTab — admin conversations', () => {
     expect(container.querySelector('form')).not.toBeNull()
     expect(container.textContent).not.toContain("replies aren't enabled")
   })
+
+  it('renders correctly when an exchange conversation and an admin conversation are both in the list', () => {
+    const mixedExchanges: MessagesTabExchange[] = [
+      {
+        id: 'exchange-1', listing_id: 'listing-1', buyer_id: 'them-1', seller_id: 'me',
+        created_at: '2026-08-01T09:00:00.000Z',
+        listings: { title: 'The Hobbit', author: 'J.R.R. Tolkien' },
+        buyer: { name: 'Neighbor A' }, seller: { name: 'Me' },
+        messages: [],
+      },
+      {
+        id: 'admin-convo-mixed', type: 'admin', user_id: 'me', repliable: false,
+        created_at: '2026-08-02T09:00:00.000Z',
+        messages: [{ id: 'a1', body: 'Announcement body', sender_id: 'admin-1', created_at: '2026-08-02T09:00:00.000Z' }],
+      },
+    ]
+    const { container } = render(
+      <MessagesTab exchanges={mixedExchanges} userId="me" isDemo={true} selectedId={null} onSelectId={vi.fn()} />
+    )
+    expect(container.textContent).toContain('Neighbor A')
+    expect(container.textContent).toContain('The Hobbit')
+    expect(container.textContent).toContain('Little Book Exchange Team')
+    const listingMatches = container.textContent!.match(/📚/g) ?? []
+    expect(listingMatches.length).toBe(1)
+  })
 })

@@ -20,18 +20,28 @@ export default function AdminInboxTab() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [body, setBody] = useState('')
   const [sending, setSending] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [showAnnouncements, setShowAnnouncements] = useState(false)
 
   async function load() {
     setLoading(true)
+    setError(null)
     const supabase = createClient()
 
     const { data: { user } } = await supabase.auth.getUser()
     setAdminId(user?.id ?? null)
 
-    const { data: convos } = await supabase
+    const { data: convos, error: convosError } = await supabase
       .from('conversations').select('id, user_id, repliable, created_at')
       .eq('type', 'admin')
       .order('created_at', { ascending: false })
+      .limit(200)
+
+    if (convosError) {
+      setError('Failed to load conversations. Please refresh.')
+      setLoading(false)
+      return
+    }
 
     if (!convos || convos.length === 0) {
       setConversations([])
@@ -74,27 +84,39 @@ export default function AdminInboxTab() {
     if (!body.trim() || !selected || !adminId) return
     setSending(true)
     const supabase = createClient()
-    const { data, error } = await supabase
+    const { data, error: sendError } = await supabase
       .from('messages')
       .insert({ conversation_id: selected.id, sender_id: adminId, body: body.trim(), kind: 'chat' })
       .select()
       .single()
     setSending(false)
-    if (!error && data) {
-      setBody('')
-      setConversations(prev => prev.map(c => c.id === selected.id ? { ...c, messages: [...c.messages, data as InboxMessage] } : c))
+    if (sendError || !data) {
+      setError('Failed to send. Please try again.')
+      return
     }
+    setBody('')
+    setConversations(prev => prev.map(c => c.id === selected.id ? { ...c, messages: [...c.messages, data as InboxMessage] } : c))
   }
 
   if (loading) return <p className="font-bold text-[13px]" style={{ color: '#aaa' }}>Loading inbox...</p>
 
+  const visibleConversations = conversations.filter(c => showAnnouncements || c.repliable)
+
   return (
-    <div className="flex gap-5" style={{ height: 520 }}>
+    <div>
+      {error && (
+        <div className="mb-4 bg-red-50 border-2 border-red-200 rounded-xl px-4 py-3 text-red-700 font-bold text-sm">{error}</div>
+      )}
+      <div className="flex gap-5" style={{ height: 520 }}>
       <div className="w-[240px] shrink-0 bg-white rounded-2xl border border-[#f1f5f9] overflow-y-auto">
-        {conversations.length === 0 ? (
+        <label className="flex items-center gap-2 px-4 py-2 font-bold text-[12px] text-[#64748b] border-b border-[#f8fafc]">
+          <input type="checkbox" checked={showAnnouncements} onChange={e => setShowAnnouncements(e.target.checked)} />
+          Show announcements too
+        </label>
+        {visibleConversations.length === 0 ? (
           <p className="p-4 font-bold text-[13px]" style={{ color: '#aaa' }}>No conversations yet.</p>
         ) : (
-          conversations.map(c => {
+          visibleConversations.map(c => {
             const last = c.messages[c.messages.length - 1]
             return (
               <button key={c.id} onClick={() => setSelectedId(c.id)}
@@ -139,6 +161,7 @@ export default function AdminInboxTab() {
             </form>
           </>
         )}
+      </div>
       </div>
     </div>
   )

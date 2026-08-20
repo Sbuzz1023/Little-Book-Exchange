@@ -1590,6 +1590,20 @@ alter table conversations
   add column if not exists user_id uuid references profiles(id) on delete cascade,
   add column if not exists repliable boolean not null default true;
 
+-- Ties `type` to which columns must be null/non-null, closing a gap where the
+-- pre-existing "Buyers can create conversations" policy (which only checks
+-- auth.uid() = buyer_id, with no type awareness) could otherwise be used to
+-- insert a type='admin' row impersonating "Little Book Exchange Team" to any
+-- other user. Every existing row satisfies this today (all three
+-- listing/buyer/seller columns were NOT NULL until this same migration
+-- relaxed them; user_id is brand new and currently all-null).
+alter table conversations add constraint conversations_type_shape check (
+  (type = 'exchange' and listing_id is not null and buyer_id is not null
+     and seller_id is not null and user_id is null)
+  or (type = 'admin' and listing_id is null and buyer_id is null
+     and seller_id is null and user_id is not null)
+);
+
 -- The existing unique(listing_id, buyer_id) constraint is untouched — Postgres
 -- treats NULL as distinct from NULL in unique constraints, so any number of
 -- type='admin' rows (both columns always NULL) can coexist.
@@ -1625,6 +1639,7 @@ create policy "Admin conversation messages viewable by participant or admin" on 
 
 create policy "Admin conversation messages: admin always, user if repliable" on messages
   for insert with check (
+    auth.uid() = sender_id and
     exists (
       select 1 from conversations c
       where c.id = conversation_id and c.type = 'admin'

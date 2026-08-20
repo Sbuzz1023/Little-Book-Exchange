@@ -35,7 +35,7 @@ type Props = {
   sendPhoneOtp: (formData: FormData) => Promise<{ ok: boolean; error?: string }>
   verifyPhoneOtp: (formData: FormData) => Promise<{ ok: boolean; error?: string }>
   onPhoneVerified: () => void
-  onContactSupport: () => Promise<void>
+  onContactSupport: () => Promise<{ ok: boolean; error?: string }>
 }
 
 const labelStyle: React.CSSProperties = {
@@ -79,13 +79,16 @@ export default function ProfileCard({ profile, updateAction, success, error, sen
   const [editing, setEditing] = useState(false)
   const [phone, setPhone] = useState(profile?.phone ?? '')
   const [contactingSupport, setContactingSupport] = useState(false)
+  const [contactSupportError, setContactSupportError] = useState<string | null>(null)
   const phoneVerified = !!profile?.phone_verified
   const hasAddressInfo = !!(profile?.city || profile?.state || profile?.address || profile?.zip)
 
   async function handleContactSupportClick() {
     setContactingSupport(true)
-    await onContactSupport()
+    setContactSupportError(null)
+    const res = await onContactSupport()
     setContactingSupport(false)
+    if (!res.ok) setContactSupportError(res.error ?? 'Something went wrong. Please try again.')
   }
 
   return (
@@ -324,6 +327,9 @@ export default function ProfileCard({ profile, updateAction, success, error, sen
             Prefer email? support@littlebookexchange.com
           </a>
         </div>
+        {contactSupportError && (
+          <p style={{ fontSize: 12, fontWeight: 700, color: '#dc2626', marginTop: 6 }}>{contactSupportError}</p>
+        )}
       </div>
     </div>
   )

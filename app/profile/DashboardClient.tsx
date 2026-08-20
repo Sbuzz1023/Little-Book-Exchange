@@ -219,13 +219,15 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
     }
   }
 
-  async function handleContactSupport() {
+  async function handleContactSupport(): Promise<{ ok: boolean; error?: string }> {
     const res = await startSupportConversation()
     if (res.ok && res.conversationId) {
       setActiveTab('messages')
       setSelectedConversationId(res.conversationId)
       router.refresh()
+      return { ok: true }
     }
+    return { ok: false, error: res.error }
   }
 
   function tabBadgeCount(id: Tab): number {

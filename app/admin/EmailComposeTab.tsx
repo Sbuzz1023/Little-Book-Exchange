@@ -82,6 +82,7 @@ export default function EmailComposeTab({
       setResult({ sent: res.sent, failed: res.failed })
       setSubject('')
       setBody('')
+      setMessageRepliable(false)
     } else {
       // Deliberately does NOT clear subject/body — on a failure the admin keeps
       // the draft they typed and can retry.
