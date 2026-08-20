@@ -6,6 +6,7 @@ import { adminUpdateUserCredits } from '@/lib/actions/admin'
 import LocationsAdminTab from './LocationsAdminTab'
 import EmailsAdminTab from './EmailsAdminTab'
 import DisputesAdminTab from './DisputesAdminTab'
+import { enrichDisputes, type EnrichedDispute, type RawDispute, type ConversationParticipants } from '@/lib/disputeEnrichment'
 
 const WEEKLY_ACTIVITY = [
   { week:'May 5',  posts:4,  signups:2, trades:3 },
@@ -582,6 +583,8 @@ export default function AdminClient() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [messagePrefillUserId, setMessagePrefillUserId] = useState<string | null>(null)
   const hasTabCount = useRef(false)
+  const [enrichedDisputes, setEnrichedDisputes] = useState<EnrichedDispute[]>([])
+  const [disputesVersion, setDisputesVersion] = useState(0)
 
   useEffect(() => {
     const supabase = createClient()
@@ -660,6 +663,53 @@ export default function AdminClient() {
         })))
       })
   }, [])
+
+  useEffect(() => {
+    const supabase = createClient()
+    let cancelled = false
+
+    async function loadDisputes() {
+      const { data: rows } = await supabase
+        .from('disputes')
+        .select('id, conversation_id, reporter_id, message, status, created_at, resolved_at')
+        .order('created_at', { ascending: false })
+
+      if (!rows || rows.length === 0) {
+        if (!cancelled) setEnrichedDisputes([])
+        return
+      }
+
+      const convoIds = Array.from(new Set(rows.map(r => r.conversation_id)))
+      const { data: convos } = await supabase
+        .from('conversations').select('id, listing_id, buyer_id, seller_id').in('id', convoIds)
+
+      const listingIds = Array.from(new Set((convos ?? []).map(c => c.listing_id).filter(Boolean)))
+      const { data: listings } = listingIds.length > 0
+        ? await supabase.from('listings').select('id, title').in('id', listingIds)
+        : { data: [] as { id: string; title: string }[] }
+      const listingTitles: Record<string, string> = {}
+      for (const l of listings ?? []) listingTitles[l.id] = l.title
+
+      const userIds = Array.from(new Set([
+        ...rows.map(r => r.reporter_id),
+        ...(convos ?? []).flatMap(c => [c.buyer_id, c.seller_id]),
+      ]))
+      const { data: profileRows } = await supabase.from('profiles').select('id, username').in('id', userIds)
+      const userNames: Record<string, string> = {}
+      for (const p of profileRows ?? []) userNames[p.id] = p.username || 'Unknown'
+
+      if (!cancelled) {
+        setEnrichedDisputes(enrichDisputes(rows as RawDispute[], (convos ?? []) as ConversationParticipants[], listingTitles, userNames))
+      }
+    }
+
+    loadDisputes()
+    return () => { cancelled = true }
+  }, [disputesVersion])
+
+  function refetchDisputes() {
+    setDisputesVersion(v => v + 1)
+  }
 
   function handleTabPendingCountChange(count: number) {
     hasTabCount.current = true
@@ -759,7 +809,13 @@ export default function AdminClient() {
               onPrefillConsumed={() => setMessagePrefillUserId(null)}
             />
           )}
-          {tab === 'disputes'  && <DisputesAdminTab onMessageReporter={handleMessageReporter} />}
+          {tab === 'disputes'  && (
+            <DisputesAdminTab
+              disputes={enrichedDisputes}
+              onChanged={refetchDisputes}
+              onMessageReporter={handleMessageReporter}
+            />
+          )}
         </div>
       </div>
     </div>
