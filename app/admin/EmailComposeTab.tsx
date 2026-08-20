@@ -1,11 +1,19 @@
 // app/admin/EmailComposeTab.tsx
 'use client'
 import { useState, useEffect, useMemo } from 'react'
-import { resolveBroadcastRecipients, sendBroadcastEmail, type BroadcastTarget } from '@/lib/actions/emailAdmin'
+import { resolveBroadcastRecipients, sendBroadcastEmail, sendBroadcastMessage, type BroadcastTarget } from '@/lib/actions/emailAdmin'
 
 type ComposeUser = { id: string; username: string; email: string; city: string; state: string }
+type Mode = 'email' | 'message'
 
-export default function EmailComposeTab({ users }: { users: ComposeUser[] }) {
+export default function EmailComposeTab({
+  users, prefillUserId, onPrefillConsumed,
+}: {
+  users: ComposeUser[]
+  prefillUserId?: string | null
+  onPrefillConsumed?: () => void
+}) {
+  const [mode, setMode] = useState<Mode>('email')
   const [targetKind, setTargetKind] = useState<'all' | 'user' | 'filtered'>('all')
   const [userSearch, setUserSearch] = useState('')
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
@@ -13,6 +21,7 @@ export default function EmailComposeTab({ users }: { users: ComposeUser[] }) {
   const [state, setState] = useState('')
   const [subject, setSubject] = useState('')
   const [body, setBody] = useState('')
+  const [messageRepliable, setMessageRepliable] = useState(false)
   const [recipientCount, setRecipientCount] = useState<number | null>(null)
   const [confirming, setConfirming] = useState(false)
   const [sending, setSending] = useState(false)
@@ -26,6 +35,18 @@ export default function EmailComposeTab({ users }: { users: ComposeUser[] }) {
     [users, userSearch]
   )
 
+  useEffect(() => {
+    if (!prefillUserId) return
+    const match = users.find(u => u.id === prefillUserId)
+    setMode('message')
+    setTargetKind('user')
+    setSelectedUserId(prefillUserId)
+    setUserSearch(match ? `${match.username} (${match.email})` : '')
+    setMessageRepliable(true)
+    onPrefillConsumed?.()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefillUserId])
+
   function currentTarget(): BroadcastTarget | null {
     if (targetKind === 'all') return { kind: 'all' }
     if (targetKind === 'user') return selectedUserId ? { kind: 'user', userId: selectedUserId } : null
@@ -38,9 +59,10 @@ export default function EmailComposeTab({ users }: { users: ComposeUser[] }) {
     setResult(null)
     const target = currentTarget()
     if (!target) { setError('Pick a recipient.'); return }
-    if (!subject.trim() || !body.trim()) { setError('Subject and body are required.'); return }
+    if (mode === 'email' && !subject.trim()) { setError('Subject is required.'); return }
+    if (!body.trim()) { setError(mode === 'email' ? 'Subject and body are required.' : 'Message cannot be empty.'); return }
 
-    const res = await resolveBroadcastRecipients(target)
+    const res = await resolveBroadcastRecipients(target, mode === 'message' ? 'message' : 'email')
     if (!res.ok) { setError(res.error ?? 'Failed to look up recipients.'); return }
     setRecipientCount(res.count ?? 0)
     setConfirming(true)
@@ -51,7 +73,9 @@ export default function EmailComposeTab({ users }: { users: ComposeUser[] }) {
     if (!target) return
     setSending(true)
     setError(null)
-    const res = await sendBroadcastEmail(target, subject, body)
+    const res = mode === 'message'
+      ? await sendBroadcastMessage(target, body, messageRepliable)
+      : await sendBroadcastEmail(target, subject, body)
     setSending(false)
     setConfirming(false)
     if (res.ok) {
@@ -67,9 +91,18 @@ export default function EmailComposeTab({ users }: { users: ComposeUser[] }) {
 
   return (
     <div className="space-y-5">
-      <h2 className="font-display text-[22px] text-[#1e293b]">Compose Email</h2>
+      <h2 className="font-display text-[22px] text-[#1e293b]">Compose</h2>
 
       <div className="bg-white rounded-2xl p-5 border border-[#f1f5f9] shadow-sm space-y-4">
+        <div className="flex gap-2">
+          {(['email', 'message'] as const).map(m => (
+            <button key={m} onClick={() => setMode(m)}
+              className={`px-3 py-1.5 rounded-full font-extrabold text-[12px] border-2 transition-colors ${mode === m ? 'bg-[#0ea5e9] border-[#0ea5e9] text-white' : 'bg-white border-[#e2e8f0] text-[#64748b]'}`}>
+              {m === 'email' ? '✉️ Email' : '💬 Message'}
+            </button>
+          ))}
+        </div>
+
         <div className="flex gap-2">
           {(['all', 'user', 'filtered'] as const).map(k => (
             <button key={k} onClick={() => setTargetKind(k)}
@@ -113,21 +146,30 @@ export default function EmailComposeTab({ users }: { users: ComposeUser[] }) {
           </div>
         )}
 
-        <div>
-          <label className="block text-[12px] font-extrabold text-[#475569] mb-1 uppercase tracking-wide">Subject</label>
-          <input value={subject} onChange={e => setSubject(e.target.value)}
-            className="w-full border-2 border-[#e2e8f0] rounded-xl px-3 py-2.5 font-bold text-[14px] focus:outline-none focus:border-bk-orange" />
-        </div>
+        {mode === 'email' && (
+          <div>
+            <label className="block text-[12px] font-extrabold text-[#475569] mb-1 uppercase tracking-wide">Subject</label>
+            <input value={subject} onChange={e => setSubject(e.target.value)}
+              className="w-full border-2 border-[#e2e8f0] rounded-xl px-3 py-2.5 font-bold text-[14px] focus:outline-none focus:border-bk-orange" />
+          </div>
+        )}
         <div>
           <label className="block text-[12px] font-extrabold text-[#475569] mb-1 uppercase tracking-wide">Body</label>
           <textarea value={body} onChange={e => setBody(e.target.value)} rows={6}
             className="w-full border-2 border-[#e2e8f0] rounded-xl px-3 py-2.5 font-semibold text-[13px] focus:outline-none focus:border-bk-orange resize-y" />
         </div>
 
+        {mode === 'message' && (
+          <label className="flex items-center gap-2 font-bold text-[13px] text-[#475569]">
+            <input type="checkbox" checked={messageRepliable} onChange={e => setMessageRepliable(e.target.checked)} />
+            Allow replies (start a conversation)
+          </label>
+        )}
+
         {error && <div className="bg-red-50 border-2 border-red-200 rounded-xl px-4 py-3 text-red-700 font-bold text-sm">{error}</div>}
         {result && (
           <div className="bg-teal-50 border-2 border-teal-200 rounded-xl px-4 py-3 text-teal-700 font-bold text-sm">
-            Sent to {result.sent}{result.failed > 0 ? `, failed for ${result.failed}` : ''}.
+            {mode === 'message' ? 'Messaged' : 'Sent to'} {result.sent}{result.failed > 0 ? `, failed for ${result.failed}` : ''}.
           </div>
         )}
 
@@ -142,7 +184,8 @@ export default function EmailComposeTab({ users }: { users: ComposeUser[] }) {
           <div className="bg-white rounded-3xl w-full max-w-[420px] p-6 shadow-2xl">
             <h2 className="font-display text-[18px] text-[#1e293b] mb-3">Confirm Send</h2>
             <p className="font-semibold text-[14px] text-[#334155] mb-5">
-              This will email <span className="font-black text-bk-orange">{recipientCount}</span> {recipientCount === 1 ? 'person' : 'people'}. Send?
+              This will {mode === 'message' ? 'message' : 'email'} <span className="font-black text-bk-orange">{recipientCount}</span> {recipientCount === 1 ? 'person' : 'people'}.
+              {mode === 'message' && messageRepliable && recipientCount !== 1 ? ` ${recipientCount} separate conversations will be started.` : ''} Send?
             </p>
             <div className="flex gap-3">
               <button onClick={() => setConfirming(false)} className="flex-1 border-2 border-[#e2e8f0] rounded-xl py-2.5 font-extrabold text-[14px] text-[#64748b]">Cancel</button>
