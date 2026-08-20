@@ -345,7 +345,7 @@ export async function startSupportConversation(): Promise<{ ok: boolean; convers
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { ok: false, error: 'Please sign in.' }
 
-  const { data: existing } = await supabase
+  const { data: existing, error: lookupError } = await supabase
     .from('conversations')
     .select('id')
     .eq('type', 'admin')
@@ -355,6 +355,7 @@ export async function startSupportConversation(): Promise<{ ok: boolean; convers
     .limit(1)
     .maybeSingle()
 
+  if (lookupError) return { ok: false, error: 'Could not start a support conversation. Please try again.' }
   if (existing) return { ok: true, conversationId: existing.id }
 
   const { data: created, error } = await supabase
