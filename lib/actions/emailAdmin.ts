@@ -105,7 +105,7 @@ export async function sendBroadcastEmail(target: BroadcastTarget, subject: strin
 async function findOrCreateAdminConversation(
   supabase: ReturnType<typeof createClient>, userId: string, repliable: boolean
 ): Promise<string> {
-  const { data: existing } = await supabase
+  const { data: existing, error: lookupError } = await supabase
     .from('conversations')
     .select('id')
     .eq('type', 'admin')
@@ -115,6 +115,7 @@ async function findOrCreateAdminConversation(
     .limit(1)
     .maybeSingle()
 
+  if (lookupError) throw lookupError
   if (existing) return existing.id
 
   const { data: created, error } = await supabase
