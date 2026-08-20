@@ -237,3 +237,50 @@ describe('MessagesTab — unread highlighting', () => {
     expect(createClient).not.toHaveBeenCalled()
   })
 })
+
+describe('MessagesTab — admin conversations', () => {
+  const adminExchanges: MessagesTabExchange[] = [
+    {
+      id: 'admin-convo-1', type: 'admin', user_id: 'me', repliable: false,
+      created_at: '2026-08-01T09:00:00.000Z',
+      messages: [
+        { id: 'a1', body: "We've added 3 new pickup spots in your area!", sender_id: 'admin-1', created_at: '2026-08-01T09:00:00.000Z' },
+      ],
+    },
+    {
+      id: 'admin-convo-2', type: 'admin', user_id: 'me', repliable: true,
+      created_at: '2026-08-02T09:00:00.000Z',
+      messages: [],
+    },
+  ]
+
+  it('shows a fixed "Little Book Exchange Team" identity for an admin-type conversation', () => {
+    const { container } = render(
+      <MessagesTab exchanges={adminExchanges} userId="me" isDemo={true} selectedId={null} onSelectId={vi.fn()} />
+    )
+    expect(container.textContent).toContain('Little Book Exchange Team')
+  })
+
+  it('does not show a listing line for an admin-type conversation', () => {
+    const { container } = render(
+      <MessagesTab exchanges={adminExchanges} userId="me" isDemo={true} selectedId="admin-convo-1" onSelectId={vi.fn()} />
+    )
+    expect(container.textContent).not.toContain('📚')
+  })
+
+  it('shows a disabled-input notice instead of the message form when repliable is false', () => {
+    const { container } = render(
+      <MessagesTab exchanges={adminExchanges} userId="me" isDemo={true} selectedId="admin-convo-1" onSelectId={vi.fn()} />
+    )
+    expect(container.textContent).toContain("Announcement — replies aren't enabled")
+    expect(container.querySelector('form')).toBeNull()
+  })
+
+  it('still shows an enabled message form for a repliable admin-type conversation', () => {
+    const { container } = render(
+      <MessagesTab exchanges={adminExchanges} userId="me" isDemo={true} selectedId="admin-convo-2" onSelectId={vi.fn()} />
+    )
+    expect(container.querySelector('form')).not.toBeNull()
+    expect(container.textContent).not.toContain("replies aren't enabled")
+  })
+})

@@ -9,13 +9,16 @@ export type MessageRow = { id: string; body: string; sender_id: string; created_
 
 export type MessagesTabExchange = {
   id: string
-  listing_id: string
-  buyer_id: string
-  seller_id: string
+  type?: 'exchange' | 'admin'
+  listing_id?: string | null
+  buyer_id?: string | null
+  seller_id?: string | null
+  user_id?: string | null
+  repliable?: boolean
   created_at: string
-  listings: { title: string; author: string; photo_url?: string | null }
-  buyer: { username?: string | null; name?: string | null }
-  seller: { username?: string | null; name?: string | null }
+  listings?: { title: string; author: string; photo_url?: string | null } | null
+  buyer?: { username?: string | null; name?: string | null }
+  seller?: { username?: string | null; name?: string | null }
   sellerRating?: { average: number; count: number } | null
   messages: MessageRow[]
 }
@@ -37,6 +40,7 @@ function lastActivity(convo: MessagesTabExchange, localMessages: Record<string, 
 }
 
 function otherNameFor(convo: MessagesTabExchange, userId: string) {
+  if (convo.type === 'admin') return 'Little Book Exchange Team'
   const other = convo.buyer_id === userId ? convo.seller : convo.buyer
   return other?.name || other?.username || 'Neighbor'
 }
@@ -199,11 +203,11 @@ export default function MessagesTab({
                 }}
               >
                 <div style={{
-                  width: 44, height: 44, borderRadius: '50%', background: color,
+                  width: 44, height: 44, borderRadius: '50%', background: ex.type === 'admin' ? '#f97316' : color,
                   display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                  color: '#fff', fontWeight: 900, fontSize: 17,
+                  color: '#fff', fontWeight: 900, fontSize: ex.type === 'admin' ? 20 : 17,
                 }}>
-                  {initial(otherName)}
+                  {ex.type === 'admin' ? '📣' : initial(otherName)}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 6, marginBottom: 2 }}>
@@ -212,9 +216,11 @@ export default function MessagesTab({
                     </p>
                     {lastMsg && <span style={{ fontSize: 11, fontWeight: 700, color: '#bbb', flexShrink: 0 }}>{timeAgo(lastMsg.created_at)}</span>}
                   </div>
-                  <p style={{ fontSize: 12, fontWeight: 700, color: isActive ? '#f97316' : '#aaa', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: 2 }}>
-                    📚 {ex.listings?.title}
-                  </p>
+                  {ex.type !== 'admin' && (
+                    <p style={{ fontSize: 12, fontWeight: 700, color: isActive ? '#f97316' : '#aaa', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: 2 }}>
+                      📚 {ex.listings?.title}
+                    </p>
+                  )}
                   {lastMsg && (
                     <p style={{ fontSize: 12, fontWeight: 600, color: '#bbb', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {lastMsg.body}
@@ -258,14 +264,16 @@ export default function MessagesTab({
                     <p style={{ fontWeight: 900, fontSize: 16, color: '#1a1a1a', lineHeight: 1.2 }}>{otherNameFor(convo, userId)}</p>
                   </button>
                   <p className="hidden md:block" style={{ fontWeight: 900, fontSize: 16, color: '#1a1a1a', lineHeight: 1.2 }}>{otherNameFor(convo, userId)}</p>
-                  {convo.seller_id !== userId && <StarRatingBadge rating={convo.sellerRating ?? null} sellerId={convo.seller_id} />}
+                  {convo.type !== 'admin' && convo.seller_id !== userId && <StarRatingBadge rating={convo.sellerRating ?? null} sellerId={convo.seller_id!} />}
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: '#aaa' }}>📚 {convo.listings?.title}</span>
-                  <Link href={`/listings/${convo.listing_id}`} style={{ fontSize: 11, fontWeight: 700, color: '#f97316', textDecoration: 'none' }}>
-                    View →
-                  </Link>
-                </div>
+                {convo.type !== 'admin' && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: '#aaa' }}>📚 {convo.listings?.title}</span>
+                    <Link href={`/listings/${convo.listing_id}`} style={{ fontSize: 11, fontWeight: 700, color: '#f97316', textDecoration: 'none' }}>
+                      View →
+                    </Link>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -314,33 +322,39 @@ export default function MessagesTab({
               <div ref={bottomRef} />
             </div>
 
-            <form onSubmit={send} style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', background: '#fff', borderTop: '2px solid #e5e7eb' }}>
-              <input
-                ref={inputRef}
-                value={body}
-                onChange={e => setBody(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(e as any) } }}
-                placeholder="iMessage"
-                style={{
-                  flex: 1, background: '#f3f4f6', border: '1.5px solid #e5e7eb', borderRadius: 22,
-                  padding: '10px 16px', fontSize: 14, fontWeight: 600, fontFamily: 'inherit', outline: 'none', color: '#1a1a1a',
-                }}
-              />
-              <button
-                type="submit"
-                disabled={!body.trim()}
-                style={{
-                  width: 36, height: 36, borderRadius: '50%',
-                  background: body.trim() ? '#f97316' : '#e5e7eb', border: 'none',
-                  cursor: body.trim() ? 'pointer' : 'default',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                }}
-              >
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                  <path d="M14 8L2 2l3 6-3 6 12-6z" fill={body.trim() ? '#fff' : '#aaa'} />
-                </svg>
-              </button>
-            </form>
+            {convo.type === 'admin' && convo.repliable === false ? (
+              <div style={{ flexShrink: 0, padding: '14px 16px', background: '#fff', borderTop: '2px solid #e5e7eb', textAlign: 'center', fontSize: 13, fontWeight: 700, color: '#bbb' }}>
+                🔒 Announcement — replies aren't enabled
+              </div>
+            ) : (
+              <form onSubmit={send} style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', background: '#fff', borderTop: '2px solid #e5e7eb' }}>
+                <input
+                  ref={inputRef}
+                  value={body}
+                  onChange={e => setBody(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(e as any) } }}
+                  placeholder="iMessage"
+                  style={{
+                    flex: 1, background: '#f3f4f6', border: '1.5px solid #e5e7eb', borderRadius: 22,
+                    padding: '10px 16px', fontSize: 14, fontWeight: 600, fontFamily: 'inherit', outline: 'none', color: '#1a1a1a',
+                  }}
+                />
+                <button
+                  type="submit"
+                  disabled={!body.trim()}
+                  style={{
+                    width: 36, height: 36, borderRadius: '50%',
+                    background: body.trim() ? '#f97316' : '#e5e7eb', border: 'none',
+                    cursor: body.trim() ? 'pointer' : 'default',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                  }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                    <path d="M14 8L2 2l3 6-3 6 12-6z" fill={body.trim() ? '#fff' : '#aaa'} />
+                  </svg>
+                </button>
+              </form>
+            )}
           </>
         )}
       </div>
