@@ -21,7 +21,7 @@ export async function adminUpdateUserCredits(userId: string, credits: number): P
   return { ok: true }
 }
 
-export async function resolveDispute(disputeId: string): Promise<{ ok: boolean; error?: string }> {
+export async function adminSetDisputeStatus(disputeId: string, status: 'open' | 'resolved'): Promise<{ ok: boolean; error?: string }> {
   const supabase = createClient()
   const admin = await requireAdmin(supabase)
   if (!admin.ok) return { ok: false, error: admin.error }
@@ -35,15 +35,51 @@ export async function resolveDispute(disputeId: string): Promise<{ ok: boolean; 
 
   const { error } = await supabase
     .from('disputes')
-    .update({ status: 'resolved', resolved_at: new Date().toISOString() })
+    .update({ status, resolved_at: status === 'resolved' ? new Date().toISOString() : null })
     .eq('id', disputeId)
   if (error) return { ok: false, error: error.message }
 
-  // Best-effort: if the exchange is otherwise eligible (both had already
-  // confirmed, or the 48h window already passed while the dispute sat open),
-  // this completes it immediately. If not, it resolves later via a confirm
-  // click or the next cron run — resolveDispute doesn't need to know which.
-  await supabase.rpc('resolve_pickup', { p_conversation_id: dispute.conversation_id })
+  // Only resolving can complete an exchange; reopening must never trigger
+  // completion. Reopening never calls resolve_pickup — it only re-blocks a
+  // *not-yet-completed* exchange (resolve_pickup checks live for any open
+  // dispute on its next call). If the exchange already completed when this
+  // dispute was resolved, reopening cannot undo that completion or reverse
+  // the credit transfer — it only clears the flag other UI reads.
+  if (status === 'resolved') {
+    await supabase.rpc('resolve_pickup', { p_conversation_id: dispute.conversation_id })
+  }
+
+  return { ok: true }
+}
+
+export async function adminDeleteDispute(disputeId: string): Promise<{ ok: boolean; error?: string }> {
+  const supabase = createClient()
+  const admin = await requireAdmin(supabase)
+  if (!admin.ok) return { ok: false, error: admin.error }
+
+  const { data: dispute, error: fetchError } = await supabase
+    .from('disputes')
+    .select('conversation_id, status')
+    .eq('id', disputeId)
+    .single()
+  if (fetchError || !dispute) return { ok: false, error: 'Dispute not found.' }
+
+  const { data: deleted, error } = await supabase
+    .from('disputes')
+    .delete()
+    .eq('id', disputeId)
+    .select('id')
+  if (error) return { ok: false, error: error.message }
+  if (!deleted || deleted.length === 0) {
+    return { ok: false, error: 'Delete was blocked — the admin delete policy may not be applied yet.' }
+  }
+
+  // Deleting a frivolous OPEN dispute can immediately unblock a stuck
+  // exchange, same reasoning as resolving one. A resolved dispute is already
+  // non-blocking, so no need to call this again.
+  if (dispute.status === 'open') {
+    await supabase.rpc('resolve_pickup', { p_conversation_id: dispute.conversation_id })
+  }
 
   return { ok: true }
 }

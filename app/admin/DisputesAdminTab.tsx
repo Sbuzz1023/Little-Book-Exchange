@@ -1,111 +1,51 @@
 // app/admin/DisputesAdminTab.tsx
 'use client'
-import { useEffect, useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
-import { resolveDispute } from '@/lib/actions/admin'
+import { useMemo, useState } from 'react'
+import DisputeRow from './DisputeRow'
+import type { EnrichedDispute } from '@/lib/disputeEnrichment'
 
-type Dispute = {
-  id: string
-  conversation_id: string
-  reporter_id: string
-  message: string
-  created_at: string
-  bookTitle: string
-  buyerName: string
-  sellerName: string
-}
+type Filter = 'open' | 'resolved' | 'all'
 
-export default function DisputesAdminTab({ onMessageReporter }: { onMessageReporter: (userId: string) => void }) {
-  const [disputes, setDisputes] = useState<Dispute[]>([])
-  const [loading, setLoading] = useState(true)
-  const [resolvingId, setResolvingId] = useState<string | null>(null)
+export default function DisputesAdminTab({
+  disputes,
+  disputesLoaded,
+  onChanged,
+  onMessageReporter,
+}: {
+  disputes: EnrichedDispute[]
+  disputesLoaded: boolean
+  onChanged: () => void
+  onMessageReporter: (userId: string) => void
+}) {
+  const [filter, setFilter] = useState<Filter>('open')
 
-  async function load() {
-    setLoading(true)
-    const supabase = createClient()
-
-    const { data: rows } = await supabase
-      .from('disputes').select('id, conversation_id, reporter_id, message, created_at')
-      .eq('status', 'open')
-      .order('created_at', { ascending: false })
-
-    if (!rows || rows.length === 0) {
-      setDisputes([])
-      setLoading(false)
-      return
-    }
-
-    const convoIds = Array.from(new Set(rows.map(r => r.conversation_id)))
-    const { data: convos } = await supabase
-      .from('conversations').select('id, listing_id, buyer_id, seller_id').in('id', convoIds)
-    const convoMap: Record<string, any> = {}
-    for (const c of convos ?? []) convoMap[c.id] = c
-
-    const listingIds = Array.from(new Set((convos ?? []).map(c => c.listing_id).filter(Boolean)))
-    const { data: listings } = await supabase.from('listings').select('id, title').in('id', listingIds)
-    const listingMap: Record<string, string> = {}
-    for (const l of listings ?? []) listingMap[l.id] = l.title
-
-    const userIds = Array.from(new Set((convos ?? []).flatMap(c => [c.buyer_id, c.seller_id])))
-    const { data: profiles } = await supabase.from('profiles').select('id, username').in('id', userIds)
-    const nameMap: Record<string, string> = {}
-    for (const p of profiles ?? []) nameMap[p.id] = p.username || 'Unknown'
-
-    setDisputes(rows.map(r => {
-      const convo = convoMap[r.conversation_id]
-      return {
-        ...r,
-        bookTitle: convo ? (listingMap[convo.listing_id] ?? 'Unknown book') : 'Unknown book',
-        buyerName: convo ? (nameMap[convo.buyer_id] ?? 'Unknown') : 'Unknown',
-        sellerName: convo ? (nameMap[convo.seller_id] ?? 'Unknown') : 'Unknown',
-      }
-    }))
-    setLoading(false)
-  }
-
-  useEffect(() => { load() }, [])
-
-  async function handleResolve(id: string) {
-    setResolvingId(id)
-    await resolveDispute(id)
-    await load()
-    setResolvingId(null)
-  }
-
-  if (loading) return <p className="font-bold text-[13px]" style={{ color: '#aaa' }}>Loading disputes...</p>
-
-  if (disputes.length === 0) {
-    return <p className="font-bold text-[13px]" style={{ color: '#aaa' }}>No open disputes.</p>
-  }
+  const shown = useMemo(() => {
+    const sorted = [...disputes].sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    if (filter === 'all') return sorted
+    return sorted.filter(d => d.status === filter)
+  }, [disputes, filter])
 
   return (
-    <div className="flex flex-col" style={{ gap: 12 }}>
-      {disputes.map(d => (
-        <div key={d.id} style={{ background: '#fff', border: '2px solid #fecdd3', borderRadius: 16, padding: 16 }}>
-          <p className="font-black text-[14px]">{d.bookTitle}</p>
-          <p className="font-semibold text-[12px]" style={{ color: '#aaa' }}>
-            Buyer: {d.buyerName} · Seller: {d.sellerName} · Filed {new Date(d.created_at).toLocaleDateString()}
-          </p>
-          <p className="font-semibold text-[13px] mt-2" style={{ color: '#444' }}>{d.message}</p>
-          <div className="flex gap-2 mt-3">
-            <button
-              type="button"
-              disabled={resolvingId === d.id}
-              onClick={() => handleResolve(d.id)}
-              className="font-extrabold text-[12px] text-white"
-              style={{ background: '#059669', padding: '7px 18px', borderRadius: 999, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
-              {resolvingId === d.id ? 'Resolving...' : '✓ Resolve'}
-            </button>
-            <button
-              type="button"
-              onClick={() => onMessageReporter(d.reporter_id)}
-              className="font-extrabold text-[12px] text-white"
-              style={{ background: '#0ea5e9', padding: '7px 18px', borderRadius: 999, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
-              💬 Message
-            </button>
-          </div>
+    <div>
+      <div className="flex gap-2 mb-3">
+        {(['open', 'resolved', 'all'] as const).map(f => (
+          <button key={f} type="button" onClick={() => setFilter(f)}
+            className={`px-3 py-1.5 rounded-full font-extrabold text-[12px] border-2 transition-colors ${filter === f ? 'bg-bk-orange border-bk-orange text-white' : 'bg-white border-[#e2e8f0] text-[#64748b]'}`}>
+            {f === 'open' ? 'Open' : f === 'resolved' ? 'Resolved' : 'All'}
+          </button>
+        ))}
+      </div>
+      {!disputesLoaded ? (
+        <p className="font-bold text-[13px]" style={{ color: '#aaa' }}>Loading disputes...</p>
+      ) : shown.length === 0 ? (
+        <p className="font-bold text-[13px]" style={{ color: '#aaa' }}>{filter === 'all' ? 'No disputes.' : `No ${filter} disputes.`}</p>
+      ) : (
+        <div className="flex flex-col" style={{ gap: 12 }}>
+          {shown.map(d => (
+            <DisputeRow key={d.id} dispute={d} context="admin-tab" onChanged={onChanged} onMessageReporter={onMessageReporter} />
+          ))}
         </div>
-      ))}
+      )}
     </div>
   )
 }
