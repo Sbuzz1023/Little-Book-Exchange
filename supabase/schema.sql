@@ -1729,3 +1729,17 @@ create trigger notify_on_message_trigger after insert on messages
 -- disputes" update policy.
 create policy "Admins can delete disputes" on disputes
   for delete using (exists (select 1 from profiles p where p.id = auth.uid() and p.is_admin = true));
+
+-- ── Migration: unresolved as a real dispute outcome ──────────────────────────
+-- Run this block in Supabase SQL Editor:
+
+-- Previously status was just 'open' | 'resolved', and the admin panel's old
+-- "Unresolved" button just reopened a resolved dispute back to 'open'. Now
+-- an admin can close out an OPEN dispute one of two ways: Resolved (the
+-- problem was actually fixed) or Unresolved (admin is done looking at it,
+-- but it was never fixed) — both move the dispute out of the active queue
+-- into History, just with a different outcome label. Either way unblocks
+-- resolve_pickup() the same as before, since it only ever blocked on
+-- status = 'open' — no change needed there.
+alter table disputes drop constraint if exists disputes_status_check;
+alter table disputes add constraint disputes_status_check check (status in ('open', 'resolved', 'unresolved'));

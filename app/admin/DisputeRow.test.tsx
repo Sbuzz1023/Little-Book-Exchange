@@ -15,6 +15,7 @@ const openDispute: EnrichedDispute = {
   reporterId: 'u1', reporterName: 'Alex', otherPartyId: 'u2', otherPartyName: 'Sam', bookTitle: 'Dune',
 }
 const resolvedDispute: EnrichedDispute = { ...openDispute, id: 'd2', status: 'resolved', resolvedAt: '2026-08-02T00:00:00.000Z' }
+const unresolvedDispute: EnrichedDispute = { ...openDispute, id: 'd3', status: 'unresolved', resolvedAt: '2026-08-02T00:00:00.000Z' }
 
 describe('DisputeRow', () => {
   beforeEach(() => {
@@ -32,12 +33,44 @@ describe('DisputeRow', () => {
     await waitFor(() => expect(onChanged).toHaveBeenCalled())
   })
 
-  it('shows Unresolved for a resolved dispute and calls the action on click', async () => {
+  it('shows both Resolve and Unresolved on an open dispute, and clicking Unresolved calls the action', async () => {
     const onChanged = vi.fn()
-    const { getByText } = render(<DisputeRow dispute={resolvedDispute} context="admin-tab" onChanged={onChanged} />)
-    fireEvent.click(getByText('↺ Unresolved'))
-    await waitFor(() => expect(adminSetDisputeStatus).toHaveBeenCalledWith('d2', 'open'))
+    const { getByText } = render(<DisputeRow dispute={openDispute} context="admin-tab" onChanged={onChanged} />)
+    expect(getByText('✓ Resolve')).toBeTruthy()
+    fireEvent.click(getByText('✕ Unresolved'))
+    await waitFor(() => expect(adminSetDisputeStatus).toHaveBeenCalledWith('d1', 'unresolved'))
     await waitFor(() => expect(onChanged).toHaveBeenCalled())
+  })
+
+  it('shows no Resolve/Unresolved buttons on an already-resolved dispute — one-way archive', () => {
+    const { queryByText } = render(<DisputeRow dispute={resolvedDispute} context="admin-tab" onChanged={vi.fn()} />)
+    expect(queryByText('✓ Resolve')).toBeNull()
+    expect(queryByText('✕ Unresolved')).toBeNull()
+  })
+
+  it('shows no Resolve/Unresolved buttons on an already-unresolved dispute — one-way archive', () => {
+    const { queryByText } = render(<DisputeRow dispute={unresolvedDispute} context="admin-tab" onChanged={vi.fn()} />)
+    expect(queryByText('✓ Resolve')).toBeNull()
+    expect(queryByText('✕ Unresolved')).toBeNull()
+  })
+
+  it('still shows Delete on a resolved dispute', () => {
+    const { getByText } = render(<DisputeRow dispute={resolvedDispute} context="admin-tab" onChanged={vi.fn()} />)
+    expect(getByText('🗑️ Delete')).toBeTruthy()
+  })
+
+  it('still shows Delete on an unresolved dispute', () => {
+    const { getByText } = render(<DisputeRow dispute={unresolvedDispute} context="admin-tab" onChanged={vi.fn()} />)
+    expect(getByText('🗑️ Delete')).toBeTruthy()
+  })
+
+  it('shows a status badge that matches each status', () => {
+    const { container: openContainer } = render(<DisputeRow dispute={openDispute} context="admin-tab" onChanged={vi.fn()} />)
+    expect(openContainer.textContent).toContain('Open')
+    const { container: resolvedContainer } = render(<DisputeRow dispute={resolvedDispute} context="admin-tab" onChanged={vi.fn()} />)
+    expect(resolvedContainer.textContent).toContain('Resolved')
+    const { container: unresolvedContainer } = render(<DisputeRow dispute={unresolvedDispute} context="admin-tab" onChanged={vi.fn()} />)
+    expect(unresolvedContainer.textContent).toContain('Unresolved')
   })
 
   it('deletes after confirming, and calls onChanged', async () => {

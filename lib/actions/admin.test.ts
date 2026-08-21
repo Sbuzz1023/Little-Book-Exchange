@@ -57,6 +57,13 @@ describe('adminSetDisputeStatus', () => {
     expect(rpcMock).not.toHaveBeenCalled()
   })
 
+  it('closes a dispute as unresolved, stamping resolved_at and calling resolve_pickup', async () => {
+    const result = await adminSetDisputeStatus('dispute-1', 'unresolved')
+    expect(result).toEqual({ ok: true })
+    expect(updateMock).toHaveBeenCalledWith(expect.objectContaining({ status: 'unresolved', resolved_at: expect.any(String) }))
+    expect(rpcMock).toHaveBeenCalledWith('resolve_pickup', { p_conversation_id: 'convo-1' })
+  })
+
   it('returns an error when the dispute cannot be found', async () => {
     selectSingleResult = { data: null, error: { message: 'not found' } }
     const result = await adminSetDisputeStatus('missing', 'resolved')
@@ -94,6 +101,13 @@ describe('adminDeleteDispute', () => {
 
   it('deletes a resolved dispute and does NOT call resolve_pickup', async () => {
     selectSingleResult = { data: { conversation_id: 'convo-1', status: 'resolved' }, error: null }
+    const result = await adminDeleteDispute('dispute-1')
+    expect(result).toEqual({ ok: true })
+    expect(rpcMock).not.toHaveBeenCalled()
+  })
+
+  it('deletes an unresolved dispute and does NOT call resolve_pickup', async () => {
+    selectSingleResult = { data: { conversation_id: 'convo-1', status: 'unresolved' }, error: null }
     const result = await adminDeleteDispute('dispute-1')
     expect(result).toEqual({ ok: true })
     expect(rpcMock).not.toHaveBeenCalled()

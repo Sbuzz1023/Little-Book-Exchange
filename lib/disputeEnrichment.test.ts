@@ -41,6 +41,14 @@ describe('enrichDisputes', () => {
     expect(enriched.bookTitle).toBe('Unknown book')
   })
 
+  it('passes an unresolved status through unchanged', () => {
+    const disputes: RawDispute[] = [
+      { id: 'd5', conversation_id: 'convo-1', reporter_id: 'buyer-1', message: 'Closed without a fix', status: 'unresolved', created_at: '2026-08-01T00:00:00.000Z', resolved_at: '2026-08-02T00:00:00.000Z' },
+    ]
+    const [enriched] = enrichDisputes(disputes, conversations, listingTitles, userNames)
+    expect(enriched.status).toBe('unresolved')
+  })
+
   it('passes status, timestamps, and message through unchanged', () => {
     const disputes: RawDispute[] = [
       { id: 'd4', conversation_id: 'convo-1', reporter_id: 'buyer-1', message: 'Resolved amicably', status: 'resolved', created_at: '2026-08-01T00:00:00.000Z', resolved_at: '2026-08-02T00:00:00.000Z' },

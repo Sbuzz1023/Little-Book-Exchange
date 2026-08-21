@@ -21,7 +21,7 @@ export async function adminUpdateUserCredits(userId: string, credits: number): P
   return { ok: true }
 }
 
-export async function adminSetDisputeStatus(disputeId: string, status: 'open' | 'resolved'): Promise<{ ok: boolean; error?: string }> {
+export async function adminSetDisputeStatus(disputeId: string, status: 'open' | 'resolved' | 'unresolved'): Promise<{ ok: boolean; error?: string }> {
   const supabase = createClient()
   const admin = await requireAdmin(supabase)
   if (!admin.ok) return { ok: false, error: admin.error }
@@ -33,19 +33,22 @@ export async function adminSetDisputeStatus(disputeId: string, status: 'open' | 
     .single()
   if (fetchError || !dispute) return { ok: false, error: 'Dispute not found.' }
 
+  const closed = status === 'resolved' || status === 'unresolved'
   const { error } = await supabase
     .from('disputes')
-    .update({ status, resolved_at: status === 'resolved' ? new Date().toISOString() : null })
+    .update({ status, resolved_at: closed ? new Date().toISOString() : null })
     .eq('id', disputeId)
   if (error) return { ok: false, error: error.message }
 
-  // Only resolving can complete an exchange; reopening must never trigger
-  // completion. Reopening never calls resolve_pickup — it only re-blocks a
-  // *not-yet-completed* exchange (resolve_pickup checks live for any open
-  // dispute on its next call). If the exchange already completed when this
-  // dispute was resolved, reopening cannot undo that completion or reverse
-  // the credit transfer — it only clears the flag other UI reads.
-  if (status === 'resolved') {
+  // Both terminal outcomes — resolved (the problem was actually fixed) and
+  // unresolved (the admin is closing this out without fixing it) — mean the
+  // admin is done looking at this, so resolve_pickup() gets a chance to
+  // complete an otherwise-eligible exchange either way. Only an OPEN dispute
+  // blocks completion in the first place, so setting status back to 'open'
+  // (not exposed in the UI, kept here for flexibility) never calls it — an
+  // open dispute re-blocks automatically the next time resolve_pickup runs,
+  // since it checks live for any open dispute.
+  if (closed) {
     await supabase.rpc('resolve_pickup', { p_conversation_id: dispute.conversation_id })
   }
 

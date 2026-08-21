@@ -1,4 +1,4 @@
-export type DisputeStatus = 'open' | 'resolved'
+export type DisputeStatus = 'open' | 'resolved' | 'unresolved'
 
 export type RawDispute = {
   id: string
