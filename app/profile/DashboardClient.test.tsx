@@ -210,6 +210,28 @@ describe('DashboardClient — dual pickup confirmation', () => {
 
     await waitFor(() => expect(fileDispute).toHaveBeenCalled())
   })
+
+  it('places the Dispute button in the header (top-right) area, not the action row, once both parties can act', () => {
+    const { container } = render(<DashboardClient {...baseProps} exchanges={[confirmedExchange]} defaultTab="exchanges" />)
+    const header = container.querySelector('[data-testid="exchange-header-actions"]')
+    const actionRow = container.querySelector('[data-testid="exchange-action-row"]')
+    expect(header?.textContent).toContain('Dispute')
+    expect(actionRow?.textContent).not.toContain('Dispute')
+  })
+
+  it('places the Message button in the action row, not the header, once both parties can act', () => {
+    const { container } = render(<DashboardClient {...baseProps} exchanges={[confirmedExchange]} defaultTab="exchanges" />)
+    const header = container.querySelector('[data-testid="exchange-header-actions"]')
+    const actionRow = container.querySelector('[data-testid="exchange-action-row"]')
+    expect(actionRow?.textContent).toContain('Message')
+    expect(header?.textContent).not.toContain('Message')
+  })
+
+  it('still shows the Message button on a requested exchange, where Dispute does not apply yet', () => {
+    render(<DashboardClient {...baseProps} exchanges={[pendingExchange]} defaultTab="exchanges" />)
+    expect(screen.getByText('💬 Message')).toBeInTheDocument()
+    expect(screen.queryByText('🚩 Dispute')).not.toBeInTheDocument()
+  })
 })
 
 describe('DashboardClient — My Listings active/paused split', () => {

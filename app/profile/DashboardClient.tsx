@@ -452,6 +452,17 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
           const isUnreadDecisionOrPickup = unreadEntityIds.decisionOrPickup.includes(ex.id)
           const highlighted = isPendingSellerAction || isUnreadDecisionOrPickup
 
+          // Dual pickup confirmation state — computed once, used by both the header's
+          // Dispute slot and the action row below. Safe to call for any status: it
+          // returns 'not_yet' unless exchangeStatus is 'confirmed'.
+          const pickup = pickupState({
+            role,
+            exchangeStatus: status,
+            sellerPickedUpAt: ex.seller_picked_up_at ?? null,
+            buyerPickedUpAt: ex.buyer_picked_up_at ?? null,
+            hasOpenDispute: !!ex.hasOpenDispute,
+          })
+
           return (
             <div
               data-testid={highlighted ? 'exchange-row-highlighted' : undefined}
@@ -526,19 +537,29 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
                   )}
                 </div>
 
-                {/* Message button always visible */}
-                <button
-                  type="button"
-                  onClick={() => { setActiveTab('messages'); setSelectedConversationId(ex.id) }}
-                  className="font-extrabold text-[11px] text-white whitespace-nowrap shrink-0"
-                  style={{ background: '#0d9488', padding: '6px 12px', borderRadius: 999, boxShadow: '0 2px 0 #0f766e', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
-                >
-                  💬 Message
-                </button>
+                {/* Header-right slot: Dispute, quiet and available (not something we want to invite) —
+                    only shown while it's actually actionable (both sides confirmed, pickup pending). */}
+                <div data-testid="exchange-header-actions" className="shrink-0">
+                  {pickup.kind === 'can_confirm' && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDisputeModal({ conversationId: ex.id, title: ex.listings?.title ?? 'this book' })
+                        setDisputeMessage('')
+                        setDisputeError(null)
+                        setDisputeSubmitted(false)
+                      }}
+                      className="font-bold text-[10px] whitespace-nowrap hover:opacity-70"
+                      style={{ background: 'transparent', border: '1px solid #e5e7eb', color: '#9ca3af', padding: '4px 10px', borderRadius: 999, cursor: 'pointer', fontFamily: 'inherit' }}
+                    >
+                      🚩 Dispute
+                    </button>
+                  )}
+                </div>
               </div>
 
               {/* Action row below — status-driven */}
-              <div className="flex gap-2 mt-3 flex-wrap" style={{ paddingLeft: 58 }}>
+              <div data-testid="exchange-action-row" className="flex gap-2 mt-3 flex-wrap items-center" style={{ paddingLeft: 58 }}>
                 {/* Seller: confirm a purchase request */}
                 {role === 'seller' && status === 'requested' && (
                   <button
@@ -570,57 +591,29 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
                 )}
 
                 {/* Both roles: dual pickup confirmation, once status is confirmed */}
-                {status === 'confirmed' && (() => {
-                  const state = pickupState({
-                    role,
-                    exchangeStatus: status,
-                    sellerPickedUpAt: ex.seller_picked_up_at ?? null,
-                    buyerPickedUpAt: ex.buyer_picked_up_at ?? null,
-                    hasOpenDispute: !!ex.hasOpenDispute,
-                  })
+                {status === 'confirmed' && pickup.kind === 'disputed' && (
+                  <span className="font-extrabold text-[12px]"
+                    style={{ color: '#b45309', background: '#fffbeb', border: '1.5px solid #fcd34d', padding: '7px 18px', borderRadius: 999 }}>
+                    ⚠️ Dispute pending review
+                  </span>
+                )}
 
-                  if (state.kind === 'disputed') {
-                    return (
-                      <span className="font-extrabold text-[12px]"
-                        style={{ color: '#b45309', background: '#fffbeb', border: '1.5px solid #fcd34d', padding: '7px 18px', borderRadius: 999 }}>
-                        ⚠️ Dispute pending review
-                      </span>
-                    )
-                  }
+                {status === 'confirmed' && pickup.kind === 'waiting' && (
+                  <span className="font-extrabold text-[12px]"
+                    style={{ color: '#166534', background: '#f0fdf4', border: '1.5px solid #bbf7d0', padding: '7px 18px', borderRadius: 999 }}>
+                    ✅ You confirmed — waiting for {otherName} (auto-completes {formatDeadline(pickup.deadline)})
+                  </span>
+                )}
 
-                  if (state.kind === 'waiting') {
-                    return (
-                      <span className="font-extrabold text-[12px]"
-                        style={{ color: '#166534', background: '#f0fdf4', border: '1.5px solid #bbf7d0', padding: '7px 18px', borderRadius: 999 }}>
-                        ✅ You confirmed — waiting for {otherName} (auto-completes {formatDeadline(state.deadline)})
-                      </span>
-                    )
-                  }
-
-                  return (
-                    <>
-                      <form action={markPickedUp}>
-                        <input type="hidden" name="conversation_id" value={ex.id} />
-                        <button className="font-extrabold text-[12px] hover:opacity-80"
-                          style={{ background: '#fff7ed', border: '1.5px solid #fed7aa', color: '#f97316', padding: '7px 18px', borderRadius: 999, cursor: 'pointer', fontFamily: 'inherit' }}>
-                          {role === 'seller' ? '📦 Mark Picked Up' : '📚 I Got It!'}
-                        </button>
-                      </form>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setDisputeModal({ conversationId: ex.id, title: ex.listings?.title ?? 'this book' })
-                          setDisputeMessage('')
-                          setDisputeError(null)
-                          setDisputeSubmitted(false)
-                        }}
-                        className="font-extrabold text-[12px] hover:opacity-80"
-                        style={{ background: '#fff1f2', border: '1.5px solid #fca5a5', color: '#dc2626', padding: '7px 18px', borderRadius: 999, cursor: 'pointer', fontFamily: 'inherit' }}>
-                        🚩 Dispute
-                      </button>
-                    </>
-                  )
-                })()}
+                {status === 'confirmed' && pickup.kind === 'can_confirm' && (
+                  <form action={markPickedUp}>
+                    <input type="hidden" name="conversation_id" value={ex.id} />
+                    <button className="font-extrabold text-[12px] hover:opacity-80"
+                      style={{ background: '#fff7ed', border: '1.5px solid #fed7aa', color: '#f97316', padding: '7px 18px', borderRadius: 999, cursor: 'pointer', fontFamily: 'inherit' }}>
+                      {role === 'seller' ? '📦 Mark Picked Up' : '📚 I Got It!'}
+                    </button>
+                  </form>
+                )}
 
                 {/* Buyer: cancel before seller confirms */}
                 {role === 'buyer' && status === 'requested' && (
@@ -632,6 +625,16 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
                     </button>
                   </form>
                 )}
+
+                {/* Message — always available, every status, now living here instead of the header */}
+                <button
+                  type="button"
+                  onClick={() => { setActiveTab('messages'); setSelectedConversationId(ex.id) }}
+                  className="font-extrabold text-[12px] text-white whitespace-nowrap hover:opacity-90"
+                  style={{ background: '#0d9488', padding: '7px 18px', borderRadius: 999, boxShadow: '0 2px 0 #0f766e', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+                >
+                  💬 Message
+                </button>
 
               </div>
             </div>
