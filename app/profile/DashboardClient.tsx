@@ -12,6 +12,7 @@ import PhoneVerify from '@/components/PhoneVerify'
 import StateSelect from '@/components/StateSelect'
 import { createClient } from '@/lib/supabase/client'
 import { pickupState, formatDeadline } from '@/lib/pickupStatus'
+import { buildDirectionsUrl } from '@/lib/mapsLink'
 
 type Tab = 'listings' | 'exchanges' | 'tbr' | 'saved' | 'wallet' | 'account' | 'messages'
 
@@ -463,6 +464,17 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
             hasOpenDispute: !!ex.hasOpenDispute,
           })
 
+          // Buyer-only: a Directions link to the confirmed pickup address. Uses the
+          // listing's city/state — the confirmed address itself has no city/state of
+          // its own in the database — so this is null if there's no street address to
+          // build from (e.g. the seller only gave a pickup description).
+          const directionsUrl = buildDirectionsUrl({
+            address: ex.confirmed_address ?? '',
+            addressUnit: ex.confirmed_address_unit ?? '',
+            city: ex.listings?.city ?? '',
+            state: ex.listings?.state ?? '',
+          })
+
           return (
             <div
               data-testid={highlighted ? 'exchange-row-highlighted' : undefined}
@@ -520,8 +532,15 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
                       <p className="font-extrabold text-[12px]" style={{ color: '#166534' }}>📍 Ready for Pick Up!</p>
                       {location && <p className="font-semibold text-[11px] mt-0.5" style={{ color: '#166534' }}>📌 {location}</p>}
                       {(ex.confirmed_address || ex.confirmed_address_unit) && (
-                        <p className="font-semibold text-[11px]" style={{ color: '#166534' }}>
+                        <p className="font-semibold text-[11px] flex items-center gap-2 flex-wrap" style={{ color: '#166534' }}>
                           🏠 {[ex.confirmed_address, ex.confirmed_address_unit].filter(Boolean).join(' ')}
+                          {directionsUrl && (
+                            <a href={directionsUrl} target="_blank" rel="noopener noreferrer"
+                              className="font-extrabold hover:opacity-80"
+                              style={{ color: '#0d9488', textDecoration: 'underline', whiteSpace: 'nowrap' }}>
+                              🧭 Directions
+                            </a>
+                          )}
                         </p>
                       )}
                       {ex.confirmed_pickup && (

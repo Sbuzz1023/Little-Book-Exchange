@@ -232,6 +232,27 @@ describe('DashboardClient — dual pickup confirmation', () => {
     expect(screen.getByText('💬 Message')).toBeInTheDocument()
     expect(screen.queryByText('🚩 Dispute')).not.toBeInTheDocument()
   })
+
+  it("shows the buyer a Directions link to the confirmed address once the seller has confirmed", () => {
+    const asBuyer = {
+      ...confirmedExchange, id: 'convo-4', buyer_id: 'me', seller_id: 'them',
+      confirmed_address: '555 Oak Ave', confirmed_address_unit: 'Unit 3',
+      listings: { title: 'Dune', author: 'Frank Herbert', city: 'Oak Park', state: 'IL' },
+    }
+    render(<DashboardClient {...baseProps} exchanges={[asBuyer]} defaultTab="exchanges" />)
+    const link = screen.getByRole('link', { name: /Directions/ })
+    expect(link).toHaveAttribute('href', 'https://www.google.com/maps/dir/?api=1&destination=555%20Oak%20Ave%20Unit%203%2C%20Oak%20Park%2C%20IL')
+  })
+
+  it('omits the Directions link when the seller did not confirm a street address', () => {
+    const asBuyer = {
+      ...confirmedExchange, id: 'convo-5', buyer_id: 'me', seller_id: 'them',
+      confirmed_address: null, confirmed_address_unit: null,
+      listings: { title: 'Dune', author: 'Frank Herbert', city: 'Oak Park', state: 'IL' },
+    }
+    render(<DashboardClient {...baseProps} exchanges={[asBuyer]} defaultTab="exchanges" />)
+    expect(screen.queryByRole('link', { name: /Directions/ })).not.toBeInTheDocument()
+  })
 })
 
 describe('DashboardClient — My Listings active/paused split', () => {
