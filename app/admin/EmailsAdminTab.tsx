@@ -1,6 +1,6 @@
 // app/admin/EmailsAdminTab.tsx
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import EmailTemplatesEditor from './EmailTemplatesEditor'
 import EmailComposeTab from './EmailComposeTab'
 import EmailResendTool from './EmailResendTool'
@@ -10,17 +10,27 @@ type EmailUser = { id: string; username: string; email: string; city: string; st
 type SubTab = 'templates' | 'compose' | 'resend' | 'inbox'
 
 export default function EmailsAdminTab({
-  users, messagePrefillUserId, onPrefillConsumed, onInboxUnreadCountChange,
+  users, messagePrefillUserId, onPrefillConsumed, onInboxUnreadCountChange, inboxUnreadCount: inboxUnreadCountProp = 0,
 }: {
   users: EmailUser[]
   messagePrefillUserId?: string | null
   onPrefillConsumed?: () => void
   onInboxUnreadCountChange?: (count: number) => void
+  // The parent's own standalone count — populated as soon as the admin panel
+  // loads, well before Inbox is ever opened. Used for the pill badge until
+  // AdminInboxTab's own richer, live count takes over once it mounts.
+  inboxUnreadCount?: number
 }) {
   const [subTab, setSubTab] = useState<SubTab>('compose')
-  const [inboxUnreadCount, setInboxUnreadCount] = useState(0)
+  const [inboxUnreadCount, setInboxUnreadCount] = useState(inboxUnreadCountProp)
+  const hasOwnInboxCount = useRef(false)
+
+  useEffect(() => {
+    if (!hasOwnInboxCount.current) setInboxUnreadCount(inboxUnreadCountProp)
+  }, [inboxUnreadCountProp])
 
   function handleInboxUnreadCountChange(count: number) {
+    hasOwnInboxCount.current = true
     setInboxUnreadCount(count)
     onInboxUnreadCountChange?.(count)
   }

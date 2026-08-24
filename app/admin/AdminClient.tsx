@@ -905,6 +905,7 @@ export default function AdminClient() {
               messagePrefillUserId={messagePrefillUserId}
               onPrefillConsumed={() => setMessagePrefillUserId(null)}
               onInboxUnreadCountChange={handleInboxUnreadCountChange}
+              inboxUnreadCount={inboxUnreadCount}
             />
           )}
           {tab === 'disputes'  && (
