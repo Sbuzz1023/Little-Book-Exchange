@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { adminSetDisputeStatus, adminDeleteDispute } from './admin'
+import { adminSetDisputeStatus, adminDeleteDispute, markDisputesRead } from './admin'
 
 const requireAdminMock = vi.fn()
 vi.mock('./libraryLocations', () => ({
@@ -15,7 +15,8 @@ const selectEqMock = vi.fn(() => ({ single: singleMock }))
 const selectMock = vi.fn(() => ({ eq: selectEqMock }))
 
 const updateEqMock = vi.fn(() => Promise.resolve(updateResult))
-const updateMock = vi.fn(() => ({ eq: updateEqMock }))
+const updateInMock = vi.fn(() => Promise.resolve(updateResult))
+const updateMock = vi.fn(() => ({ eq: updateEqMock, in: updateInMock }))
 
 const deleteSelectMock = vi.fn(() => Promise.resolve(deleteResult))
 const deleteEqMock = vi.fn(() => ({ select: deleteSelectMock }))
@@ -50,10 +51,10 @@ describe('adminSetDisputeStatus', () => {
     expect(rpcMock).toHaveBeenCalledWith('resolve_pickup', { p_conversation_id: 'convo-1' })
   })
 
-  it('reopens a dispute, clearing resolved_at and NOT calling resolve_pickup', async () => {
+  it('reopens a dispute, clearing resolved_at and admin_read_at, and NOT calling resolve_pickup', async () => {
     const result = await adminSetDisputeStatus('dispute-1', 'open')
     expect(result).toEqual({ ok: true })
-    expect(updateMock).toHaveBeenCalledWith({ status: 'open', resolved_at: null })
+    expect(updateMock).toHaveBeenCalledWith({ status: 'open', resolved_at: null, admin_read_at: null })
     expect(rpcMock).not.toHaveBeenCalled()
   })
 
@@ -124,5 +125,39 @@ describe('adminDeleteDispute', () => {
     const result = await adminDeleteDispute('dispute-1')
     expect(result).toEqual({ ok: false, error: 'Delete was blocked — the admin delete policy may not be applied yet.' })
     expect(rpcMock).not.toHaveBeenCalled()
+  })
+})
+
+describe('markDisputesRead', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    requireAdminMock.mockResolvedValue({ ok: true, userId: 'admin-1' })
+    updateResult = { error: null }
+  })
+
+  it('rejects a non-admin caller', async () => {
+    requireAdminMock.mockResolvedValue({ ok: false, error: 'Not authorized.' })
+    const result = await markDisputesRead(['dispute-1'])
+    expect(result).toEqual({ ok: false, error: 'Not authorized.' })
+    expect(updateMock).not.toHaveBeenCalled()
+  })
+
+  it('does nothing and succeeds trivially when given an empty list', async () => {
+    const result = await markDisputesRead([])
+    expect(result).toEqual({ ok: true })
+    expect(updateMock).not.toHaveBeenCalled()
+  })
+
+  it('stamps admin_read_at for the given dispute ids', async () => {
+    const result = await markDisputesRead(['dispute-1', 'dispute-2'])
+    expect(result).toEqual({ ok: true })
+    expect(updateMock).toHaveBeenCalledWith({ admin_read_at: expect.any(String) })
+    expect(updateInMock).toHaveBeenCalledWith('id', ['dispute-1', 'dispute-2'])
+  })
+
+  it('returns an error when the update fails', async () => {
+    updateResult = { error: { message: 'db exploded' } }
+    const result = await markDisputesRead(['dispute-1'])
+    expect(result).toEqual({ ok: false, error: 'db exploded' })
   })
 })

@@ -1,7 +1,9 @@
 // app/admin/DisputesAdminTab.tsx
 'use client'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import DisputeRow from './DisputeRow'
+import { markDisputesRead } from '@/lib/actions/admin'
+import { isDisputeUnread } from '@/lib/adminUnread'
 import type { EnrichedDispute } from '@/lib/disputeEnrichment'
 
 type Filter = 'active' | 'history'
@@ -18,6 +20,21 @@ export default function DisputesAdminTab({
   onMessageReporter: (userId: string) => void
 }) {
   const [filter, setFilter] = useState<Filter>('active')
+  const alreadyMarked = useRef<Set<string>>(new Set())
+
+  // Dispute rows have no separate "click to view" — the full thing is always
+  // shown inline — so being rendered here IS the read event. Only fires for
+  // ids we haven't already sent, so a re-render with unchanged data is a
+  // no-op rather than an extra request.
+  useEffect(() => {
+    if (!disputesLoaded) return
+    const newlyUnread = disputes
+      .filter(d => isDisputeUnread(d.status, d.adminReadAt) && !alreadyMarked.current.has(d.id))
+      .map(d => d.id)
+    if (newlyUnread.length === 0) return
+    for (const id of newlyUnread) alreadyMarked.current.add(id)
+    markDisputesRead(newlyUnread).then(() => onChanged())
+  }, [disputes, disputesLoaded, onChanged])
 
   const shown = useMemo(() => {
     const sorted = [...disputes].sort((a, b) => b.createdAt.localeCompare(a.createdAt))

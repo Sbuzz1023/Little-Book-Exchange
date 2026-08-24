@@ -34,9 +34,16 @@ export async function adminSetDisputeStatus(disputeId: string, status: 'open' | 
   if (fetchError || !dispute) return { ok: false, error: 'Dispute not found.' }
 
   const closed = status === 'resolved' || status === 'unresolved'
+  const update: { status: string; resolved_at: string | null; admin_read_at?: null } =
+    { status, resolved_at: closed ? new Date().toISOString() : null }
+  // Reopening also clears admin_read_at — a dispute coming back to 'open'
+  // needs the admin's attention again, same as a brand-new one. Closing a
+  // dispute leaves admin_read_at untouched either way.
+  if (!closed) update.admin_read_at = null
+
   const { error } = await supabase
     .from('disputes')
-    .update({ status, resolved_at: closed ? new Date().toISOString() : null })
+    .update(update)
     .eq('id', disputeId)
   if (error) return { ok: false, error: error.message }
 
@@ -83,6 +90,25 @@ export async function adminDeleteDispute(disputeId: string): Promise<{ ok: boole
   if (dispute.status === 'open') {
     await supabase.rpc('resolve_pickup', { p_conversation_id: dispute.conversation_id })
   }
+
+  return { ok: true }
+}
+
+// Called as currently-unread open disputes are rendered in the admin
+// Disputes tab — there's no separate "click to view" for a dispute (the
+// full thing is always shown inline), so being displayed IS the read event.
+export async function markDisputesRead(disputeIds: string[]): Promise<{ ok: boolean; error?: string }> {
+  if (disputeIds.length === 0) return { ok: true }
+
+  const supabase = createClient()
+  const admin = await requireAdmin(supabase)
+  if (!admin.ok) return { ok: false, error: admin.error }
+
+  const { error } = await supabase
+    .from('disputes')
+    .update({ admin_read_at: new Date().toISOString() })
+    .in('id', disputeIds)
+  if (error) return { ok: false, error: error.message }
 
   return { ok: true }
 }

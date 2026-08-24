@@ -8,6 +8,7 @@ import EmailsAdminTab from './EmailsAdminTab'
 import DisputesAdminTab from './DisputesAdminTab'
 import DisputeRow from './DisputeRow'
 import { enrichDisputes, buildDisputeTally, type EnrichedDispute, type RawDispute, type ConversationParticipants } from '@/lib/disputeEnrichment'
+import { hasUnreadMessage, isDisputeUnread } from '@/lib/adminUnread'
 
 const WEEKLY_ACTIVITY = [
   { week:'May 5',  posts:4,  signups:2, trades:3 },
@@ -638,6 +639,8 @@ export default function AdminClient() {
   const [enrichedDisputes, setEnrichedDisputes] = useState<EnrichedDispute[]>([])
   const [disputesLoaded, setDisputesLoaded] = useState(false)
   const [disputesVersion, setDisputesVersion] = useState(0)
+  const [inboxUnreadCount, setInboxUnreadCount] = useState(0)
+  const hasInboxTabCount = useRef(false)
 
   useEffect(() => {
     const supabase = createClient()
@@ -675,6 +678,28 @@ export default function AdminClient() {
       .then(({ count }) => {
         if (count !== null && !hasTabCount.current) setPendingLocationReports(count)
       })
+  }, [])
+
+  // Badges the sidebar's "Email / Message" tab even before the admin ever
+  // opens Inbox — same standalone-count-then-defer-to-the-tab's-own-live-count
+  // pattern as pendingLocationReports/hasTabCount above. AdminInboxTab's own
+  // richer fetch (with names, full threads) takes over via
+  // handleInboxUnreadCountChange the moment it mounts.
+  useEffect(() => {
+    const supabase = createClient()
+    async function loadInboxCount() {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      const { data } = await supabase
+        .from('conversations')
+        .select('id, admin_last_read_at, messages(sender_id, created_at)')
+        .eq('type', 'admin')
+        .eq('repliable', true)
+      if (!data || hasInboxTabCount.current) return
+      const count = (data as any[]).filter(c => hasUnreadMessage(c.messages ?? [], user.id, c.admin_last_read_at)).length
+      if (!hasInboxTabCount.current) setInboxUnreadCount(count)
+    }
+    loadInboxCount()
   }, [])
 
   useEffect(() => {
@@ -773,6 +798,11 @@ export default function AdminClient() {
     setPendingLocationReports(count)
   }
 
+  function handleInboxUnreadCountChange(count: number) {
+    hasInboxTabCount.current = true
+    setInboxUnreadCount(count)
+  }
+
   function handleMessageReporter(userId: string) {
     setMessagePrefillUserId(userId)
     setTab('emails')
@@ -798,9 +828,13 @@ export default function AdminClient() {
 
   const disputeTally = useMemo(() => buildDisputeTally(enrichedDisputes), [enrichedDisputes])
 
+  const unreadDisputeCount = enrichedDisputes.filter(d => isDisputeUnread(d.status, d.adminReadAt)).length
+
   function badge(id: Tab) {
     if (id === 'locations') return pendingLocationReports
     if (id === 'reviews') return flaggedReviews
+    if (id === 'emails') return inboxUnreadCount
+    if (id === 'disputes') return unreadDisputeCount
     return 0
   }
 
@@ -870,6 +904,7 @@ export default function AdminClient() {
               users={users}
               messagePrefillUserId={messagePrefillUserId}
               onPrefillConsumed={() => setMessagePrefillUserId(null)}
+              onInboxUnreadCountChange={handleInboxUnreadCountChange}
             />
           )}
           {tab === 'disputes'  && (

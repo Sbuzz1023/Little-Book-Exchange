@@ -2,6 +2,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { hasUnreadMessage } from '@/lib/adminUnread'
 
 type InboxMessage = { id: string; body: string; sender_id: string; created_at: string }
 type InboxConversation = {
@@ -9,11 +10,12 @@ type InboxConversation = {
   user_id: string
   repliable: boolean
   created_at: string
+  adminLastReadAt: string | null
   userName: string
   messages: InboxMessage[]
 }
 
-export default function AdminInboxTab() {
+export default function AdminInboxTab({ onUnreadCountChange }: { onUnreadCountChange?: (count: number) => void }) {
   const [adminId, setAdminId] = useState<string | null>(null)
   const [conversations, setConversations] = useState<InboxConversation[]>([])
   const [loading, setLoading] = useState(true)
@@ -32,7 +34,7 @@ export default function AdminInboxTab() {
     setAdminId(user?.id ?? null)
 
     const { data: convos, error: convosError } = await supabase
-      .from('conversations').select('id, user_id, repliable, created_at')
+      .from('conversations').select('id, user_id, repliable, created_at, admin_last_read_at')
       .eq('type', 'admin')
       .order('created_at', { ascending: false })
       .limit(200)
@@ -63,6 +65,7 @@ export default function AdminInboxTab() {
 
     const withMessages = convos.map(c => ({
       ...c,
+      adminLastReadAt: (c as any).admin_last_read_at ?? null,
       userName: nameMap[c.user_id] ?? 'Unknown',
       messages: messagesByConvo[c.id] ?? [],
     }))
@@ -77,7 +80,26 @@ export default function AdminInboxTab() {
 
   useEffect(() => { load() }, [])
 
+  // Report the unread count upward (badges the sidebar tab + the Inbox pill)
+  // whenever the underlying data changes.
+  useEffect(() => {
+    if (!adminId) return
+    const count = conversations.filter(c => hasUnreadMessage(c.messages, adminId, c.adminLastReadAt)).length
+    onUnreadCountChange?.(count)
+  }, [conversations, adminId, onUnreadCountChange])
+
   const selected = conversations.find(c => c.id === selectedId) ?? null
+
+  // Per-item read: opening a specific conversation marks only that one read —
+  // others stay highlighted/counted until opened individually.
+  async function openConversation(c: InboxConversation) {
+    setSelectedId(c.id)
+    if (!adminId || !hasUnreadMessage(c.messages, adminId, c.adminLastReadAt)) return
+    const now = new Date().toISOString()
+    setConversations(prev => prev.map(x => x.id === c.id ? { ...x, adminLastReadAt: now } : x))
+    const supabase = createClient()
+    await supabase.from('conversations').update({ admin_last_read_at: now }).eq('id', c.id)
+  }
 
   async function send(e: React.FormEvent) {
     e.preventDefault()
@@ -118,10 +140,15 @@ export default function AdminInboxTab() {
         ) : (
           visibleConversations.map(c => {
             const last = c.messages[c.messages.length - 1]
+            const unread = !!adminId && hasUnreadMessage(c.messages, adminId, c.adminLastReadAt)
             return (
-              <button key={c.id} onClick={() => setSelectedId(c.id)}
-                className={`w-full text-left px-4 py-3 border-b border-[#f8fafc] ${selectedId === c.id ? 'bg-orange-50' : 'hover:bg-[#f8fafc]'}`}>
-                <p className="font-extrabold text-[13px] text-[#1e293b]">{c.userName}</p>
+              <button key={c.id} data-testid={`inbox-convo-${c.id}`} data-unread={unread} onClick={() => openConversation(c)}
+                className={`w-full text-left px-4 py-3 border-b border-[#f8fafc] relative ${selectedId === c.id ? 'bg-orange-50' : 'hover:bg-[#f8fafc]'}`}
+                style={unread ? { boxShadow: 'inset 3px 0 0 #f97316', background: '#fff7ed' } : undefined}>
+                <p className="font-extrabold text-[13px] text-[#1e293b] flex items-center gap-1.5">
+                  {unread && <span aria-hidden style={{ width: 7, height: 7, borderRadius: 999, background: '#f97316', display: 'inline-block' }} />}
+                  {c.userName}
+                </p>
                 <p className="text-[11px] font-bold text-[#94a3b8]">{c.repliable ? 'Conversation' : 'Announcement'}</p>
                 {last && <p className="text-[12px] font-semibold text-[#94a3b8] truncate mt-0.5">{last.body}</p>}
               </button>

@@ -58,6 +58,16 @@ describe('enrichDisputes', () => {
     expect(enriched.resolvedAt).toBe('2026-08-02T00:00:00.000Z')
     expect(enriched.message).toBe('Resolved amicably')
   })
+
+  it('passes adminReadAt through unchanged, defaulting to null when absent', () => {
+    const disputes: RawDispute[] = [
+      { id: 'd6', conversation_id: 'convo-1', reporter_id: 'buyer-1', message: 'a', status: 'open', created_at: '2026-08-01T00:00:00.000Z', resolved_at: null, admin_read_at: '2026-08-05T00:00:00.000Z' },
+      { id: 'd7', conversation_id: 'convo-1', reporter_id: 'buyer-1', message: 'b', status: 'open', created_at: '2026-08-01T00:00:00.000Z', resolved_at: null, admin_read_at: null },
+    ]
+    const [read, unread] = enrichDisputes(disputes, conversations, listingTitles, userNames)
+    expect(read.adminReadAt).toBe('2026-08-05T00:00:00.000Z')
+    expect(unread.adminReadAt).toBeNull()
+  })
 })
 
 describe('buildDisputeTally', () => {

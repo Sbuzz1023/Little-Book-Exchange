@@ -8,6 +8,7 @@ export type RawDispute = {
   status: DisputeStatus
   created_at: string
   resolved_at: string | null
+  admin_read_at?: string | null
 }
 
 export type ConversationParticipants = {
@@ -24,6 +25,7 @@ export type EnrichedDispute = {
   status: DisputeStatus
   createdAt: string
   resolvedAt: string | null
+  adminReadAt: string | null
   reporterId: string
   reporterName: string
   otherPartyId: string | null
@@ -53,6 +55,7 @@ export function enrichDisputes(
       status: d.status,
       createdAt: d.created_at,
       resolvedAt: d.resolved_at,
+      adminReadAt: d.admin_read_at ?? null,
       reporterId: d.reporter_id,
       reporterName: userNames[d.reporter_id] ?? 'Unknown',
       otherPartyId,

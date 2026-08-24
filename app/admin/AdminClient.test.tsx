@@ -26,7 +26,7 @@ const users = [
 ]
 
 const disputes: EnrichedDispute[] = [
-  { id: 'd1', conversationId: 'c1', message: 'Never showed up', status: 'open', createdAt: '2026-08-01T00:00:00.000Z', resolvedAt: null, reporterId: 'u1', reporterName: 'Alex', otherPartyId: 'u2', otherPartyName: 'Sam', bookTitle: 'Dune' },
+  { id: 'd1', conversationId: 'c1', message: 'Never showed up', status: 'open', createdAt: '2026-08-01T00:00:00.000Z', resolvedAt: null, adminReadAt: null, reporterId: 'u1', reporterName: 'Alex', otherPartyId: 'u2', otherPartyName: 'Sam', bookTitle: 'Dune' },
 ]
 
 const disputeTally = { u1: { filed: 1, against: 0 }, u2: { filed: 0, against: 1 } }

@@ -1743,3 +1743,29 @@ create policy "Admins can delete disputes" on disputes
 -- status = 'open' — no change needed there.
 alter table disputes drop constraint if exists disputes_status_check;
 alter table disputes add constraint disputes_status_check check (status in ('open', 'resolved', 'unresolved'));
+
+-- ── Migration: admin unread badges for Inbox and Disputes ───────────────────
+-- Run this block in Supabase SQL Editor:
+
+-- Two new nullable timestamps power the admin sidebar's unread-count badges.
+-- Both default to null ("never read"), so every existing row starts unread —
+-- harmless: an already-resolved dispute is never counted regardless (see
+-- below), and an already-stale support conversation just needs one admin
+-- visit to catch up, same as any new one.
+
+-- conversations.admin_last_read_at: per-conversation, not per-admin — only
+-- meaningful for type='admin' rows. Bumped to now() when that specific
+-- conversation is opened in the admin Inbox. A conversation counts as
+-- unread when it has a message from someone other than the admin newer
+-- than this timestamp (or this is null and any such message exists).
+alter table conversations add column if not exists admin_last_read_at timestamptz;
+
+-- disputes.admin_read_at: dispute rows have no separate "click to view" (the
+-- full dispute is always shown inline in the admin panel), so being
+-- rendered in the Active list IS the read event — stamped the moment an
+-- open, unread dispute is displayed there. A dispute counts as unread only
+-- while status = 'open' and this is still null; resolving/closing it either
+-- way means it's archived and never needs attention again regardless of
+-- read state. Reopening a dispute (adminSetDisputeStatus back to 'open')
+-- clears this back to null, so it correctly re-appears as unread.
+alter table disputes add column if not exists admin_read_at timestamptz;

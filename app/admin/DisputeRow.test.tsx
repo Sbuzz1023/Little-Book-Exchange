@@ -11,7 +11,7 @@ vi.mock('@/lib/actions/admin', () => ({
 
 const openDispute: EnrichedDispute = {
   id: 'd1', conversationId: 'c1', message: 'Book never showed up', status: 'open',
-  createdAt: '2026-08-01T00:00:00.000Z', resolvedAt: null,
+  createdAt: '2026-08-01T00:00:00.000Z', resolvedAt: null, adminReadAt: null,
   reporterId: 'u1', reporterName: 'Alex', otherPartyId: 'u2', otherPartyName: 'Sam', bookTitle: 'Dune',
 }
 const resolvedDispute: EnrichedDispute = { ...openDispute, id: 'd2', status: 'resolved', resolvedAt: '2026-08-02T00:00:00.000Z' }
