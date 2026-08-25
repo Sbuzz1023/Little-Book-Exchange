@@ -145,7 +145,7 @@ const TABS = [
   { id: 'listings' as Tab,   icon: '📋', label: 'My Listings',  desc: 'Books you posted',   color: '#f97316', bg: '#fff7ed', border: '#fed7aa', shadow: '#fdba74' },
   { id: 'exchanges' as Tab,  icon: '📦', label: 'Exchanges',    desc: 'Pending handoffs',   color: '#0d9488', bg: '#f0fdfa', border: '#99f6e4', shadow: '#6ee7b7' },
   { id: 'tbr' as Tab,        icon: '📚', label: 'To Be Read',   desc: 'Your wishlist',      color: '#7c3aed', bg: '#f5f3ff', border: '#ddd6fe', shadow: '#c4b5fd' },
-  { id: 'saved' as Tab,      icon: '❤️',  label: 'Saved Books',  desc: 'Books you hearted',  color: '#e11d48', bg: '#fff1f2', border: '#fecdd3', shadow: '#fda4af' },
+  { id: 'saved' as Tab,      icon: '❤️',  label: 'Saved Listings',  desc: 'Listings you hearted',  color: '#e11d48', bg: '#fff1f2', border: '#fecdd3', shadow: '#fda4af' },
   { id: 'wallet' as Tab,     icon: '💳', label: 'Wallet',       desc: 'Credits & history',  color: '#059669', bg: '#ecfdf5', border: '#a7f3d0', shadow: '#6ee7b7' },
   { id: 'account' as Tab,    icon: '👤', label: 'Profile',      desc: 'Your profile',       color: '#2563eb', bg: '#eff6ff', border: '#bfdbfe', shadow: '#93c5fd' },
   { id: 'messages' as Tab,   icon: '💬', label: 'Messages',     desc: 'Chat with neighbors', color: '#0ea5e9', bg: '#f0f9ff', border: '#bae6fd', shadow: '#7dd3fc' },
@@ -962,12 +962,12 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
         </div>
       )}
 
-      {/* ── SAVED BOOKS ── */}
+      {/* ── SAVED LISTINGS ── */}
       {activeTab === 'saved' && (
         <div style={cardStyle}>
           {savedListings.length === 0 ? (
             <div className="text-center py-8 font-bold text-[14px]" style={{ color: '#aaa' }}>
-              No saved books yet.{' '}
+              No saved listings yet.{' '}
               <Link href="/listings" className="font-extrabold hover:underline" style={{ color: '#e11d48' }}>Browse listings</Link>
               {' '}and tap the ♡ to save!
             </div>
