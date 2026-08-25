@@ -11,17 +11,7 @@ import { enrichDisputes, buildDisputeTally, type EnrichedDispute, type RawDisput
 import { hasUnreadMessage, isDisputeUnread } from '@/lib/adminUnread'
 import { computeUserBookStats } from '@/lib/userBookStats'
 import { normalizeCity } from '@/lib/normalizeCity'
-
-const WEEKLY_ACTIVITY = [
-  { week:'May 5',  posts:4,  signups:2, trades:3 },
-  { week:'May 12', posts:7,  signups:3, trades:5 },
-  { week:'May 19', posts:6,  signups:1, trades:4 },
-  { week:'May 26', posts:9,  signups:4, trades:7 },
-  { week:'Jun 2',  posts:11, signups:3, trades:8 },
-  { week:'Jun 9',  posts:8,  signups:5, trades:6 },
-  { week:'Jun 16', posts:14, signups:6, trades:10 },
-  { week:'Jun 23', posts:12, signups:4, trades:9 },
-]
+import { bucketActivity, type ActivityPeriod, type ActivityBucket } from '@/lib/activityBuckets'
 
 const RECENT_ACTIVITY = [
   { id:1, type:'signup',  text:'Raj P. joined',                          time:'2h ago' },
@@ -66,7 +56,7 @@ type Review = {
 
 // ─── Simple SVG bar chart ────────────────────────────────────────────────────
 
-function ActivityChart({ data }: { data: typeof WEEKLY_ACTIVITY }) {
+function ActivityChart({ data }: { data: ActivityBucket[] }) {
   const max = Math.max(...data.flatMap(d => [d.posts, d.signups, d.trades])) || 1
   const W = 560, H = 140, pad = 32
   const step = (W - pad * 2) / (data.length - 1)
@@ -87,11 +77,11 @@ function ActivityChart({ data }: { data: typeof WEEKLY_ACTIVITY }) {
           const sh = (d.signups / max) * H
           const th = (d.trades  / max) * H
           return (
-            <g key={d.week}>
+            <g key={`${d.label}-${i}`}>
               <rect x={x - bw * 1.5 - 1} y={H - ph} width={bw} height={ph} fill="#f97316" rx="2" opacity="0.9" />
               <rect x={x - bw * 0.5}      y={H - sh} width={bw} height={sh} fill="#0d9488" rx="2" opacity="0.9" />
               <rect x={x + bw * 0.5 + 1}  y={H - th} width={bw} height={th} fill="#8b5cf6" rx="2" opacity="0.9" />
-              <text x={x} y={H + 16} textAnchor="middle" fontSize="9" fill="#94a3b8">{d.week}</text>
+              <text x={x} y={H + 16} textAnchor="middle" fontSize="9" fill="#94a3b8">{d.label}</text>
             </g>
           )
         })}
@@ -194,9 +184,35 @@ function UserLocationsChart({ users }: { users: User[] }) {
   )
 }
 
+// ─── Activity card (real data, with a daily/weekly/monthly/yearly toggle) ────
+
+const ACTIVITY_PERIODS: ActivityPeriod[] = ['daily', 'weekly', 'monthly', 'yearly']
+
+function ActivityCard({ rawActivity }: { rawActivity: { posts: string[]; signups: string[]; trades: string[] } }) {
+  const [period, setPeriod] = useState<ActivityPeriod>('weekly')
+  const data = useMemo(() => bucketActivity(period, rawActivity), [period, rawActivity])
+
+  return (
+    <div className="bg-white rounded-2xl p-5 border border-[#f1f5f9] shadow-sm">
+      <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
+        <h3 className="font-black text-[15px] text-[#1e293b]">Activity</h3>
+        <div className="flex gap-1.5">
+          {ACTIVITY_PERIODS.map(p => (
+            <button key={p} onClick={() => setPeriod(p)}
+              className={`px-3 py-1 rounded-full text-[11px] font-extrabold border-2 capitalize transition-colors ${period === p ? 'bg-bk-orange border-bk-orange text-white' : 'bg-white border-[#e2e8f0] text-[#64748b] hover:border-bk-orange'}`}>
+              {p}
+            </button>
+          ))}
+        </div>
+      </div>
+      <ActivityChart data={data} />
+    </div>
+  )
+}
+
 // ─── Dashboard tab ───────────────────────────────────────────────────────────
 
-function Dashboard({ users, pendingLocationReports, reviews, activeListingsCount }: { users: User[]; pendingLocationReports: number; reviews: Review[]; activeListingsCount: number }) {
+function Dashboard({ users, pendingLocationReports, reviews, activeListingsCount, rawActivity }: { users: User[]; pendingLocationReports: number; reviews: Review[]; activeListingsCount: number; rawActivity: { posts: string[]; signups: string[]; trades: string[] } }) {
   const totalCredits = users.reduce((s, u) => s + u.credits, 0)
   const totalTrades  = users.reduce((s, u) => s + u.booksSold, 0)
   const pendingReports = pendingLocationReports
@@ -216,10 +232,7 @@ function Dashboard({ users, pendingLocationReports, reviews, activeListingsCount
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl p-5 border border-[#f1f5f9] shadow-sm">
-        <h3 className="font-black text-[15px] text-[#1e293b] mb-4">Weekly Activity</h3>
-        <ActivityChart data={WEEKLY_ACTIVITY} />
-      </div>
+      <ActivityCard rawActivity={rawActivity} />
 
       <UserLocationsChart users={users} />
 
@@ -685,22 +698,34 @@ export default function AdminClient() {
   // a different question from any one user's lifetime posted count, so this
   // isn't derived from userBookStats above.
   const [activeListingsCount, setActiveListingsCount] = useState(0)
+  // Raw timestamps for the Activity chart — bucketed client-side by
+  // ActivityCard so switching daily/weekly/monthly/yearly doesn't need a
+  // fresh fetch, just a different grouping of the same data.
+  const [listingTimestamps, setListingTimestamps] = useState<string[]>([])
+  const [tradeTimestamps, setTradeTimestamps] = useState<string[]>([])
 
   useEffect(() => {
     const supabase = createClient()
     Promise.all([
-      supabase.from('listings').select('user_id, status'),
-      supabase.from('conversations').select('seller_id, buyer_id, exchange_status'),
+      supabase.from('listings').select('user_id, status, created_at'),
+      supabase.from('conversations').select('seller_id, buyer_id, exchange_status, completed_at'),
     ]).then(([{ data: listings }, { data: conversations }]) => {
       if (!listings && !conversations) return
       setUserBookStats(computeUserBookStats(listings ?? [], (conversations ?? []) as any))
       setActiveListingsCount((listings ?? []).filter(l => l.status === 'active').length)
+      setListingTimestamps((listings ?? []).map(l => l.created_at).filter((t): t is string => !!t))
+      setTradeTimestamps((conversations ?? []).map(c => c.completed_at).filter((t): t is string => !!t))
     })
   }, [])
 
   const usersWithStats = useMemo(
     () => users.map(u => userBookStats[u.id] ? { ...u, ...userBookStats[u.id] } : u),
     [users, userBookStats]
+  )
+
+  const rawActivity = useMemo(
+    () => ({ posts: listingTimestamps, signups: users.map(u => u.joined).filter(Boolean), trades: tradeTimestamps }),
+    [listingTimestamps, users, tradeTimestamps]
   )
 
   useEffect(() => {
@@ -919,7 +944,7 @@ export default function AdminClient() {
       {/* Main content */}
       <div className="flex-1 bg-[#f8fafc] overflow-auto">
         <div className="max-w-[1100px] mx-auto px-4 md:px-6 py-6 pb-24 md:pb-6">
-          {tab === 'dashboard' && <Dashboard users={usersWithStats} pendingLocationReports={pendingLocationReports} reviews={reviews} activeListingsCount={activeListingsCount} />}
+          {tab === 'dashboard' && <Dashboard users={usersWithStats} pendingLocationReports={pendingLocationReports} reviews={reviews} activeListingsCount={activeListingsCount} rawActivity={rawActivity} />}
           {tab === 'users'     && (
             <UsersTab
               users={usersWithStats.map(u => ({ ...u, reviews: reviewCountBySeller[u.id] ?? 0 }))}
