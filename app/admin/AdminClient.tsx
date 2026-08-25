@@ -192,9 +192,8 @@ function UserLocationsChart({ users }: { users: User[] }) {
 
 // ─── Dashboard tab ───────────────────────────────────────────────────────────
 
-function Dashboard({ users, pendingLocationReports, reviews }: { users: User[]; pendingLocationReports: number; reviews: Review[] }) {
+function Dashboard({ users, pendingLocationReports, reviews, activeListingsCount }: { users: User[]; pendingLocationReports: number; reviews: Review[]; activeListingsCount: number }) {
   const totalCredits = users.reduce((s, u) => s + u.credits, 0)
-  const totalBooks   = users.reduce((s, u) => s + u.booksPosted, 0)
   const totalTrades  = users.reduce((s, u) => s + u.booksSold, 0)
   const pendingReports = pendingLocationReports
   const flaggedReviews = reviews.filter(r => r.flagged).length
@@ -207,7 +206,7 @@ function Dashboard({ users, pendingLocationReports, reviews }: { users: User[]; 
         <h2 className="font-display text-[22px] text-[#1e293b] mb-4">Overview</h2>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard icon="👥" label="Total Users"         value={users.length}   sub={`${users.filter(u=>u.status==='active').length} active`}      color="#0d9488" />
-          <StatCard icon="📚" label="Books Posted"        value={totalBooks}      sub={`${totalTrades} traded`}                                       color="#f97316" />
+          <StatCard icon="📚" label="Active Listings"     value={activeListingsCount} sub={`${totalTrades} traded`}                                   color="#f97316" />
           <StatCard icon="🪙" label="Credits in Circ."   value={totalCredits}    sub="across all users"                                              color="#8b5cf6" />
           <StatCard icon="⚠️" label="Needs Attention"    value={pendingReports + flaggedReviews} sub={`${pendingReports} reports · ${flaggedReviews} reviews`} color="#ef4444" />
         </div>
@@ -677,15 +676,20 @@ export default function AdminClient() {
   // silently dropped. usersWithStats below merges the two safely regardless
   // of which resolves first.
   const [userBookStats, setUserBookStats] = useState<Record<string, ReturnType<typeof computeUserBookStats>[string]>>({})
+  // The Overview stat card's own number — "currently available to trade" is
+  // a different question from any one user's lifetime posted count, so this
+  // isn't derived from userBookStats above.
+  const [activeListingsCount, setActiveListingsCount] = useState(0)
 
   useEffect(() => {
     const supabase = createClient()
     Promise.all([
-      supabase.from('listings').select('user_id'),
+      supabase.from('listings').select('user_id, status'),
       supabase.from('conversations').select('seller_id, buyer_id, exchange_status'),
     ]).then(([{ data: listings }, { data: conversations }]) => {
       if (!listings && !conversations) return
       setUserBookStats(computeUserBookStats(listings ?? [], (conversations ?? []) as any))
+      setActiveListingsCount((listings ?? []).filter(l => l.status === 'active').length)
     })
   }, [])
 
@@ -910,7 +914,7 @@ export default function AdminClient() {
       {/* Main content */}
       <div className="flex-1 bg-[#f8fafc] overflow-auto">
         <div className="max-w-[1100px] mx-auto px-4 md:px-6 py-6 pb-24 md:pb-6">
-          {tab === 'dashboard' && <Dashboard users={usersWithStats} pendingLocationReports={pendingLocationReports} reviews={reviews} />}
+          {tab === 'dashboard' && <Dashboard users={usersWithStats} pendingLocationReports={pendingLocationReports} reviews={reviews} activeListingsCount={activeListingsCount} />}
           {tab === 'users'     && (
             <UsersTab
               users={usersWithStats.map(u => ({ ...u, reviews: reviewCountBySeller[u.id] ?? 0 }))}
