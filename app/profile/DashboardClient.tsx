@@ -214,10 +214,16 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
       const supabase = createClient()
       await supabase.from('notifications').update({ read: true })
         .eq('user_id', profile.id).in('type', ['purchase_decision', 'pickup'])
+      // Same reasoning as MessagesTab's selectConversation: the tab badges
+      // (unreadCounts/unreadEntityIds) are server-rendered props from the
+      // last page load, not live state — without this they'd stay stuck
+      // showing unread until an unrelated navigation reloaded the page.
+      router.refresh()
     } else if (tabId === 'tbr' && unreadEntityIds.tbrMatch.length > 0) {
       const supabase = createClient()
       await supabase.from('notifications').update({ read: true })
         .eq('user_id', profile.id).eq('type', 'tbr_match')
+      router.refresh()
     }
   }
 

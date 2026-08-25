@@ -131,6 +131,30 @@ describe('DashboardClient — notification badges and highlighting', () => {
     expect(createClient).not.toHaveBeenCalled()
   })
 
+  it('refreshes the page after marking Exchanges notifications read, so the badge actually clears', async () => {
+    const update = vi.fn(() => ({ eq: vi.fn().mockReturnThis(), in: vi.fn().mockReturnThis() }))
+    vi.mocked(createClient).mockReturnValue({ from: vi.fn(() => ({ update })) } as any)
+
+    render(<DashboardClient {...baseProps} exchanges={[pendingExchange]} unreadEntityIds={{ ...baseProps.unreadEntityIds, decisionOrPickup: ['convo-2'] }} defaultTab="listings" />)
+    fireEvent.click(screen.getByText('Exchanges').closest('button')!)
+    await waitFor(() => expect(refreshMock).toHaveBeenCalled())
+  })
+
+  it('refreshes the page after marking TBR notifications read, so the badge actually clears', async () => {
+    const update = vi.fn(() => ({ eq: vi.fn().mockReturnThis(), in: vi.fn().mockReturnThis() }))
+    vi.mocked(createClient).mockReturnValue({ from: vi.fn(() => ({ update })) } as any)
+
+    render(<DashboardClient {...baseProps} exchanges={[]} defaultTab="listings" />)
+    fireEvent.click(screen.getByText('To Be Read').closest('button')!)
+    await waitFor(() => expect(refreshMock).toHaveBeenCalled())
+  })
+
+  it('does not refresh when opening a tab with nothing unread to mark', () => {
+    render(<DashboardClient {...baseProps} exchanges={[pendingExchange]} unreadEntityIds={{ ...baseProps.unreadEntityIds, decisionOrPickup: [] }} defaultTab="listings" />)
+    fireEvent.click(screen.getByText('Exchanges').closest('button')!)
+    expect(refreshMock).not.toHaveBeenCalled()
+  })
+
   it('excludes a declined exchange from the active Sold/Bought lists, moving it to History instead', () => {
     const declined = { ...pendingExchange, exchange_status: 'declined' as const }
     const { container } = render(<DashboardClient {...baseProps} exchanges={[declined]} defaultTab="exchanges" />)
