@@ -11,13 +11,13 @@ export async function addTbrEntry(formData: FormData): Promise<void> {
   const city = ((formData.get('city') as string) || '').trim()
   const rawState = ((formData.get('state') as string) || '').trim()
   const state = isValidStateCode(rawState) ? rawState : ''
-  const redirectTo = ((formData.get('redirect_to') as string) || '').trim() || '/profile'
+  const redirectTo = ((formData.get('redirect_to') as string) || '').trim() || '/profile?tab=tbr'
   const olWorkKey = ((formData.get('ol_work_key') as string) || '').trim() || null
   const rawCoverUrl = ((formData.get('cover_url') as string) || '').trim()
   const coverUrl = isValidCoverUrl(rawCoverUrl) ? rawCoverUrl : null
 
   if (!title && !author) {
-    redirect('/profile?tbr_error=' + encodeURIComponent('Enter a title or an author.'))
+    redirect('/profile?tab=tbr&tbr_error=' + encodeURIComponent('Enter a title or an author.'))
   }
 
   const supabase = createClient()
@@ -50,5 +50,5 @@ export async function removeTbrEntry(formData: FormData): Promise<void> {
     .eq('id', id)
     .eq('user_id', user.id)
 
-  redirect('/profile')
+  redirect('/profile?tab=tbr')
 }

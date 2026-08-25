@@ -213,7 +213,7 @@ export async function cancelPurchase(formData: FormData) {
     .eq('buyer_id', user.id)
     .in('exchange_status', ['requested', 'none'])
 
-  redirect('/profile')
+  redirect('/profile?tab=exchanges')
 }
 
 export async function confirmExchange(formData: FormData) {
@@ -288,7 +288,7 @@ export async function confirmExchange(formData: FormData) {
     })
   }
 
-  redirect('/profile')
+  redirect('/profile?tab=exchanges')
 }
 
 export async function denyPurchase(formData: FormData) {
@@ -338,7 +338,7 @@ export async function denyPurchase(formData: FormData) {
     .eq('entity_id', conversationId)
     .eq('type', 'purchase_request')
 
-  redirect('/profile')
+  redirect('/profile?tab=exchanges')
 }
 
 export async function startSupportConversation(): Promise<{ ok: boolean; conversationId?: string; error?: string }> {

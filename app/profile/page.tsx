@@ -11,6 +11,7 @@ import { addTbrEntry, removeTbrEntry } from '@/lib/actions/tbrEntries'
 import { tbrMatchPattern, buildTbrMatchStrategy } from '@/lib/tbrMatch'
 import { unreadCounts as computeUnreadCounts, unreadEntityIds as computeUnreadEntityIds, type NotificationRow } from '@/lib/notifications'
 import { resendEmailConfirmation, sendPhoneOtp, verifyPhoneOtp } from '@/lib/actions/verification'
+import { resolveDefaultTab } from '@/lib/dashboardTab'
 
 export default async function ProfilePage({
   searchParams,
@@ -274,7 +275,7 @@ export default async function ProfilePage({
       addTbrEntry={addTbrEntry}
       removeTbrEntry={removeTbrEntry}
       success={!!searchParams.success}
-      defaultTab={searchParams.tab === 'messages' ? 'messages' : searchParams.tab === 'tbr' ? 'tbr' : searchParams.tab === 'account' ? 'account' : (searchParams.demo_pending ? 'exchanges' : 'listings')}
+      defaultTab={resolveDefaultTab(searchParams.tab, searchParams.demo_pending)}
       queryError={queryError}
       tbrError={searchParams.tbr_error ?? null}
       error={searchParams.error ? decodeURIComponent(searchParams.error) : null}

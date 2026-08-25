@@ -45,7 +45,7 @@ export async function removeSavedListing(formData: FormData): Promise<void> {
     .eq('user_id', user.id)
     .eq('listing_id', listingId)
 
-  redirect('/profile')
+  redirect('/profile?tab=saved')
 }
 
 // For a saved listing that's sold — copies its title/author/city into a new
@@ -65,7 +65,7 @@ export async function moveSavedListingToTbr(formData: FormData): Promise<void> {
     .select('title, author, city')
     .eq('id', listingId)
     .single()
-  if (!listing) redirect('/profile')
+  if (!listing) redirect('/profile?tab=saved')
 
   const { error: insertError } = await supabase.from('tbr_entries').insert({
     user_id: user.id,
@@ -74,7 +74,7 @@ export async function moveSavedListingToTbr(formData: FormData): Promise<void> {
     city: listing.city || '',
     state: '',
   })
-  if (insertError) redirect('/profile')
+  if (insertError) redirect('/profile?tab=saved')
 
   await supabase
     .from('saved_listings')
@@ -82,5 +82,5 @@ export async function moveSavedListingToTbr(formData: FormData): Promise<void> {
     .eq('user_id', user.id)
     .eq('listing_id', listingId)
 
-  redirect('/profile')
+  redirect('/profile?tab=saved')
 }
