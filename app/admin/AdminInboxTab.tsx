@@ -91,14 +91,26 @@ export default function AdminInboxTab({ onUnreadCountChange }: { onUnreadCountCh
   const selected = conversations.find(c => c.id === selectedId) ?? null
 
   // Per-item read: opening a specific conversation marks only that one read —
-  // others stay highlighted/counted until opened individually.
+  // others stay highlighted/counted until opened individually. Only updates
+  // local state once the write is actually confirmed — an RLS-blocked update
+  // returns success with zero rows and no error, so checking the returned
+  // row is the only way to catch it (the highlight/badge would otherwise
+  // silently and permanently drift from what's actually in the database).
   async function openConversation(c: InboxConversation) {
     setSelectedId(c.id)
     if (!adminId || !hasUnreadMessage(c.messages, adminId, c.adminLastReadAt)) return
     const now = new Date().toISOString()
-    setConversations(prev => prev.map(x => x.id === c.id ? { ...x, adminLastReadAt: now } : x))
     const supabase = createClient()
-    await supabase.from('conversations').update({ admin_last_read_at: now }).eq('id', c.id)
+    const { data, error: updateError } = await supabase
+      .from('conversations')
+      .update({ admin_last_read_at: now })
+      .eq('id', c.id)
+      .select('id')
+    if (updateError || !data || data.length === 0) {
+      setError('Could not mark this conversation as read. Please refresh and try again.')
+      return
+    }
+    setConversations(prev => prev.map(x => x.id === c.id ? { ...x, adminLastReadAt: now } : x))
   }
 
   async function send(e: React.FormEvent) {

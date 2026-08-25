@@ -1769,3 +1769,21 @@ alter table conversations add column if not exists admin_last_read_at timestampt
 -- read state. Reopening a dispute (adminSetDisputeStatus back to 'open')
 -- clears this back to null, so it correctly re-appears as unread.
 alter table disputes add column if not exists admin_read_at timestamptz;
+
+-- ── Migration: fix — admins couldn't actually mark an Inbox conversation read ─
+-- Run this block in Supabase SQL Editor:
+
+-- disputes.admin_read_at is fine — "Admins can resolve disputes" is already a
+-- blanket admin UPDATE policy with no column restriction. But conversations
+-- never had an equivalent for type='admin' rows: "Participants can update
+-- conversations" only matches auth.uid() = buyer_id/seller_id, and both are
+-- always null on an admin conversation (see conversations_type_shape) — so
+-- no one, not even an admin, could update one. AdminInboxTab's mark-as-read
+-- write was being silently blocked (Postgres RLS: 0 rows updated, no error),
+-- so every conversation looked unread again on the next page load no matter
+-- how many times it was opened. Same admin-only shape as the existing
+-- "Admin conversation visible to its user or any admin" select policy.
+create policy "Admins can update admin conversations" on conversations
+  for update using (
+    type = 'admin' and exists (select 1 from profiles p where p.id = auth.uid() and p.is_admin = true)
+  );

@@ -23,9 +23,10 @@ const ADMIN_ID = 'admin-1'
 let conversationsResult: { data: any[]; error: unknown }
 let profilesResult: { data: any[] }
 let messagesResult: { data: any[] }
-let updateResult: { error: unknown }
+let updateResult: { data: any[] | null; error: unknown }
 
-const updateEqMock = vi.fn(() => Promise.resolve(updateResult))
+const updateSelectMock = vi.fn(() => Promise.resolve(updateResult))
+const updateEqMock = vi.fn(() => ({ select: updateSelectMock }))
 const updateMock = vi.fn(() => ({ eq: updateEqMock }))
 const getUserMock = vi.fn(() => Promise.resolve({ data: { user: { id: ADMIN_ID } } }))
 
@@ -52,7 +53,7 @@ beforeEach(() => {
       { id: 'm2', conversation_id: 'convo-read', body: 'Thanks', sender_id: 'user-2', created_at: '2026-08-02T00:00:00.000Z' },
     ],
   }
-  updateResult = { error: null }
+  updateResult = { data: [{ id: 'convo-unread' }], error: null }
   vi.mocked(createClient).mockReturnValue({ from: fromMock, auth: { getUser: getUserMock } } as any)
 })
 
@@ -89,5 +90,30 @@ describe('AdminInboxTab', () => {
     fireEvent.click(row)
     await new Promise(r => setTimeout(r, 0))
     expect(updateMock).not.toHaveBeenCalled()
+  })
+
+  it('does not clear the highlight or badge when the mark-read update is silently blocked by RLS (zero rows, no error)', async () => {
+    updateResult = { data: [], error: null }
+    const onUnreadCountChange = vi.fn()
+    const { findByTestId } = render(<AdminInboxTab onUnreadCountChange={onUnreadCountChange} />)
+    const row = await findByTestId('inbox-convo-convo-unread')
+    onUnreadCountChange.mockClear()
+
+    fireEvent.click(row)
+
+    await waitFor(() => expect(updateSelectMock).toHaveBeenCalled())
+    expect(row).toHaveAttribute('data-unread', 'true')
+    expect(onUnreadCountChange).not.toHaveBeenCalledWith(0)
+  })
+
+  it('shows an error and does not clear the highlight when the mark-read update fails outright', async () => {
+    updateResult = { data: null, error: { message: 'network error' } }
+    const { findByTestId, findByText } = render(<AdminInboxTab onUnreadCountChange={vi.fn()} />)
+    const row = await findByTestId('inbox-convo-convo-unread')
+
+    fireEvent.click(row)
+
+    expect(await findByText(/Could not mark this conversation as read/)).toBeInTheDocument()
+    expect(row).toHaveAttribute('data-unread', 'true')
   })
 })
