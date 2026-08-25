@@ -32,6 +32,7 @@ const baseProps = {
   cancelPurchase: vi.fn(() => Promise.resolve()),
   denyPurchase: vi.fn(() => Promise.resolve()),
   removeSavedListing: vi.fn(() => Promise.resolve()),
+  moveSavedListingToTbr: vi.fn(() => Promise.resolve()),
   addTbrEntry: vi.fn(() => Promise.resolve()),
   removeTbrEntry: vi.fn(() => Promise.resolve()),
   isDemo: false,
@@ -425,5 +426,34 @@ describe('DashboardClient — phone verification', () => {
     fireEvent.change(codeInput, { target: { value: '123456' } })
     fireEvent.click(screen.getByRole('button', { name: /Confirm code/ }))
     expect(verifyOtp).toHaveBeenCalled()
+  })
+})
+
+describe('DashboardClient — saved listings', () => {
+  const activeSaved = { id: 'listing-active', title: 'Dune', author: 'Frank Herbert', condition: 'Good', status: 'active' }
+  const soldSaved = { id: 'listing-sold', title: 'Educated', author: 'Tara Westover', condition: 'Fair', status: 'sold' }
+
+  it('shows a Sold badge and a Move to To Be Read button on a sold saved listing', () => {
+    render(<DashboardClient {...baseProps} exchanges={[]} savedListings={[soldSaved]} defaultTab="saved" />)
+    expect(screen.getByText('Sold')).toBeInTheDocument()
+    expect(screen.getByText('📖 Move to To Be Read')).toBeInTheDocument()
+  })
+
+  it('does not show a Sold badge or the Move to To Be Read button on an active saved listing', () => {
+    render(<DashboardClient {...baseProps} exchanges={[]} savedListings={[activeSaved]} defaultTab="saved" />)
+    expect(screen.queryByText('Sold')).not.toBeInTheDocument()
+    expect(screen.queryByText('📖 Move to To Be Read')).not.toBeInTheDocument()
+  })
+
+  it('still shows the Unsave button on a sold saved listing', () => {
+    render(<DashboardClient {...baseProps} exchanges={[]} savedListings={[soldSaved]} defaultTab="saved" />)
+    expect(screen.getByText('💔 Unsave')).toBeInTheDocument()
+  })
+
+  it("wires the Move to To Be Read button's hidden field to the correct listing", () => {
+    const { container } = render(<DashboardClient {...baseProps} exchanges={[]} savedListings={[soldSaved]} defaultTab="saved" />)
+    const button = screen.getByText('📖 Move to To Be Read')
+    const form = button.closest('form')!
+    expect(form.querySelector('input[name="listing_id"]')).toHaveValue('listing-sold')
   })
 })

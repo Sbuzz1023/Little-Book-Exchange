@@ -124,6 +124,7 @@ type Props = {
   cancelPurchase: (formData: FormData) => Promise<void>
   denyPurchase: (formData: FormData) => Promise<void>
   removeSavedListing: (formData: FormData) => Promise<void>
+  moveSavedListingToTbr: (formData: FormData) => Promise<void>
   addTbrEntry: (formData: FormData) => Promise<void>
   removeTbrEntry: (formData: FormData) => Promise<void>
   success?: boolean
@@ -184,7 +185,7 @@ function statusLabel(status: string) {
   return 'Active'
 }
 
-export default function DashboardClient({ profile, listings, exchanges, savedListings, tbrEntries, transactions, updateAction, updateListingStatus, markPickedUp, fileDispute, hideExchangeHistory, submitReview, confirmExchange, denyPurchase, cancelPurchase, removeSavedListing, addTbrEntry, removeTbrEntry, success, defaultTab, queryError, tbrError, error, isDemo, initialConversationId, unreadCounts, unreadEntityIds, resendEmailConfirmation, sendPhoneOtp, verifyPhoneOtp, startSupportConversation }: Props) {
+export default function DashboardClient({ profile, listings, exchanges, savedListings, tbrEntries, transactions, updateAction, updateListingStatus, markPickedUp, fileDispute, hideExchangeHistory, submitReview, confirmExchange, denyPurchase, cancelPurchase, removeSavedListing, moveSavedListingToTbr, addTbrEntry, removeTbrEntry, success, defaultTab, queryError, tbrError, error, isDemo, initialConversationId, unreadCounts, unreadEntityIds, resendEmailConfirmation, sendPhoneOtp, verifyPhoneOtp, startSupportConversation }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>(defaultTab ?? 'listings')
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(initialConversationId ?? null)
   const booksPosted = listings.reduce((sum, l: any) => sum + (l.book_count ?? 1), 0)
@@ -973,8 +974,10 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
             </div>
           ) : (
             <div>
-              {savedListings.map(l => (
-                <div key={l.id} className="flex items-center gap-3" style={{ padding: '12px 0', borderBottom: '2px solid #f3f4f6' }}>
+              {savedListings.map(l => {
+                const sold = l.status !== 'active'
+                return (
+                <div key={l.id} className="flex items-center gap-3" style={{ padding: '12px 0', borderBottom: '2px solid #f3f4f6', opacity: sold ? 0.6 : 1 }}>
                   <div className="relative shrink-0 overflow-hidden"
                     style={{ width: 42, height: 42, borderRadius: 10, background: coverGradient(l.id) }}>
                     {l.photo_url ? (
@@ -984,22 +987,42 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <Link href={`/listings/${l.id}`} className="font-black text-[14px] truncate block hover:text-bk-orange transition-colors">
-                      {l.title}
-                    </Link>
+                    <div className="flex items-center gap-2">
+                      <Link href={`/listings/${l.id}`} className="font-black text-[14px] truncate hover:text-bk-orange transition-colors">
+                        {l.title}
+                      </Link>
+                      {sold && (
+                        <span className="font-extrabold text-[10px] whitespace-nowrap shrink-0"
+                          style={{ padding: '2px 8px', borderRadius: 999, background: '#f3f4f6', border: '1.5px solid #e5e7eb', color: '#888' }}>
+                          Sold
+                        </span>
+                      )}
+                    </div>
                     <p className="font-semibold text-[12px]" style={{ color: '#aaa' }}>
                       {l.author} · {l.condition}
                     </p>
                   </div>
-                  <form action={removeSavedListing} className="shrink-0">
-                    <input type="hidden" name="listing_id" value={l.id} />
-                    <button className="font-extrabold text-[11px] hover:opacity-80"
-                      style={{ background: 'none', border: 'none', color: '#e11d48', cursor: 'pointer', padding: 0 }}>
-                      💔 Unsave
-                    </button>
-                  </form>
+                  <div className="flex items-center gap-3 shrink-0">
+                    {sold && (
+                      <form action={moveSavedListingToTbr}>
+                        <input type="hidden" name="listing_id" value={l.id} />
+                        <button className="font-extrabold text-[11px] hover:opacity-80"
+                          style={{ background: 'none', border: 'none', color: '#7c3aed', cursor: 'pointer', padding: 0, whiteSpace: 'nowrap' }}>
+                          📖 Move to To Be Read
+                        </button>
+                      </form>
+                    )}
+                    <form action={removeSavedListing}>
+                      <input type="hidden" name="listing_id" value={l.id} />
+                      <button className="font-extrabold text-[11px] hover:opacity-80"
+                        style={{ background: 'none', border: 'none', color: '#e11d48', cursor: 'pointer', padding: 0, whiteSpace: 'nowrap' }}>
+                        💔 Unsave
+                      </button>
+                    </form>
+                  </div>
                 </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </div>

@@ -6,7 +6,7 @@ import { MOCK_PROFILE, MOCK_LISTINGS, MOCK_USER_ID, MOCK_CONVERSATIONS } from '@
 import { updateProfile, updateListingStatus, markPickedUp, fileDispute, hideExchangeHistory, confirmExchange, denyPurchase, cancelPurchase, startSupportConversation } from './actions'
 import { submitReview } from '@/lib/actions/reviews'
 import { averageRating } from '@/lib/reviewAverages'
-import { removeSavedListing } from '@/lib/actions/savedListings'
+import { removeSavedListing, moveSavedListingToTbr } from '@/lib/actions/savedListings'
 import { addTbrEntry, removeTbrEntry } from '@/lib/actions/tbrEntries'
 import { tbrMatchPattern, buildTbrMatchStrategy } from '@/lib/tbrMatch'
 import { unreadCounts as computeUnreadCounts, unreadEntityIds as computeUnreadEntityIds, type NotificationRow } from '@/lib/notifications'
@@ -270,6 +270,7 @@ export default async function ProfilePage({
       denyPurchase={denyPurchase}
       cancelPurchase={cancelPurchase}
       removeSavedListing={removeSavedListing}
+      moveSavedListingToTbr={moveSavedListingToTbr}
       addTbrEntry={addTbrEntry}
       removeTbrEntry={removeTbrEntry}
       success={!!searchParams.success}
