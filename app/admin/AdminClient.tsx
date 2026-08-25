@@ -9,6 +9,7 @@ import DisputesAdminTab from './DisputesAdminTab'
 import DisputeRow from './DisputeRow'
 import { enrichDisputes, buildDisputeTally, type EnrichedDispute, type RawDispute, type ConversationParticipants } from '@/lib/disputeEnrichment'
 import { hasUnreadMessage, isDisputeUnread } from '@/lib/adminUnread'
+import { computeUserBookStats } from '@/lib/userBookStats'
 
 const WEEKLY_ACTIVITY = [
   { week:'May 5',  posts:4,  signups:2, trades:3 },
@@ -669,6 +670,30 @@ export default function AdminClient() {
       })
   }, [])
 
+  // Real lifetime posted/sold/bought counts — previously hardcoded to 0 above.
+  // Kept in its own state (not merged directly into `users`) because this
+  // fetch and the profiles fetch above are independent and race — merging
+  // eagerly here could land before `users` itself has loaded and be
+  // silently dropped. usersWithStats below merges the two safely regardless
+  // of which resolves first.
+  const [userBookStats, setUserBookStats] = useState<Record<string, ReturnType<typeof computeUserBookStats>[string]>>({})
+
+  useEffect(() => {
+    const supabase = createClient()
+    Promise.all([
+      supabase.from('listings').select('user_id'),
+      supabase.from('conversations').select('seller_id, buyer_id, exchange_status'),
+    ]).then(([{ data: listings }, { data: conversations }]) => {
+      if (!listings && !conversations) return
+      setUserBookStats(computeUserBookStats(listings ?? [], (conversations ?? []) as any))
+    })
+  }, [])
+
+  const usersWithStats = useMemo(
+    () => users.map(u => userBookStats[u.id] ? { ...u, ...userBookStats[u.id] } : u),
+    [users, userBookStats]
+  )
+
   useEffect(() => {
     const supabase = createClient()
     supabase
@@ -885,10 +910,10 @@ export default function AdminClient() {
       {/* Main content */}
       <div className="flex-1 bg-[#f8fafc] overflow-auto">
         <div className="max-w-[1100px] mx-auto px-4 md:px-6 py-6 pb-24 md:pb-6">
-          {tab === 'dashboard' && <Dashboard users={users} pendingLocationReports={pendingLocationReports} reviews={reviews} />}
+          {tab === 'dashboard' && <Dashboard users={usersWithStats} pendingLocationReports={pendingLocationReports} reviews={reviews} />}
           {tab === 'users'     && (
             <UsersTab
-              users={users.map(u => ({ ...u, reviews: reviewCountBySeller[u.id] ?? 0 }))}
+              users={usersWithStats.map(u => ({ ...u, reviews: reviewCountBySeller[u.id] ?? 0 }))}
               setUsers={setUsers}
               toggleAdmin={toggleAdmin}
               disputeTally={disputeTally}
