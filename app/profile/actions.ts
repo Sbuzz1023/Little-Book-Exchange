@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { buildConfirmationMessage } from '@/lib/buildConfirmationMessage'
 import { isValidStateCode } from '@/lib/usStates'
+import { normalizeCity } from '@/lib/normalizeCity'
 
 export async function updateProfile(formData: FormData) {
   const supabase = createClient()
@@ -27,7 +28,7 @@ export async function updateProfile(formData: FormData) {
 
   const updatePayload: Record<string, unknown> = {
     username,
-    city:               formData.get('city')                as string,
+    city:               normalizeCity((formData.get('city') as string) ?? ''),
     state,
     address:            (formData.get('address')            as string) || '',
     address_unit:       (formData.get('address_unit')       as string) || '',

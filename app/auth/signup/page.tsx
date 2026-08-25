@@ -3,6 +3,7 @@ import Link from 'next/link'
 import ContactToggle from './ContactToggle'
 import AddressAutofillField from '@/components/AddressAutofillField'
 import { isValidStateCode } from '@/lib/usStates'
+import { normalizeCity } from '@/lib/normalizeCity'
 
 export default function SignUpPage({
   searchParams,
@@ -22,7 +23,7 @@ export default function SignUpPage({
         options: {
           data: {
             username:           (formData.get('username') as string).replace(/\s+/g, ''),
-            city:               formData.get('city') as string,
+            city:               normalizeCity((formData.get('city') as string) ?? ''),
             state,
             phone:              formData.get('phone') as string,
             contact_preference: formData.get('contact_preference') as string,

@@ -10,6 +10,7 @@ import DisputeRow from './DisputeRow'
 import { enrichDisputes, buildDisputeTally, type EnrichedDispute, type RawDispute, type ConversationParticipants } from '@/lib/disputeEnrichment'
 import { hasUnreadMessage, isDisputeUnread } from '@/lib/adminUnread'
 import { computeUserBookStats } from '@/lib/userBookStats'
+import { normalizeCity } from '@/lib/normalizeCity'
 
 const WEEKLY_ACTIVITY = [
   { week:'May 5',  posts:4,  signups:2, trades:3 },
@@ -134,7 +135,10 @@ function UserLocationsChart({ users }: { users: User[] }) {
     users.forEach(u => {
       let key = ''
       if (view === 'city') {
-        key = u.city
+        // Normalized so e.g. "Arroyo Grande" and "Arroyo grande" (a stray
+        // mistyped/legacy profile) count as the same city instead of
+        // splitting into two bars.
+        key = normalizeCity(u.city)
       } else if (view === 'state') {
         key = u.state || '(no state)'
       } else {
