@@ -1787,3 +1787,26 @@ create policy "Admins can update admin conversations" on conversations
   for update using (
     type = 'admin' and exists (select 1 from profiles p where p.id = auth.uid() and p.is_admin = true)
   );
+
+-- ── Migration: seller-set pickup availability (time window / after a time / anytime) ─
+-- Run this block in Supabase SQL Editor:
+
+-- Set alongside confirmed_address/confirmed_pickup in the same seller
+-- confirm-and-review popup — confirmed_pickup is *where* ("front porch"),
+-- these four columns are *when*. confirmed_pickup_mode drives which of the
+-- other three are populated: 'anytime' leaves date/times null (available
+-- right now, nothing to schedule); 'after' sets date + time_start only (open
+-- ended); 'window' sets all three. Required at confirm time — enforced in
+-- the confirm-and-review popup UI and re-validated server-side in
+-- confirmExchange — so an existing confirmed exchange predating this
+-- migration simply has mode = null, which the UI already treats as "nothing
+-- to show" the same as it did before this column existed.
+alter table conversations
+  add column if not exists confirmed_pickup_mode text,
+  add column if not exists confirmed_pickup_date date,
+  add column if not exists confirmed_pickup_time_start time,
+  add column if not exists confirmed_pickup_time_end time;
+
+alter table conversations drop constraint if exists conversations_pickup_mode_check;
+alter table conversations add constraint conversations_pickup_mode_check
+  check (confirmed_pickup_mode is null or confirmed_pickup_mode in ('window', 'after', 'anytime'));

@@ -52,4 +52,14 @@ describe('buildConfirmationMessage', () => {
     const msg = buildConfirmationMessage({ ...base, pickup: '' })
     expect(msg).not.toContain('📦')
   })
+
+  it('includes pickup availability when provided', () => {
+    const msg = buildConfirmationMessage({ ...base, pickupAvailability: '✅ Ready for pickup now' })
+    expect(msg).toContain('🕐 ✅ Ready for pickup now')
+  })
+
+  it('omits pickup availability line when not provided', () => {
+    const msg = buildConfirmationMessage({ ...base, pickupAvailability: null })
+    expect(msg).not.toContain('🕐')
+  })
 })

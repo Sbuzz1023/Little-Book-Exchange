@@ -13,6 +13,7 @@ import StateSelect from '@/components/StateSelect'
 import { createClient } from '@/lib/supabase/client'
 import { pickupState, formatDeadline } from '@/lib/pickupStatus'
 import { buildDirectionsUrl } from '@/lib/mapsLink'
+import { formatPickupAvailability } from '@/lib/formatPickupAvailability'
 
 type Tab = 'listings' | 'exchanges' | 'tbr' | 'saved' | 'wallet' | 'account' | 'messages'
 
@@ -60,6 +61,10 @@ type Exchange = {
   confirmed_address?: string | null
   confirmed_address_unit?: string | null
   confirmed_pickup?: string | null
+  confirmed_pickup_mode?: 'window' | 'after' | 'anytime' | null
+  confirmed_pickup_date?: string | null
+  confirmed_pickup_time_start?: string | null
+  confirmed_pickup_time_end?: string | null
   seller_picked_up_at?: string | null
   buyer_picked_up_at?: string | null
   completion_type?: string | null
@@ -201,6 +206,10 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
     city: string
     state: string
     pickup: string
+    pickupMode: '' | 'window' | 'after' | 'anytime'
+    pickupDate: string
+    pickupTimeStart: string
+    pickupTimeEnd: string
   } | null>(null)
   const [disputeModal, setDisputeModal] = useState<{ conversationId: string; title: string } | null>(null)
   const [disputeMessage, setDisputeMessage] = useState('')
@@ -553,6 +562,17 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
                       {ex.confirmed_pickup && (
                         <p className="font-semibold text-[11px]" style={{ color: '#166534' }}>📦 Pickup: {ex.confirmed_pickup}</p>
                       )}
+                      {(() => {
+                        const availability = formatPickupAvailability({
+                          mode: ex.confirmed_pickup_mode,
+                          date: ex.confirmed_pickup_date,
+                          timeStart: ex.confirmed_pickup_time_start,
+                          timeEnd: ex.confirmed_pickup_time_end,
+                        })
+                        return availability && (
+                          <p className="font-semibold text-[11px]" style={{ color: '#166534' }}>🕐 {availability}</p>
+                        )
+                      })()}
                       <p className="font-semibold text-[11px]" style={{ color: '#166534' }}>Contact: <strong>{otherName}</strong></p>
                     </div>
                   )}
@@ -598,6 +618,10 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
                       city: profile?.city ?? '',
                       state: profile?.state ?? '',
                       pickup: ex.listings?.pickup_description || profile?.pickup_description || '',
+                      pickupMode: '',
+                      pickupDate: '',
+                      pickupTimeStart: '',
+                      pickupTimeEnd: '',
                     })}
                     className="font-extrabold text-[12px] text-white hover:opacity-90"
                     style={{ background: '#0d9488', border: 'none', padding: '7px 18px', borderRadius: 999, cursor: 'pointer', fontFamily: 'inherit', boxShadow: '0 2px 0 #0f766e' }}>
@@ -776,9 +800,86 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
                     value={confirmModal.pickup}
                     onChange={e => setConfirmModal({ ...confirmModal, pickup: e.target.value })}
                     placeholder="e.g. front porch, behind the garden gnome"
-                    className="w-full border-2 border-gray-100 rounded-xl font-semibold text-[13px] mt-1"
+                    className="w-full border-2 border-gray-100 rounded-xl font-semibold text-[13px] mt-1 mb-3"
                     style={{ padding: 10, minHeight: 60 }}
                   />
+
+                  <label className="font-extrabold text-[11px]" style={{ color: '#555' }}>When are you available?</label>
+                  <div className="flex gap-2 mt-1 mb-3 flex-wrap">
+                    {([
+                      ['window', '🕐 Time window'],
+                      ['after', '⏰ After a time'],
+                      ['anytime', '✅ Ready now'],
+                    ] as const).map(([mode, label]) => (
+                      <label
+                        key={mode}
+                        className="font-extrabold text-[12px]"
+                        style={{
+                          padding: '7px 12px', borderRadius: 999, cursor: 'pointer',
+                          border: `1.5px solid ${confirmModal.pickupMode === mode ? '#0d9488' : '#e5e7eb'}`,
+                          background: confirmModal.pickupMode === mode ? '#f0fdfa' : '#fff',
+                          color: confirmModal.pickupMode === mode ? '#0d9488' : '#555',
+                        }}
+                      >
+                        <input
+                          type="radio"
+                          name="pickup_mode"
+                          value={mode}
+                          required
+                          checked={confirmModal.pickupMode === mode}
+                          onChange={() => setConfirmModal({ ...confirmModal, pickupMode: mode })}
+                          style={{ position: 'absolute', opacity: 0, width: 0, height: 0 }}
+                        />
+                        {label}
+                      </label>
+                    ))}
+                  </div>
+
+                  {(confirmModal.pickupMode === 'window' || confirmModal.pickupMode === 'after') && (
+                    <div className="flex gap-2 mb-3">
+                      <div className="flex-1">
+                        <label htmlFor="pickup_date" className="font-extrabold text-[11px]" style={{ color: '#555' }}>Date</label>
+                        <input
+                          id="pickup_date"
+                          name="pickup_date"
+                          type="date"
+                          required
+                          value={confirmModal.pickupDate}
+                          onChange={e => setConfirmModal({ ...confirmModal, pickupDate: e.target.value })}
+                          className="w-full border-2 border-gray-100 rounded-xl font-semibold text-[13px] mt-1"
+                          style={{ padding: 10 }}
+                        />
+                      </div>
+                      <div style={{ width: 110 }}>
+                        <label htmlFor="pickup_time_start" className="font-extrabold text-[11px]" style={{ color: '#555' }}>Start time</label>
+                        <input
+                          id="pickup_time_start"
+                          name="pickup_time_start"
+                          type="time"
+                          required
+                          value={confirmModal.pickupTimeStart}
+                          onChange={e => setConfirmModal({ ...confirmModal, pickupTimeStart: e.target.value })}
+                          className="w-full border-2 border-gray-100 rounded-xl font-semibold text-[13px] mt-1"
+                          style={{ padding: 10 }}
+                        />
+                      </div>
+                      {confirmModal.pickupMode === 'window' && (
+                        <div style={{ width: 110 }}>
+                          <label htmlFor="pickup_time_end" className="font-extrabold text-[11px]" style={{ color: '#555' }}>End time</label>
+                          <input
+                            id="pickup_time_end"
+                            name="pickup_time_end"
+                            type="time"
+                            required
+                            value={confirmModal.pickupTimeEnd}
+                            onChange={e => setConfirmModal({ ...confirmModal, pickupTimeEnd: e.target.value })}
+                            className="w-full border-2 border-gray-100 rounded-xl font-semibold text-[13px] mt-1"
+                            style={{ padding: 10 }}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   <div className="flex justify-end gap-2 mt-4">
                     <button type="button" onClick={() => setConfirmModal(null)} className="font-extrabold text-[13px]"

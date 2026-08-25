@@ -481,3 +481,68 @@ describe('DashboardClient — saved listings', () => {
     expect(form.querySelector('input[name="listing_id"]')).toHaveValue('listing-sold')
   })
 })
+
+describe('DashboardClient — seller pickup availability', () => {
+  function openConfirmPopup() {
+    render(<DashboardClient {...baseProps} exchanges={[pendingExchange]} defaultTab="exchanges" />)
+    fireEvent.click(screen.getByText('✅ Confirm — Send My Contact Info'))
+  }
+
+  it('shows the three availability options after clicking Confirm, none selected by default', () => {
+    openConfirmPopup()
+    expect(screen.getByText('When are you available?')).toBeInTheDocument()
+    const windowOption = screen.getByRole('radio', { name: /Time window/ })
+    const afterOption = screen.getByRole('radio', { name: /After a time/ })
+    const anytimeOption = screen.getByRole('radio', { name: /Ready now/ })
+    expect(windowOption).not.toBeChecked()
+    expect(afterOption).not.toBeChecked()
+    expect(anytimeOption).not.toBeChecked()
+    expect(windowOption).toBeRequired()
+  })
+
+  it('reveals required date, start-time, and end-time fields when Time window is selected', () => {
+    openConfirmPopup()
+    fireEvent.click(screen.getByRole('radio', { name: /Time window/ }))
+    expect(screen.getByLabelText('Date')).toBeRequired()
+    expect(screen.getByLabelText('Start time')).toBeRequired()
+    expect(screen.getByLabelText('End time')).toBeRequired()
+  })
+
+  it('reveals only date and start time when After a time is selected', () => {
+    openConfirmPopup()
+    fireEvent.click(screen.getByRole('radio', { name: /After a time/ }))
+    expect(screen.getByLabelText('Date')).toBeRequired()
+    expect(screen.getByLabelText('Start time')).toBeRequired()
+    expect(screen.queryByLabelText('End time')).not.toBeInTheDocument()
+  })
+
+  it('reveals no date/time fields when Ready now is selected', () => {
+    openConfirmPopup()
+    fireEvent.click(screen.getByRole('radio', { name: /Ready now/ }))
+    expect(screen.queryByLabelText('Date')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Start time')).not.toBeInTheDocument()
+  })
+})
+
+describe('DashboardClient — buyer pickup availability display', () => {
+  const confirmedExchange = {
+    id: 'convo-2', listing_id: 'listing-2', buyer_id: 'me', seller_id: 'them',
+    created_at: '2026-08-01T00:00:00.000Z',
+    exchange_status: 'confirmed' as const, completed_at: null, buyer_hidden: false, seller_hidden: false,
+    sellerRating: null, reviewed: false,
+    listings: { title: 'Dune', author: 'Frank Herbert' },
+    buyer: { name: 'Me' }, seller: { name: 'Neighbor' },
+    messages: [],
+  }
+
+  it("shows the seller's pickup availability on the buyer's Ready for Pick Up card", () => {
+    const ex = { ...confirmedExchange, confirmed_pickup_mode: 'anytime' as const }
+    render(<DashboardClient {...baseProps} exchanges={[ex]} defaultTab="exchanges" />)
+    expect(screen.getByText(/Ready for pickup now/)).toBeInTheDocument()
+  })
+
+  it('omits the availability line when the seller did not set one', () => {
+    render(<DashboardClient {...baseProps} exchanges={[confirmedExchange]} defaultTab="exchanges" />)
+    expect(screen.queryByText(/Ready for pickup now/)).not.toBeInTheDocument()
+  })
+})

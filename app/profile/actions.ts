@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { buildConfirmationMessage } from '@/lib/buildConfirmationMessage'
+import { formatPickupAvailability } from '@/lib/formatPickupAvailability'
 import { isValidStateCode } from '@/lib/usStates'
 import { normalizeCity } from '@/lib/normalizeCity'
 
@@ -235,12 +236,38 @@ export async function confirmExchange(formData: FormData) {
   const state       = isValidStateCode(rawState) ? rawState : ''
   const pickup      = ((formData.get('pickup') as string) || '').trim()
 
+  // Pickup availability is required (enforced client-side via the popup's
+  // native `required` attributes) — re-validated here in case that's ever
+  // bypassed. An invalid/incomplete submission bails out before any writes,
+  // rather than confirming the exchange with a broken or missing pickup time.
+  const rawMode      = (formData.get('pickup_mode') as string) || ''
+  const pickupMode   = rawMode === 'window' || rawMode === 'after' || rawMode === 'anytime' ? rawMode : null
+  const pickupDate      = ((formData.get('pickup_date') as string) || '').trim() || null
+  const pickupTimeStart = ((formData.get('pickup_time_start') as string) || '').trim() || null
+  const pickupTimeEnd   = ((formData.get('pickup_time_end') as string) || '').trim() || null
+
+  const pickupAvailabilityValid =
+    pickupMode === 'anytime' ? true :
+    pickupMode === 'after' ? !!(pickupDate && pickupTimeStart) :
+    pickupMode === 'window' ? !!(pickupDate && pickupTimeStart && pickupTimeEnd) :
+    false
+
+  if (!pickupAvailabilityValid) redirect('/profile?tab=exchanges')
+
+  const confirmedPickupDate      = pickupMode === 'anytime' ? null : pickupDate
+  const confirmedPickupTimeStart = pickupMode === 'anytime' ? null : pickupTimeStart
+  const confirmedPickupTimeEnd   = pickupMode === 'window' ? pickupTimeEnd : null
+
   await supabase.from('conversations')
     .update({
       exchange_status: 'confirmed',
       confirmed_address: address || null,
       confirmed_address_unit: addressUnit || null,
       confirmed_pickup: pickup || null,
+      confirmed_pickup_mode: pickupMode,
+      confirmed_pickup_date: confirmedPickupDate,
+      confirmed_pickup_time_start: confirmedPickupTimeStart,
+      confirmed_pickup_time_end: confirmedPickupTimeEnd,
     })
     .eq('id', conversationId)
     .eq('seller_id', user.id)
@@ -279,6 +306,12 @@ export async function confirmExchange(formData: FormData) {
       address,
       address_unit: addressUnit,
       pickup,
+      pickupAvailability: formatPickupAvailability({
+        mode: pickupMode,
+        date: confirmedPickupDate,
+        timeStart: confirmedPickupTimeStart,
+        timeEnd: confirmedPickupTimeEnd,
+      }),
     })
     await supabase.from('messages').insert({
       conversation_id: conversationId,

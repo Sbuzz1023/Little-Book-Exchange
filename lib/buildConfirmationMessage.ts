@@ -5,6 +5,7 @@ export type ConfirmationParams = {
   address?: string | null
   address_unit?: string | null
   pickup?: string | null
+  pickupAvailability?: string | null
 }
 
 // Phone numbers are never included here, on purpose — they must never be
@@ -20,5 +21,6 @@ export function buildConfirmationMessage(p: ConfirmationParams): string {
     lines.push(`🏠 ${addr}`)
   }
   if (p.pickup) lines.push(`📦 Pickup: ${p.pickup}`)
+  if (p.pickupAvailability) lines.push(`🕐 ${p.pickupAvailability}`)
   return lines.join('\n')
 }
