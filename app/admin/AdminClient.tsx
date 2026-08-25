@@ -49,6 +49,7 @@ type User = {
   status: string
   city: string
   state: string
+  zip: string
   bio: string
   reviews: number
   is_admin: boolean
@@ -125,7 +126,7 @@ function StatCard({ icon, label, value, sub, color }: { icon: string; label: str
 
 // ─── User Locations Chart ────────────────────────────────────────────────────
 
-type LocationView = 'city' | 'state' | 'street'
+type LocationView = 'city' | 'state' | 'zip'
 
 function UserLocationsChart({ users }: { users: User[] }) {
   const [view, setView] = useState<LocationView>('city')
@@ -142,8 +143,7 @@ function UserLocationsChart({ users }: { users: User[] }) {
       } else if (view === 'state') {
         key = u.state || '(no state)'
       } else {
-        // street — mock: group by first word of city as a stand-in for neighbourhood
-        key = u.city.split(',')[0]
+        key = u.zip || '(no zip)'
       }
       counts[key] = (counts[key] ?? 0) + 1
     })
@@ -160,10 +160,10 @@ function UserLocationsChart({ users }: { users: User[] }) {
       <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
         <h3 className="font-black text-[15px] text-[#1e293b]">User Locations</h3>
         <div className="flex gap-1.5">
-          {(['city','state','street'] as LocationView[]).map(v => (
+          {(['city','state','zip'] as LocationView[]).map(v => (
             <button key={v} onClick={() => setView(v)}
               className={`px-3 py-1 rounded-full text-[11px] font-extrabold border-2 capitalize transition-colors ${view === v ? 'bg-bk-orange border-bk-orange text-white' : 'bg-white border-[#e2e8f0] text-[#64748b] hover:border-bk-orange'}`}>
-              {v === 'street' ? 'Neighbourhood' : v === 'city' ? 'City' : 'State'}
+              {v === 'zip' ? 'Zip Code' : v === 'city' ? 'City' : 'State'}
             </button>
           ))}
         </div>
@@ -188,7 +188,7 @@ function UserLocationsChart({ users }: { users: User[] }) {
 
       <div className="mt-4 pt-3 border-t border-[#f1f5f9] flex items-center justify-between text-[11px] font-bold text-[#94a3b8]">
         <span>{users.length} total users</span>
-        <span>{data.length} unique {view === 'state' ? 'states' : view === 'city' ? 'cities' : 'neighbourhoods'}</span>
+        <span>{data.length} unique {view === 'state' ? 'states' : view === 'city' ? 'cities' : 'zip codes'}</span>
       </div>
     </div>
   )
@@ -650,7 +650,7 @@ export default function AdminClient() {
     const supabase = createClient()
     supabase
       .from('profiles')
-      .select('id, username, email, city, state, created_at, is_admin, credits')
+      .select('id, username, email, city, state, zip, created_at, is_admin, credits')
       .order('created_at', { ascending: false })
       .then(({ data }) => {
         if (!data) return
@@ -666,6 +666,7 @@ export default function AdminClient() {
           status: 'active',
           city: p.city || '',
           state: p.state || '',
+          zip: p.zip || '',
           bio: '',
           reviews: 0,
           is_admin: p.is_admin || false,

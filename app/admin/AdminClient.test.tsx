@@ -16,7 +16,7 @@ vi.mock('./DisputeRow', () => ({
 
 const baseUser = {
   joined: '2026-01-01', booksPosted: 0, booksSold: 0, booksBought: 0, credits: 0,
-  status: 'active', city: 'Chicago', state: 'IL', bio: '', reviews: 0, is_admin: false,
+  status: 'active', city: 'Chicago', state: 'IL', zip: '', bio: '', reviews: 0, is_admin: false,
 }
 
 const users = [
