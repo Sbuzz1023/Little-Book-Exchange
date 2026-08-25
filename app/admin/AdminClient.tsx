@@ -12,17 +12,7 @@ import { hasUnreadMessage, isDisputeUnread } from '@/lib/adminUnread'
 import { computeUserBookStats } from '@/lib/userBookStats'
 import { normalizeCity } from '@/lib/normalizeCity'
 import { bucketActivity, type ActivityPeriod, type ActivityBucket } from '@/lib/activityBuckets'
-
-const RECENT_ACTIVITY = [
-  { id:1, type:'signup',  text:'Raj P. joined',                          time:'2h ago' },
-  { id:2, type:'post',    text:'Lily T. posted "Charlotte\'s Web"',       time:'3h ago' },
-  { id:3, type:'trade',   text:'Sarah M. & Devon H. completed a trade',   time:'5h ago' },
-  { id:4, type:'report',  text:'Location report: Capitol Hill LFL',        time:'6h ago' },
-  { id:5, type:'post',    text:'Maria C. posted "Gone Girl"',              time:'8h ago' },
-  { id:6, type:'review',  text:'Tom B. left a flagged review',             time:'10h ago' },
-  { id:7, type:'trade',   text:'Priya N. & James K. completed a trade',   time:'12h ago' },
-  { id:8, type:'signup',  text:'Devon H. joined',                          time:'1d ago' },
-]
+import { buildRecentActivity, type RecentActivityEvent, type RecentActivityItem } from '@/lib/recentActivity'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -43,6 +33,7 @@ type User = {
   bio: string
   reviews: number
   is_admin: boolean
+  createdAt: string // full ISO timestamp — `joined` above is date-only, for display; this is for the Recent Activity feed's time-ago math
 }
 type Review = {
   id: string
@@ -51,6 +42,7 @@ type Review = {
   rating: number
   text: string
   date: string
+  createdAt: string // full ISO timestamp, same reason as User.createdAt above
   flagged: boolean
 }
 
@@ -212,7 +204,7 @@ function ActivityCard({ rawActivity }: { rawActivity: { posts: string[]; signups
 
 // ─── Dashboard tab ───────────────────────────────────────────────────────────
 
-function Dashboard({ users, pendingLocationReports, reviews, activeListingsCount, rawActivity }: { users: User[]; pendingLocationReports: number; reviews: Review[]; activeListingsCount: number; rawActivity: { posts: string[]; signups: string[]; trades: string[] } }) {
+function Dashboard({ users, pendingLocationReports, reviews, activeListingsCount, rawActivity, recentActivity }: { users: User[]; pendingLocationReports: number; reviews: Review[]; activeListingsCount: number; rawActivity: { posts: string[]; signups: string[]; trades: string[] }; recentActivity: RecentActivityItem[] }) {
   const totalCredits = users.reduce((s, u) => s + u.credits, 0)
   const totalTrades  = users.reduce((s, u) => s + u.booksSold, 0)
   const pendingReports = pendingLocationReports
@@ -241,13 +233,17 @@ function Dashboard({ users, pendingLocationReports, reviews, activeListingsCount
         <div className="bg-white rounded-2xl p-5 border border-[#f1f5f9] shadow-sm">
           <h3 className="font-black text-[15px] text-[#1e293b] mb-3">Recent Activity</h3>
           <div className="space-y-2">
-            {RECENT_ACTIVITY.map(a => (
-              <div key={a.id} className="flex items-center gap-3 py-1.5">
-                <span className="text-[17px] w-7 text-center shrink-0">{activityIcon[a.type]}</span>
-                <span className="font-semibold text-[13px] text-[#334155] flex-1">{a.text}</span>
-                <span className="text-[11px] font-bold text-[#94a3b8] shrink-0">{a.time}</span>
-              </div>
-            ))}
+            {recentActivity.length === 0 ? (
+              <p className="font-semibold text-[13px]" style={{ color: '#ccc' }}>No activity yet.</p>
+            ) : (
+              recentActivity.map((a, i) => (
+                <div key={i} className="flex items-center gap-3 py-1.5">
+                  <span className="text-[17px] w-7 text-center shrink-0">{activityIcon[a.type]}</span>
+                  <span className="font-semibold text-[13px] text-[#334155] flex-1">{a.text}</span>
+                  <span className="text-[11px] font-bold text-[#94a3b8] shrink-0">{a.timeAgo}</span>
+                </div>
+              ))
+            )}
           </div>
         </div>
 
@@ -672,6 +668,7 @@ export default function AdminClient() {
           username: p.username || p.email || 'Unknown',
           email: p.email || '',
           joined: p.created_at ? p.created_at.slice(0, 10) : '',
+          createdAt: p.created_at || '',
           booksPosted: 0,
           booksSold: 0,
           booksBought: 0,
@@ -703,11 +700,16 @@ export default function AdminClient() {
   // fresh fetch, just a different grouping of the same data.
   const [listingTimestamps, setListingTimestamps] = useState<string[]>([])
   const [tradeTimestamps, setTradeTimestamps] = useState<string[]>([])
+  // Raw rows (not just timestamps) for the Recent Activity feed, which needs
+  // to build real sentences ("Alex posted 'Dune'") — kept separate from
+  // usersWithStats/rawActivity above since those only ever needed counts.
+  const [recentListings, setRecentListings] = useState<{ user_id: string; title: string; created_at: string }[]>([])
+  const [recentTrades, setRecentTrades] = useState<{ buyer_id: string; seller_id: string; completed_at: string }[]>([])
 
   useEffect(() => {
     const supabase = createClient()
     Promise.all([
-      supabase.from('listings').select('user_id, status, created_at'),
+      supabase.from('listings').select('user_id, status, title, created_at'),
       supabase.from('conversations').select('seller_id, buyer_id, exchange_status, completed_at'),
     ]).then(([{ data: listings }, { data: conversations }]) => {
       if (!listings && !conversations) return
@@ -715,6 +717,9 @@ export default function AdminClient() {
       setActiveListingsCount((listings ?? []).filter(l => l.status === 'active').length)
       setListingTimestamps((listings ?? []).map(l => l.created_at).filter((t): t is string => !!t))
       setTradeTimestamps((conversations ?? []).map(c => c.completed_at).filter((t): t is string => !!t))
+
+      setRecentListings((listings ?? []).filter(l => l.created_at) as any)
+      setRecentTrades((conversations ?? []).filter(c => c.completed_at) as any)
     })
   }, [])
 
@@ -738,6 +743,56 @@ export default function AdminClient() {
         if (count !== null && !hasTabCount.current) setPendingLocationReports(count)
       })
   }, [])
+
+  // Recent reports for the Recent Activity feed — separate from the
+  // pending-count-only query above, which only ever needed a number.
+  const [recentReports, setRecentReports] = useState<{ locationName: string; created_at: string }[]>([])
+
+  useEffect(() => {
+    const supabase = createClient()
+    supabase
+      .from('location_reports')
+      .select('created_at, library_locations(name)')
+      .order('created_at', { ascending: false })
+      .limit(20)
+      .then(({ data }) => {
+        if (!data) return
+        setRecentReports(data.map((r: any) => ({
+          locationName: r.library_locations?.name ?? 'a location',
+          created_at: r.created_at,
+        })))
+      })
+  }, [])
+
+  // Builds real sentences for each event type, then hands them to
+  // buildRecentActivity to sort/limit/format — this is the only place that
+  // knows how to phrase each type; sorting and "time ago" formatting is
+  // handled generically once assembled.
+  const recentActivity: RecentActivityItem[] = useMemo(() => {
+    const usernameById = Object.fromEntries(users.map(u => [u.id, u.username]))
+
+    const events: RecentActivityEvent[] = [
+      ...users.filter(u => u.createdAt).map(u => ({
+        type: 'signup' as const, text: `${u.username} joined`, timestamp: u.createdAt,
+      })),
+      ...recentListings.map(l => ({
+        type: 'post' as const, text: `${usernameById[l.user_id] ?? 'Someone'} posted "${l.title}"`, timestamp: l.created_at,
+      })),
+      ...recentTrades.map(t => ({
+        type: 'trade' as const,
+        text: `${usernameById[t.seller_id] ?? 'Someone'} & ${usernameById[t.buyer_id] ?? 'someone'} completed a trade`,
+        timestamp: t.completed_at,
+      })),
+      ...recentReports.map(r => ({
+        type: 'report' as const, text: `Location report: ${r.locationName}`, timestamp: r.created_at,
+      })),
+      ...reviews.filter(r => r.flagged && r.createdAt).map(r => ({
+        type: 'review' as const, text: `${r.reviewer} left a flagged review`, timestamp: r.createdAt,
+      })),
+    ]
+
+    return buildRecentActivity(events, 8)
+  }, [users, recentListings, recentTrades, recentReports, reviews])
 
   // Badges the sidebar's "Email / Message" tab even before the admin ever
   // opens Inbox — same standalone-count-then-defer-to-the-tab's-own-live-count
@@ -796,6 +851,7 @@ export default function AdminClient() {
           rating: r.rating,
           text: r.text ?? '',
           date: r.created_at ? r.created_at.slice(0, 10) : '',
+          createdAt: r.created_at || '',
           flagged: r.flagged,
         })))
       })
@@ -944,7 +1000,7 @@ export default function AdminClient() {
       {/* Main content */}
       <div className="flex-1 bg-[#f8fafc] overflow-auto">
         <div className="max-w-[1100px] mx-auto px-4 md:px-6 py-6 pb-24 md:pb-6">
-          {tab === 'dashboard' && <Dashboard users={usersWithStats} pendingLocationReports={pendingLocationReports} reviews={reviews} activeListingsCount={activeListingsCount} rawActivity={rawActivity} />}
+          {tab === 'dashboard' && <Dashboard users={usersWithStats} pendingLocationReports={pendingLocationReports} reviews={reviews} activeListingsCount={activeListingsCount} rawActivity={rawActivity} recentActivity={recentActivity} />}
           {tab === 'users'     && (
             <UsersTab
               users={usersWithStats.map(u => ({ ...u, reviews: reviewCountBySeller[u.id] ?? 0 }))}
