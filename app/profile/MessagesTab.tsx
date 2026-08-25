@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { StarRatingBadge } from '@/components/StarRating'
 
@@ -79,6 +80,7 @@ export default function MessagesTab({
   onSelectId: (id: string | null) => void
   unreadConversationIds?: string[]
 }) {
+  const router = useRouter()
   const [localMessages, setLocalMessages] = useState<Record<string, MessageRow[]>>({})
   const [body, setBody] = useState('')
   const bottomRef = useRef<HTMLDivElement>(null)
@@ -97,6 +99,12 @@ export default function MessagesTab({
       const supabase = createClient()
       await supabase.from('notifications').update({ read: true })
         .eq('user_id', userId).eq('type', 'message').eq('entity_id', id)
+      // The Messages tab badge and this row's own highlight both come from
+      // server-rendered props computed at the last page load — marking the
+      // notification read in the database alone doesn't update them.
+      // Without this, they stay stuck showing unread until some unrelated
+      // navigation happens to reload the page.
+      router.refresh()
     }
   }
 

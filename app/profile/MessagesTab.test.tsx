@@ -7,6 +7,17 @@ vi.mock('@/lib/supabase/client', () => ({
   createClient: vi.fn(),
 }))
 
+// Marking a notification read in the database doesn't, by itself, update
+// the badge/highlight already on screen — those come from server-rendered
+// props (unreadCounts/unreadConversationIds) computed at the last page
+// load. Without a refresh telling Next.js to re-fetch them, the read
+// notification is correctly saved but the UI stays stuck showing it as
+// unread until an unrelated navigation happens to reload the page.
+const refreshMock = vi.fn()
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ refresh: refreshMock }),
+}))
+
 const exchanges: MessagesTabExchange[] = [
   {
     id: 'convo-1', listing_id: 'listing-1', buyer_id: 'them-1', seller_id: 'me',
@@ -195,6 +206,7 @@ describe('MessagesTab', () => {
 describe('MessagesTab — unread highlighting', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    refreshMock.mockClear()
   })
 
   it('highlights a conversation row that has an unread message notification', () => {
@@ -235,6 +247,30 @@ describe('MessagesTab — unread highlighting', () => {
     )
     fireEvent.click(findButtonWithText(container, 'Neighbor A')!)
     expect(createClient).not.toHaveBeenCalled()
+  })
+
+  it('refreshes the page after marking a conversation read, so the Messages tab badge and this row\'s highlight actually update', async () => {
+    const update = vi.fn(() => ({ eq: vi.fn().mockReturnThis() }))
+    vi.mocked(createClient).mockReturnValue({
+      from: vi.fn(() => ({ update })),
+      channel: vi.fn(() => ({ on: vi.fn().mockReturnThis(), subscribe: vi.fn().mockReturnThis() })),
+      removeChannel: vi.fn(),
+    } as any)
+
+    const { container } = render(
+      <MessagesTab exchanges={exchanges} userId="me" isDemo={false} selectedId={null} onSelectId={vi.fn()} unreadConversationIds={['convo-1']} />
+    )
+    fireEvent.click(findButtonWithText(container, 'Neighbor A')!)
+    await waitFor(() => expect(refreshMock).toHaveBeenCalled())
+  })
+
+  it('does not refresh when selecting a conversation that was already read', () => {
+    const onSelectId = vi.fn()
+    const { container } = render(
+      <MessagesTab exchanges={exchanges} userId="me" isDemo={false} selectedId={null} onSelectId={onSelectId} unreadConversationIds={[]} />
+    )
+    fireEvent.click(findButtonWithText(container, 'Neighbor A')!)
+    expect(refreshMock).not.toHaveBeenCalled()
   })
 })
 
