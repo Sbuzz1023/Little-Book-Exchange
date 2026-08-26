@@ -17,6 +17,24 @@ export async function saveListing(listingId: string, redirectTo: string): Promis
   revalidatePath('/profile')
 }
 
+// For a listing the buyer couldn't afford (requestPurchase's insufficient_credits
+// redirect) — saves it the same way the heart button does, then sends them
+// straight to the Wallet tab to top up, instead of leaving them stranded on a
+// static "check your balance" message with nothing to click.
+export async function saveListingAndGoToWallet(formData: FormData): Promise<void> {
+  const supabase = createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/auth/signin')
+
+  const listingId = formData.get('listing_id') as string
+
+  await supabase
+    .from('saved_listings')
+    .upsert({ user_id: user.id, listing_id: listingId }, { onConflict: 'user_id,listing_id', ignoreDuplicates: true })
+
+  redirect('/profile?tab=wallet')
+}
+
 export async function unsaveListing(listingId: string, redirectTo: string): Promise<void> {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()

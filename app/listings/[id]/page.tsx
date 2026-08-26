@@ -10,6 +10,7 @@ import { StarRatingBadge } from '@/components/StarRating'
 import { getListingAvailability } from '@/lib/listingAvailability'
 import type { ListingStatus } from '@/lib/types'
 import { addTbrEntry } from '@/lib/actions/tbrEntries'
+import { saveListingAndGoToWallet } from '@/lib/actions/savedListings'
 
 const COVER_GRADIENTS = [
   'linear-gradient(145deg, #fde68a, #fca5a5)',
@@ -352,8 +353,23 @@ export default async function ListingDetailPage({ params, searchParams }: { para
                 ❌ Purchase failed — please try again or message the seller.
               </div>
             ) : searchParams.insufficient_credits === '1' ? (
-              <div style={{ background: '#fef2f2', border: '2px solid #fca5a5', color: '#b91c1c', padding: '12px 22px', borderRadius: 16, fontWeight: 800, fontSize: 14 }}>
-                🪙 You don't have enough credits for this. Check your Wallet balance.
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'flex-end' }}>
+                <div
+                  className="font-extrabold text-[14px]"
+                  style={{ background: '#fef2f2', border: '2px solid #fca5a5', color: '#b91c1c', padding: '12px 22px', borderRadius: 16 }}
+                >
+                  🪙 You don't have enough credits for this.
+                </div>
+                <form action={saveListingAndGoToWallet}>
+                  <input type="hidden" name="listing_id" value={params.id} />
+                  <button
+                    type="submit"
+                    className="font-extrabold text-base text-white shadow-[0_4px_0_#0f766e] hover:shadow-[0_2px_0_#0f766e] hover:translate-y-0.5 transition-all"
+                    style={{ background: '#0d9488', padding: '14px 32px', borderRadius: 999, border: 'none', cursor: 'pointer' }}
+                  >
+                    💳 Buy Credits &amp; Save Listing
+                  </button>
+                </form>
               </div>
             ) : (isPending || avail === 'pending-mine') ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'flex-end' }}>

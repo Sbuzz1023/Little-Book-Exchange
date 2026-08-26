@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { moveSavedListingToTbr } from './savedListings'
+import { moveSavedListingToTbr, saveListingAndGoToWallet } from './savedListings'
 
 const redirectMock = vi.fn((url: string) => { throw new Error(`REDIRECT:${url}`) })
 vi.mock('next/navigation', () => ({
@@ -20,10 +20,13 @@ const deleteEq2Mock = vi.fn(() => Promise.resolve(deleteEq2Result))
 const deleteEq1Mock = vi.fn(() => ({ eq: deleteEq2Mock }))
 const deleteMock = vi.fn(() => ({ eq: deleteEq1Mock }))
 
+let upsertResult: { error: unknown } = { error: null }
+const upsertMock = vi.fn((_payload: Record<string, unknown>, _opts: Record<string, unknown>) => Promise.resolve(upsertResult))
+
 const fromMock = vi.fn((table: string) => {
   if (table === 'listings') return { select: selectMock }
   if (table === 'tbr_entries') return { insert: insertMock }
-  if (table === 'saved_listings') return { delete: deleteMock }
+  if (table === 'saved_listings') return { delete: deleteMock, upsert: upsertMock }
   throw new Error(`unexpected table ${table}`)
 })
 
@@ -76,5 +79,31 @@ describe('moveSavedListingToTbr', () => {
     insertResult = { error: { message: 'db exploded' } }
     await expect(moveSavedListingToTbr(buildFormData('l1'))).rejects.toThrow('REDIRECT:')
     expect(deleteMock).not.toHaveBeenCalled()
+  })
+})
+
+describe('saveListingAndGoToWallet', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    getUserMock.mockResolvedValue({ data: { user: { id: 'user-1' } } })
+    upsertResult = { error: null }
+  })
+
+  it('redirects to sign in when not authenticated, without saving anything', async () => {
+    getUserMock.mockResolvedValue({ data: { user: null } })
+    await expect(saveListingAndGoToWallet(buildFormData('l1'))).rejects.toThrow('REDIRECT:/auth/signin')
+    expect(upsertMock).not.toHaveBeenCalled()
+  })
+
+  it('saves the listing for the current user', async () => {
+    await expect(saveListingAndGoToWallet(buildFormData('l1'))).rejects.toThrow('REDIRECT:')
+    expect(upsertMock).toHaveBeenCalledWith(
+      { user_id: 'user-1', listing_id: 'l1' },
+      expect.objectContaining({ onConflict: 'user_id,listing_id' }),
+    )
+  })
+
+  it('redirects to the Wallet tab after saving', async () => {
+    await expect(saveListingAndGoToWallet(buildFormData('l1'))).rejects.toThrow('REDIRECT:/profile?tab=wallet')
   })
 })
