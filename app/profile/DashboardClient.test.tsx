@@ -209,6 +209,17 @@ describe('DashboardClient — dual pickup confirmation', () => {
     expect(screen.getByText('🚩 Dispute')).toBeInTheDocument()
   })
 
+  it("reminds the buyer to check the book's condition right by the I Got It button", () => {
+    const asBuyer = { ...confirmedExchange, id: 'convo-3', buyer_id: 'me', seller_id: 'them' }
+    render(<DashboardClient {...baseProps} exchanges={[asBuyer]} defaultTab="exchanges" />)
+    expect(screen.getByText(/Check the book's condition before confirming/)).toBeInTheDocument()
+  })
+
+  it('does not show the buyer reminder on the seller side', () => {
+    render(<DashboardClient {...baseProps} exchanges={[confirmedExchange]} defaultTab="exchanges" />)
+    expect(screen.queryByText(/Check the book's condition before confirming/)).not.toBeInTheDocument()
+  })
+
   it('shows a waiting state instead of the button once the seller has confirmed', () => {
     const sellerConfirmed = { ...confirmedExchange, seller_picked_up_at: '2026-08-01T00:00:00.000Z' }
     render(<DashboardClient {...baseProps} exchanges={[sellerConfirmed]} defaultTab="exchanges" />)

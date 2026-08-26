@@ -656,13 +656,20 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
                 )}
 
                 {status === 'confirmed' && pickup.kind === 'can_confirm' && (
-                  <form action={markPickedUp}>
-                    <input type="hidden" name="conversation_id" value={ex.id} />
-                    <button className="font-extrabold text-[12px] hover:opacity-80"
-                      style={{ background: '#fff7ed', border: '1.5px solid #fed7aa', color: '#f97316', padding: '7px 18px', borderRadius: 999, cursor: 'pointer', fontFamily: 'inherit' }}>
-                      {role === 'seller' ? '📦 Mark Picked Up' : '📚 I Got It!'}
-                    </button>
-                  </form>
+                  <div className="flex flex-col items-start gap-1">
+                    {role === 'buyer' && (
+                      <p className="font-semibold text-[11px]" style={{ color: '#aaa' }}>
+                        🔍 Check the book's condition before confirming
+                      </p>
+                    )}
+                    <form action={markPickedUp}>
+                      <input type="hidden" name="conversation_id" value={ex.id} />
+                      <button className="font-extrabold text-[12px] hover:opacity-80"
+                        style={{ background: '#fff7ed', border: '1.5px solid #fed7aa', color: '#f97316', padding: '7px 18px', borderRadius: 999, cursor: 'pointer', fontFamily: 'inherit' }}>
+                        {role === 'seller' ? '📦 Mark Picked Up' : '📚 I Got It!'}
+                      </button>
+                    </form>
+                  </div>
                 )}
 
                 {/* Buyer: cancel before seller confirms */}
