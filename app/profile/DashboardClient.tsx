@@ -734,7 +734,7 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
                 <form
                   action={confirmExchange}
                   onSubmit={() => setConfirmModal(null)}
-                  style={{ background: '#fff', borderRadius: 20, padding: 24, width: 380, maxWidth: '90vw', position: 'relative' }}
+                  style={{ background: '#fff', borderRadius: 20, padding: 24, width: 380, maxWidth: '90vw', maxHeight: '85vh', overflowY: 'auto', position: 'relative' }}
                 >
                   <button
                     type="button"
