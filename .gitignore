@@ -41,3 +41,9 @@ next-env.d.ts
 
 .vercel
 .env*
+
+# Superpowers visual-companion brainstorm sessions
+.superpowers/
+
+# Homepage redesign scratch / design-canvas working files
+design/
