@@ -1810,3 +1810,93 @@ alter table conversations
 alter table conversations drop constraint if exists conversations_pickup_mode_check;
 alter table conversations add constraint conversations_pickup_mode_check
   check (confirmed_pickup_mode is null or confirmed_pickup_mode in ('window', 'after', 'anytime'));
+
+-- ── Migration: homepage stat-bar aggregates ──────────────────────────────────
+-- Run this block in Supabase SQL Editor.
+--
+-- The redesigned homepage (app/page.tsx) shows four community numbers. Two of
+-- them read tables the public can already SELECT: listings ("Books Posted")
+-- and library_locations ("Little Free Libraries"). The other two read tables
+-- RLS keeps private — conversations (participants/admins only) and tbr_entries
+-- (owner only) — so an anonymous visitor can't count them directly. These two
+-- SECURITY DEFINER functions expose only the aggregate, never any row, and are
+-- granted to anon + authenticated. STABLE + pinned search_path, same shape as
+-- the other security-definer helpers above.
+
+create or replace function home_completed_exchanges()
+returns bigint
+language sql
+security definer
+stable
+set search_path = public, pg_temp
+as $$
+  select count(*) from conversations where exchange_status = 'completed';
+$$;
+
+revoke all on function home_completed_exchanges() from public;
+grant execute on function home_completed_exchanges() to anon, authenticated;
+
+create or replace function home_most_requested_book()
+returns text
+language sql
+security definer
+stable
+set search_path = public, pg_temp
+as $$
+  select title
+  from tbr_entries
+  where title <> ''
+  group by title
+  order by count(*) desc, title asc
+  limit 1;
+$$;
+
+revoke all on function home_most_requested_book() from public;
+grant execute on function home_most_requested_book() to anon, authenticated;
+-- ──────────────────────────────────────────────────────────────────────────────
+
+-- ── Migration: homepage "top readers" avatars ────────────────────────────────
+-- Run this block in Supabase SQL Editor.
+--
+-- The hero's four avatar circles show the most active members, ranked by
+-- (books posted + completed exchanges they took part in). Books-posted is
+-- public (listings), but exchange participation lives in conversations, which
+-- RLS keeps to participants/admins — so this SECURITY DEFINER function does
+-- the join server-side and returns only public profile fields (username, city)
+-- for the top 4. No conversation row is ever exposed.
+
+create or replace function home_top_readers()
+returns table(username text, city text)
+language sql
+security definer
+stable
+set search_path = public, pg_temp
+as $$
+  with posted as (
+    select user_id, count(*)::int as n from listings group by user_id
+  ),
+  exchanged as (
+    select p.id as user_id, count(*)::int as n
+    from profiles p
+    join conversations c
+      on (c.buyer_id = p.id or c.seller_id = p.id)
+     and c.exchange_status = 'completed'
+    group by p.id
+  ),
+  scored as (
+    select p.id, p.username, p.city,
+           coalesce(po.n, 0) + coalesce(ex.n, 0) as score
+    from profiles p
+    left join posted po on po.user_id = p.id
+    left join exchanged ex on ex.user_id = p.id
+  )
+  select username, city
+  from scored
+  where score > 0 and coalesce(username, '') <> ''
+  order by score desc, username asc
+  limit 4;
+$$;
+
+revoke all on function home_top_readers() from public;
+grant execute on function home_top_readers() to anon, authenticated;
+-- ──────────────────────────────────────────────────────────────────────────────

@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState, useEffect, useRef } from 'react'
 import { avatarInitials } from '@/lib/avatarInitials'
+import HomeNav from './HomeNav'
 
 function readDemoUser(): string | null {
   if (typeof document === 'undefined') return null
@@ -55,6 +56,11 @@ export default function Nav({ userName: serverUserName, isAdmin, unreadCount }: 
     setMobileOpen(false)
     if (detailsRef.current) detailsRef.current.open = false
   }, [pathname])
+
+  // The redesigned homepage has its own folk-styled nav.
+  if (isHome) {
+    return <HomeNav userName={userName} isAdmin={isAdmin} unreadCount={unreadCount} />
+  }
 
   return (
     <>
