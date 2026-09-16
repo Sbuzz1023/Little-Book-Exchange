@@ -436,13 +436,15 @@ export default async function ListingsPage({
                     style={{ height: 135 }}
                   >
                     {l.cover_url ? (
-                      <Image
-                        src={l.cover_url}
-                        alt={l.title}
-                        fill
-                        className="object-cover"
-                        style={locked ? { filter: 'grayscale(1)', opacity: 0.55 } : undefined}
-                      />
+                      <div className="absolute inset-0" style={{ background: '#fff' }}>
+                        <Image
+                          src={l.cover_url}
+                          alt={l.title}
+                          fill
+                          className="object-contain"
+                          style={locked ? { filter: 'grayscale(1)', opacity: 0.55 } : undefined}
+                        />
+                      </div>
                     ) : (
                       <div
                         className="absolute inset-0 flex items-center justify-center text-center"
