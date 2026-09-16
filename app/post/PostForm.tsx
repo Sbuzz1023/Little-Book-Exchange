@@ -58,6 +58,45 @@ function SectionHeading({ emoji, title }: { emoji: string; title: string }) {
   )
 }
 
+function SelectedBookCard({
+  title, author, coverUrl, onChangeBook,
+}: {
+  title: string
+  author: string
+  coverUrl: string | null
+  onChangeBook: () => void
+}) {
+  return (
+    <div
+      className="flex items-center gap-3"
+      style={{ border: '2px solid #0d9488', borderRadius: 14, padding: '10px 14px', background: '#f0fdfa' }}
+    >
+      {coverUrl ? (
+        <img
+          src={coverUrl}
+          alt="Cover preview"
+          style={{ width: 40, height: 56, objectFit: 'cover', borderRadius: 6, flexShrink: 0, border: '2px solid #fed7aa' }}
+        />
+      ) : (
+        <span style={{ width: 40, height: 56, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>
+          📖
+        </span>
+      )}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <p className="truncate" style={{ fontWeight: 900, fontSize: 14, color: '#0d9488' }}>{title}</p>
+        <p className="truncate" style={{ fontWeight: 700, fontSize: 12, color: '#555' }}>{author}</p>
+      </div>
+      <button
+        type="button"
+        onClick={onChangeBook}
+        style={{ background: 'none', border: 'none', color: '#f97316', fontWeight: 800, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0 }}
+      >
+        🔄 Change
+      </button>
+    </div>
+  )
+}
+
 function FieldLabel({ children, optional }: { children: React.ReactNode; optional?: boolean }) {
   return (
     <label
@@ -179,6 +218,14 @@ export default function PostForm({ city, action, error, initialValues, submitLab
     setIsbn(book.isbn ?? '')
   }
 
+  function clearMainSelection() {
+    setTitle('')
+    setAuthor('')
+    setOlWorkKey('')
+    setCoverUrl(null)
+    setIsbn('')
+  }
+
   function toggleBundle() {
     setIsBundle(b => {
       const next = !b
@@ -190,11 +237,15 @@ export default function PostForm({ city, action, error, initialValues, submitLab
     setBooks(prev => prev.map((b, idx) => (idx === i ? next : b)))
   }
   function addBook() {
-    setBooks(prev => (prev.length >= MAX_BUNDLE_BOOKS ? prev : [...prev, { title: '', author, ol_work_key: '', cover_url: null }]))
+    setBooks(prev => (prev.length >= MAX_BUNDLE_BOOKS ? prev : [...prev, { title: '', author: '', ol_work_key: '', cover_url: null }]))
   }
   function removeBook(i: number) {
     setBooks(prev => prev.filter((_, idx) => idx !== i))
   }
+
+  const mainMatched = !!olWorkKey
+  const bundleMatched = books.every(b => !!b.ol_work_key)
+  const canSubmit = mainMatched && (!isBundle || bundleMatched)
 
   function makePhotoHandler(setPreview: (url: string | null) => void) {
     return (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -211,6 +262,8 @@ export default function PostForm({ city, action, error, initialValues, submitLab
       <input type="hidden" name="price" value="1" />
       <input type="hidden" name="is_bundle" value={isBundle ? 'true' : 'false'} />
       <input type="hidden" name="book_rows" value={books.length} />
+      <input type="hidden" name="title" value={title} />
+      <input type="hidden" name="author" value={author} />
       <input type="hidden" name="ol_work_key" value={olWorkKey} />
       <input type="hidden" name="cover_url" value={coverUrl ?? ''} />
 
@@ -222,36 +275,25 @@ export default function PostForm({ city, action, error, initialValues, submitLab
         <SectionHeading emoji="📖" title="Book Info" />
 
         <div style={{ marginBottom: 18 }}>
-          <FieldLabel>Book Title *</FieldLabel>
-          <BookSearchInput
-            name="title"
-            value={title}
-            onChange={v => { setTitle(v); setOlWorkKey(''); setCoverUrl(null) }}
-            onSelect={selectBook}
-            placeholder="e.g. The Great Gatsby"
-            required
-            style={inputStyle}
-            search={search}
-          />
-          {coverUrl && (
-            <img
-              src={coverUrl}
-              alt="Cover preview"
-              style={{ width: 40, height: 56, objectFit: 'cover', borderRadius: 6, marginTop: 8, border: '2px solid #fed7aa' }}
-            />
+          <FieldLabel>Book *</FieldLabel>
+          {olWorkKey ? (
+            <SelectedBookCard title={title} author={author} coverUrl={coverUrl} onChangeBook={clearMainSelection} />
+          ) : (
+            <>
+              <BookSearchInput
+                name="title_search"
+                value={title}
+                onChange={v => { setTitle(v); setAuthor(''); setOlWorkKey(''); setCoverUrl(null) }}
+                onSelect={selectBook}
+                placeholder="e.g. The Great Gatsby"
+                style={inputStyle}
+                search={search}
+              />
+              <p style={{ fontSize: 11, fontWeight: 700, color: '#bbb', marginTop: 6 }}>
+                Search and select your book — title, author, and cover come from Open Library, so every listing stays spelled right.
+              </p>
+            </>
           )}
-        </div>
-
-        <div style={{ marginBottom: 18 }}>
-          <FieldLabel>Author *</FieldLabel>
-          <input
-            name="author"
-            value={author}
-            onChange={e => { setAuthor(e.target.value); setOlWorkKey(''); setCoverUrl(null) }}
-            placeholder="e.g. F. Scott Fitzgerald"
-            required
-            style={inputStyle}
-          />
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-[14px] mb-[18px]">
@@ -352,48 +394,34 @@ export default function PostForm({ city, action, error, initialValues, submitLab
               <div key={i} style={{ marginBottom: 14, padding: 14, border: '2px solid #fed7aa', borderRadius: 14, background: '#fffbf0' }}>
                 <div className="flex items-center justify-between" style={{ marginBottom: 10 }}>
                   <span style={{ fontSize: 11, fontWeight: 900, color: '#aaa', textTransform: 'uppercase' }}>Book {i + 2}</span>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => updateBook(i, { ...book, author })}
-                      style={{ background: 'none', border: 'none', color: '#f97316', fontWeight: 800, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}
-                    >
-                      ✨ Auto-fill from Book 1
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => removeBook(i)}
-                      style={{ background: 'none', border: 'none', color: '#e11d48', fontWeight: 800, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}
-                    >
-                      ✕ Remove
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeBook(i)}
+                    style={{ background: 'none', border: 'none', color: '#e11d48', fontWeight: 800, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}
+                  >
+                    ✕ Remove
+                  </button>
                 </div>
-                <div style={{ marginBottom: 10 }}>
+                {book.ol_work_key ? (
+                  <SelectedBookCard
+                    title={book.title}
+                    author={book.author}
+                    coverUrl={book.cover_url}
+                    onChangeBook={() => updateBook(i, { title: '', author: '', ol_work_key: '', cover_url: null })}
+                  />
+                ) : (
                   <BookSearchInput
-                    name={`book_title_${i + 1}`}
+                    name={`book_title_search_${i + 1}`}
                     value={book.title}
-                    onChange={v => updateBook(i, { ...book, title: v, ol_work_key: '', cover_url: null })}
+                    onChange={v => updateBook(i, { title: v, author: '', ol_work_key: '', cover_url: null })}
                     onSelect={s => updateBook(i, { title: s.title, author: s.author, ol_work_key: s.workKey, cover_url: s.coverUrl })}
                     placeholder="Title in series"
                     style={inputStyle}
                     search={search}
                   />
-                  {book.cover_url && (
-                    <img
-                      src={book.cover_url}
-                      alt="Cover preview"
-                      style={{ width: 32, height: 46, objectFit: 'cover', borderRadius: 6, marginTop: 8, border: '2px solid #fed7aa' }}
-                    />
-                  )}
-                </div>
-                <input
-                  name={`book_author_${i + 1}`}
-                  value={book.author}
-                  onChange={e => updateBook(i, { title: book.title, author: e.target.value, ol_work_key: '', cover_url: null })}
-                  placeholder="Author"
-                  style={inputStyle}
-                />
+                )}
+                <input type="hidden" name={`book_title_${i + 1}`} value={book.title} />
+                <input type="hidden" name={`book_author_${i + 1}`} value={book.author} />
                 <input type="hidden" name={`book_ol_work_key_${i + 1}`} value={book.ol_work_key} />
                 <input type="hidden" name={`book_cover_url_${i + 1}`} value={book.cover_url ?? ''} />
               </div>
@@ -532,6 +560,9 @@ export default function PostForm({ city, action, error, initialValues, submitLab
 
         {/* Photo */}
         <SectionHeading emoji="📸" title="Photo" />
+        <p style={{ fontSize: 12, fontWeight: 700, color: '#aaa', marginTop: -8, marginBottom: 14 }}>
+          This won&apos;t be the main photo on Browse — that always shows the official cover art. It&apos;ll still appear on your listing&apos;s page.
+        </p>
 
         <div style={{ marginBottom: 12 }}>
           <PhotoUploadSlot
@@ -582,15 +613,23 @@ export default function PostForm({ city, action, error, initialValues, submitLab
           </div>
         )}
 
+        {!canSubmit && (
+          <p style={{ fontSize: 12, fontWeight: 700, color: '#e11d48', textAlign: 'center', marginBottom: 10 }}>
+            {!mainMatched
+              ? 'Search and select your book above to continue.'
+              : 'Every book in the bundle needs to be selected from search results too.'}
+          </p>
+        )}
         <button
           type="submit"
+          disabled={!canSubmit}
           className="w-full text-white font-black text-[17px] shadow-[0_5px_0_#c2410c] hover:shadow-[0_3px_0_#c2410c] hover:translate-y-0.5 transition-all"
           style={{
-            background: '#f97316',
+            background: canSubmit ? '#f97316' : '#e5e7eb',
             padding: 16,
             borderRadius: 14,
             border: 'none',
-            cursor: 'pointer',
+            cursor: canSubmit ? 'pointer' : 'not-allowed',
             fontFamily: 'inherit',
           }}
         >

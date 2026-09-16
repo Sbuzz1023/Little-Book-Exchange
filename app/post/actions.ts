@@ -2,7 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { parseListingForm, parseBundleBooks } from '@/lib/parseListingForm'
+import { parseListingForm, parseBundleBooks, validateOpenLibraryMatch } from '@/lib/parseListingForm'
 
 async function uploadPhoto(
   supabase: ReturnType<typeof createClient>,
@@ -40,6 +40,9 @@ export async function createListing(formData: FormData) {
     const isBundle = formData.get('is_bundle') === 'true'
     const bundleBooks = isBundle ? parseBundleBooks(formData) : []
     const bundleName = (formData.get('bundle_name') as string)?.trim() || null
+
+    const matchError = validateOpenLibraryMatch(fields, bundleBooks)
+    if (matchError) redirect(`/post?error=${encodeURIComponent(matchError)}`)
 
     const { data: listing, error } = await supabase.from('listings').insert({
       user_id: user!.id,
@@ -102,6 +105,9 @@ export async function updateListing(listingId: string, formData: FormData) {
     const isBundle = formData.get('is_bundle') === 'true'
     const bundleBooks = isBundle ? parseBundleBooks(formData) : []
     const bundleName = (formData.get('bundle_name') as string)?.trim() || null
+
+    const matchError = validateOpenLibraryMatch(fields, bundleBooks)
+    if (matchError) redirect(`/listings/${listingId}/edit?error=${encodeURIComponent(matchError)}`)
 
     const { error } = await supabase.from('listings').update({
       ...fields,

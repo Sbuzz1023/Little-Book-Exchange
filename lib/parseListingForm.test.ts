@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseListingForm, parseBundleBooks } from './parseListingForm'
+import { parseListingForm, parseBundleBooks, validateOpenLibraryMatch } from './parseListingForm'
 
 function makeFormData(fields: Record<string, string>) {
   const fd = new FormData()
@@ -162,5 +162,34 @@ describe('parseBundleBooks — Open Library fields', () => {
     const result = parseBundleBooks(fd)
     expect(result[0].ol_work_key).toBeNull()
     expect(result[0].cover_url).toBeNull()
+  })
+})
+
+describe('validateOpenLibraryMatch', () => {
+  it('returns null when the main book is matched and there are no bundle books', () => {
+    expect(validateOpenLibraryMatch({ ol_work_key: '/works/OL893415W' }, [])).toBeNull()
+  })
+
+  it('returns an error when the main book has no ol_work_key', () => {
+    expect(validateOpenLibraryMatch({ ol_work_key: null }, [])).toEqual(expect.any(String))
+  })
+
+  it('returns null when every bundle book is matched', () => {
+    expect(validateOpenLibraryMatch(
+      { ol_work_key: '/works/OL893415W' },
+      [{ ol_work_key: '/works/OL1W' }, { ol_work_key: '/works/OL2W' }],
+    )).toBeNull()
+  })
+
+  it('returns an error when any bundle book is missing an ol_work_key', () => {
+    expect(validateOpenLibraryMatch(
+      { ol_work_key: '/works/OL893415W' },
+      [{ ol_work_key: '/works/OL1W' }, { ol_work_key: null }],
+    )).toEqual(expect.any(String))
+  })
+
+  it('reports the main-book error even if bundle books are also unmatched', () => {
+    const err = validateOpenLibraryMatch({ ol_work_key: null }, [{ ol_work_key: null }])
+    expect(err).toEqual(expect.any(String))
   })
 })

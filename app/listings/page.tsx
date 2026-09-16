@@ -11,22 +11,6 @@ import { getListingAvailability } from '@/lib/listingAvailability'
 import { addTbrEntry } from '@/lib/actions/tbrEntries'
 import BookFilterField from './BookFilterField'
 
-const COVER_GRADIENTS = [
-  'linear-gradient(145deg, #fde68a, #fca5a5)',
-  'linear-gradient(145deg, #99f6e4, #bfdbfe)',
-  'linear-gradient(145deg, #fca5a5, #fda4af)',
-  'linear-gradient(145deg, #c4b5fd, #93c5fd)',
-  'linear-gradient(145deg, #6ee7b7, #fde68a)',
-  'linear-gradient(145deg, #fdba74, #fb7185)',
-  'linear-gradient(145deg, #a5f3fc, #6ee7b7)',
-  'linear-gradient(145deg, #ddd6fe, #fca5a5)',
-]
-
-function coverGradient(id: string) {
-  const sum = id.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0)
-  return COVER_GRADIENTS[sum % COVER_GRADIENTS.length]
-}
-
 function conditionLabel(c: string) {
   if (c === 'good') return 'Good'
   if (c === 'fair') return 'Fair'
@@ -439,7 +423,6 @@ export default async function ListingsPage({
         {listings.length > 0 ? (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(185px, 1fr))', gap: 18 }}>
             {listings.map(l => {
-              const gradient = coverGradient(l.id)
               const avail = getListingAvailability((l.status ?? 'active') as ListingStatus, {
                 isOwner: l.user_id === userId,
                 isRequester: myRequestedIds.has(l.id),
@@ -449,21 +432,38 @@ export default async function ListingsPage({
               const cardInner = (
                 <>
                   <div
-                    className="relative flex items-center justify-center text-[46px]"
+                    className="relative flex items-center justify-center"
                     style={{ height: 135 }}
                   >
-                    <div
-                      className="absolute inset-0 flex items-center justify-center"
-                      style={{ background: gradient, ...(locked ? { filter: 'grayscale(1)', opacity: 0.55 } : {}) }}
-                    >
-                      {l.photo_url ? (
-                        <Image src={l.photo_url} alt={l.title} fill className="object-cover" />
-                      ) : l.cover_url ? (
-                        <Image src={l.cover_url} alt={l.title} fill className="object-cover" />
-                      ) : (
-                        <span>📚</span>
-                      )}
-                    </div>
+                    {l.cover_url ? (
+                      <Image
+                        src={l.cover_url}
+                        alt={l.title}
+                        fill
+                        className="object-cover"
+                        style={locked ? { filter: 'grayscale(1)', opacity: 0.55 } : undefined}
+                      />
+                    ) : (
+                      <div
+                        className="absolute inset-0 flex items-center justify-center text-center"
+                        style={{ background: '#e8e4d9', padding: 14, ...(locked ? { filter: 'grayscale(1)', opacity: 0.55 } : {}) }}
+                      >
+                        <span
+                          style={{
+                            fontSize: 13,
+                            fontWeight: 800,
+                            color: '#8a8574',
+                            lineHeight: 1.3,
+                            display: '-webkit-box',
+                            WebkitLineClamp: 4,
+                            WebkitBoxOrient: 'vertical',
+                            overflow: 'hidden',
+                          }}
+                        >
+                          {l.is_bundle ? (l.bundle_name || l.title) : l.title}
+                        </span>
+                      </div>
+                    )}
                     {avail === 'active' ? (
                       <span
                         className="absolute text-white font-black"

@@ -35,6 +35,18 @@ export function parseListingForm(formData: FormData): ParsedListingForm {
   }
 }
 
+// Books can only be posted from an Open Library match — title/author are never
+// freehand, so the one thing worth re-checking server-side (in case a client
+// bypasses the form's own disabled-submit gating) is that a match was actually made.
+export function validateOpenLibraryMatch(
+  main: Pick<ParsedListingForm, 'ol_work_key'>,
+  bundleBooks: { ol_work_key: string | null }[],
+): string | null {
+  if (!main.ol_work_key) return 'Please search and select your book from the results — it can\'t be posted without a match.'
+  if (bundleBooks.some(b => !b.ol_work_key)) return 'Every book in the bundle needs to be selected from search results too.'
+  return null
+}
+
 const MAX_BUNDLE_BOOKS = 20
 
 export function parseBundleBooks(formData: FormData): { title: string; author: string; ol_work_key: string | null; cover_url: string | null }[] {
