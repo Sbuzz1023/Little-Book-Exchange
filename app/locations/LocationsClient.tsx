@@ -247,7 +247,7 @@ export default function LocationsClient({ initialLocations, isLoggedIn }: {
         {/* ── Compact header: title + search + my location in one bar ── */}
         <div className="flex-shrink-0 bg-bk-orange px-3 md:px-5 py-2 flex items-center gap-2 md:gap-3">
           <h1 className="font-display text-[17px] md:text-[19px] text-white whitespace-nowrap shrink-0">
-            🗺️ <span className="hidden sm:inline">LFL </span>Locations
+            🗺️ <span className="hidden sm:inline">Reading Trail </span>Locations
           </h1>
           <form onSubmit={handleSearch} className="flex items-center gap-1.5 bg-white/20 border border-white/40 rounded-xl px-2.5 py-1.5 w-[220px] md:w-[260px] shrink-0">
             <span className="text-white text-[14px] shrink-0">🔍</span>

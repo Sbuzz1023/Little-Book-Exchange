@@ -5,7 +5,7 @@ import LocationsClient from './LocationsClient'
 import type { LibraryLocation } from './MapView'
 
 export const metadata: Metadata = {
-  title: 'Library Locations — LittleBookExchange',
+  title: 'Reading Trail Locations — LittleBookExchange',
   description: 'Find little free libraries, public libraries, book stores, and library fairs near you, or add a location to the map.',
 }
 

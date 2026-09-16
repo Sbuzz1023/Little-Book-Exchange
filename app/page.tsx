@@ -195,7 +195,7 @@ export default async function HomePage() {
               <img className="ico" src="/home/ic_libraries.jpg" alt="" />
               <div className="txt">
                 <div className="num">{stats.libraries.toLocaleString()}</div>
-                <div className="lbl">Little Free Libraries</div>
+                <div className="lbl">Reading Trail Locations</div>
               </div>
             </div>
           </div>
@@ -344,7 +344,7 @@ export default async function HomePage() {
               <div className="foot-col">
                 <h4>Explore</h4>
                 <Link href="/listings">Browse Books</Link>
-                <Link href="/locations">Libraries</Link>
+                <Link href="/locations">Reading Trail</Link>
                 <Link href="/#how-it-works">How It Works</Link>
               </div>
               <div className="foot-col">

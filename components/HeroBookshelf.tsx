@@ -109,10 +109,10 @@ export default function HeroBookshelf() {
           />
         ))}
 
-        {/* Blue horizontal book — links to Libraries/Locations page */}
+        {/* Blue horizontal book — links to the Reading Trail locations page */}
         <Link
           href="/locations"
-          aria-label="Find library locations"
+          aria-label="Find Reading Trail locations"
           onMouseEnter={() => setHovered('locations')}
           onMouseLeave={() => setHovered(null)}
           style={{
@@ -140,7 +140,7 @@ export default function HeroBookshelf() {
             textShadow: '0 1px 4px rgba(10,25,60,0.95), 0 0 10px rgba(10,25,60,0.8)',
             userSelect: 'none',
           }}>
-            Little Free Libraries &amp; Locations
+            Reading Trail Locations
           </span>
         </Link>
       </div>

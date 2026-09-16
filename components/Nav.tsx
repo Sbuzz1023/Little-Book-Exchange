@@ -87,7 +87,7 @@ export default function Nav({ userName: serverUserName, isAdmin, unreadCount }: 
           {userName ? (
             <>
               <span className="w-px h-5 bg-gray-200" />
-              <Link href="/locations" className="font-bold text-[15px] text-[#2d2d2d] hover:text-bk-orange transition-colors">Libraries</Link>
+              <Link href="/locations" className="font-bold text-[15px] text-[#2d2d2d] hover:text-bk-orange transition-colors">Reading Trail</Link>
               <span className="w-px h-5 bg-gray-200" />
               <Link href="/profile" className="font-bold text-[15px] text-[#2d2d2d] hover:text-bk-orange transition-colors flex items-center">Dashboard<DashboardBadge count={unreadCount} /></Link>
               <span className="w-px h-5 bg-gray-200" />
@@ -194,7 +194,7 @@ export default function Nav({ userName: serverUserName, isAdmin, unreadCount }: 
           {userName ? (
             <>
               <Link href="/locations" className="flex items-center gap-3 px-5 py-4 font-bold text-[15px] text-[#2d2d2d] border-b border-gray-100 hover:bg-[#fff7ed] hover:text-bk-orange transition-colors">
-                🗺️ Libraries
+                🗺️ Reading Trail
               </Link>
               <Link href="/profile" className="flex items-center gap-3 px-5 py-4 font-bold text-[15px] text-[#2d2d2d] border-b border-gray-100 hover:bg-[#fff7ed] hover:text-bk-orange transition-colors md:hidden">
                 📊 Dashboard<DashboardBadge count={unreadCount} />

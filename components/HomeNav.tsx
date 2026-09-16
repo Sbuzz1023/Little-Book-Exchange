@@ -34,7 +34,7 @@ export default function HomeNav({
     <>
       <Link href="/listings">Browse</Link>
       <Link href="/post">Post a Book</Link>
-      <Link href="/locations">Libraries</Link>
+      <Link href="/locations">Reading Trail</Link>
       <Link href="/profile">
         Dashboard
         {unreadCount > 0 && <span className="hnav-badge">{unreadCount > 99 ? '99+' : unreadCount}</span>}
@@ -82,7 +82,7 @@ export default function HomeNav({
         <Link href="/post">Post a Book</Link>
         {signedIn ? (
           <>
-            <Link href="/locations">Libraries</Link>
+            <Link href="/locations">Reading Trail</Link>
             <Link href="/profile">Dashboard</Link>
             {isAdmin && <Link href="/admin">Admin Panel</Link>}
             <a href="/auth/signout" onClick={() => { try { localStorage.removeItem('lbe_demo_user') } catch {} }}>Sign Out</a>
