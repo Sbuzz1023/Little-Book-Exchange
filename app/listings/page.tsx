@@ -39,7 +39,7 @@ async function getListings(params: {
   title?: string
   author?: string
   olWorkKey?: string
-  type?: string
+  book_type?: string
   genre?: string
   condition?: string
   sort?: string
@@ -50,8 +50,8 @@ async function getListings(params: {
     if (params.olWorkKey) {
       const applyCommonFilters = (q: any) => {
         if (params.city) q = q.ilike('city', `%${params.city}%`)
-        if (params.type === 'free') q = q.is('price', null)
-        if (params.type === 'sale') q = q.not('price', 'is', null)
+        if (params.book_type === 'single') q = q.eq('is_bundle', false)
+        if (params.book_type === 'bundle') q = q.eq('is_bundle', true)
         if (params.genre && params.genre !== 'all') q = q.eq('genre', params.genre)
         if (params.condition && params.condition !== 'any') q = q.eq('condition', params.condition)
         return q
@@ -98,8 +98,8 @@ async function getListings(params: {
     if (params.city) query = query.ilike('city', `%${params.city}%`)
     if (params.title) query = query.ilike('title', `%${params.title}%`)
     if (params.author) query = query.ilike('author', `%${params.author}%`)
-    if (params.type === 'free') query = query.is('price', null)
-    if (params.type === 'sale') query = query.not('price', 'is', null)
+    if (params.book_type === 'single') query = query.eq('is_bundle', false)
+    if (params.book_type === 'bundle') query = query.eq('is_bundle', true)
     if (params.genre && params.genre !== 'all') query = query.eq('genre', params.genre)
     if (params.condition && params.condition !== 'any') query = query.eq('condition', params.condition)
 
@@ -182,7 +182,7 @@ export default async function ListingsPage({
     title?: string
     author?: string
     ol_work_key?: string
-    type?: string
+    book_type?: string
     genre?: string
     condition?: string
     sort?: string
@@ -192,13 +192,13 @@ export default async function ListingsPage({
   const title = searchParams.title ?? ''
   const author = searchParams.author ?? ''
   const olWorkKey = searchParams.ol_work_key ?? ''
-  const type = searchParams.type ?? 'all'
+  const bookType = searchParams.book_type ?? 'all'
   const genre = searchParams.genre ?? 'all'
   const condition = searchParams.condition ?? 'any'
   const sort = searchParams.sort ?? 'newest'
 
   const [listings, { isLoggedIn, userId, savedIds }] = await Promise.all([
-    getListings({ city, title, author, olWorkKey, type, genre, condition, sort }),
+    getListings({ city, title, author, olWorkKey, book_type: bookType, genre, condition, sort }),
     getUserSaveContext(),
   ])
   const sellerRatings = await getSellerRatings(listings)
@@ -208,7 +208,7 @@ export default async function ListingsPage({
     city && { label: `📍 ${city}`, key: 'city' },
     title && { label: `Title: "${title}"`, key: 'title' },
     author && { label: `Author: "${author}"`, key: 'author' },
-    type !== 'all' && { label: type === 'free' ? '🎁 Free only' : '💲 For sale', key: 'type' },
+    bookType !== 'all' && { label: bookType === 'single' ? '📖 Single books only' : '📚 Bundles only', key: 'book_type' },
     genre !== 'all' && { label: genre, key: 'genre' },
     condition !== 'any' && { label: `${conditionLabel(condition)} condition`, key: 'condition' },
   ].filter(Boolean) as { label: string; key: string }[]
@@ -219,7 +219,7 @@ export default async function ListingsPage({
     if (title && key !== 'title') p.set('title', title)
     if (olWorkKey && key !== 'title') p.set('ol_work_key', olWorkKey)
     if (author && key !== 'author') p.set('author', author)
-    if (type !== 'all' && key !== 'type') p.set('type', type)
+    if (bookType !== 'all' && key !== 'book_type') p.set('book_type', bookType)
     if (genre !== 'all' && key !== 'genre') p.set('genre', genre)
     if (condition !== 'any' && key !== 'condition') p.set('condition', condition)
     if (sort !== 'newest') p.set('sort', sort)
@@ -259,33 +259,38 @@ export default async function ListingsPage({
           <input name="author" type="text" defaultValue={author} placeholder="e.g. Tara Westover..." style={filterInputStyle} />
         </div>
 
-        {/* Listing Type chips */}
+        {/* Book Type: single books vs. bundles, three-way segmented toggle.
+            Highlight is pure CSS (:checked in globals.css) so it flips instantly
+            on click instead of waiting for the server-rendered state to catch up
+            on form submit, like the other filters below still do. */}
         <div style={{ marginBottom: 22 }}>
           <span
             className="block mb-2.5"
             style={{ fontSize: 11, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.8px', color: '#aaa' }}
           >
-            Listing Type
+            Books&Bundles
           </span>
-          <div className="flex flex-wrap gap-1.5">
+          <div
+            className="flex bk-segmented"
+            style={{ border: '2px solid #fed7aa', borderRadius: 12, overflow: 'hidden' }}
+          >
             {[
+              { val: 'single', label: '📖 Single' },
               { val: 'all', label: 'All' },
-              { val: 'sale', label: '📗 For Sale' },
-              { val: 'free', label: '🎁 Free' },
-            ].map(o => (
-              <label key={o.val} style={{ cursor: 'pointer' }}>
-                <input type="radio" name="type" value={o.val} defaultChecked={type === o.val} className="sr-only" />
+              { val: 'bundle', label: '📚 Bundles' },
+            ].map((o, i) => (
+              <label key={o.val} style={{ cursor: 'pointer', flex: 1, display: 'flex' }}>
+                <input type="radio" name="book_type" value={o.val} defaultChecked={bookType === o.val} className="sr-only" />
                 <span
+                  className="flex items-center justify-center text-center"
                   style={{
-                    display: 'inline-block',
-                    padding: '5px 12px',
-                    borderRadius: 999,
+                    width: '100%',
+                    padding: '7px 6px',
                     fontWeight: 800,
                     fontSize: 12,
-                    border: '2px solid',
-                    borderColor: type === o.val ? (o.val === 'free' ? '#0d9488' : '#f97316') : '#e5e7eb',
-                    background: type === o.val ? (o.val === 'free' ? '#0d9488' : '#f97316') : '#fff',
-                    color: type === o.val ? '#fff' : '#555',
+                    borderLeft: i > 0 ? '2px solid #fed7aa' : 'none',
+                    background: '#fffbf0',
+                    color: '#888',
                   }}
                 >
                   {o.label}

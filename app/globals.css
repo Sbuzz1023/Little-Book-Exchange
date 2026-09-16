@@ -21,3 +21,10 @@ body {
 /* Hide default details/summary triangle marker */
 details summary::-webkit-details-marker { display: none; }
 details summary::marker { display: none; }
+
+/* Browse page Book Type toggle: instant highlight on click via native radio
+   :checked state, no form submit needed to see the selection change. */
+.bk-segmented input:checked + span {
+  background: #f97316 !important;
+  color: #fff !important;
+}
