@@ -256,6 +256,50 @@ describe('PostForm — bundle toggle', () => {
   })
 })
 
+describe('PostForm — search by author', () => {
+  it('shows a search-by-author box alongside the title search box', () => {
+    render(<PostForm action={vi.fn()} search={noopSearch} />)
+    expect(screen.getByPlaceholderText('e.g. Agatha Christie')).toBeInTheDocument()
+  })
+
+  it('selecting a suggestion from the author search box locks in the same book', async () => {
+    const { container } = render(<PostForm action={vi.fn()} search={vi.fn().mockResolvedValue([DUNE])} />)
+    fireEvent.change(screen.getByPlaceholderText('e.g. Agatha Christie'), { target: { value: 'Frank Herbert' } })
+    const listbox = await screen.findByRole('listbox')
+    fireEvent.click(within(listbox).getByRole('button'))
+
+    expect(screen.getByText('Dune')).toBeInTheDocument()
+    expect(screen.getByText('Frank Herbert')).toBeInTheDocument()
+    expect(container.querySelector('input[name="ol_work_key"]')).toHaveValue('/works/OL893415W')
+  })
+
+  it('hides both search boxes once a book is matched', async () => {
+    render(<PostForm action={vi.fn()} search={vi.fn().mockResolvedValue([DUNE])} />)
+    await selectDune()
+    expect(screen.queryByPlaceholderText('e.g. The Great Gatsby')).not.toBeInTheDocument()
+    expect(screen.queryByPlaceholderText('e.g. Agatha Christie')).not.toBeInTheDocument()
+  })
+
+  it('shows a search-by-author box in an unmatched bundle row, and selecting from it locks that row', async () => {
+    const CHAMBER: BookSuggestion = {
+      title: 'Chamber of Secrets', author: 'J.K. Rowling', year: 1998, isbn: null,
+      coverUrl: null, workKey: '/works/OL82586W', genre: null,
+    }
+    render(<PostForm action={vi.fn()} search={vi.fn().mockResolvedValue([CHAMBER])} />)
+    fireEvent.click(screen.getByText('📚 List as a Bundle / Series'))
+    fireEvent.click(screen.getByText('+ Add Another Book'))
+    expect(screen.getByPlaceholderText('Author in series')).toBeInTheDocument()
+
+    fireEvent.change(screen.getByPlaceholderText('Author in series'), { target: { value: 'Rowling' } })
+    const listbox = await screen.findByRole('listbox')
+    fireEvent.click(within(listbox).getByRole('button'))
+
+    expect(screen.getByText('Chamber of Secrets')).toBeInTheDocument()
+    expect(screen.getByText('J.K. Rowling')).toBeInTheDocument()
+    expect(screen.queryByPlaceholderText('Author in series')).not.toBeInTheDocument()
+  })
+})
+
 describe('PostForm — Open Library integration', () => {
   it('selecting a suggestion locks in the book and fills hidden title/author/ol_work_key/cover_url fields', async () => {
     const { container } = render(<PostForm action={vi.fn()} search={vi.fn().mockResolvedValue([DUNE])} />)

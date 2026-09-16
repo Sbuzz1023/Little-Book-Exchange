@@ -193,6 +193,7 @@ export default function PostForm({ city, action, error, initialValues, submitLab
   const [format, setFormat] = useState(initialValues?.format ?? 'Paperback')
   const [title, setTitle] = useState(initialValues?.title ?? '')
   const [author, setAuthor] = useState(initialValues?.author ?? '')
+  const [authorQuery, setAuthorQuery] = useState('')
   const [olWorkKey, setOlWorkKey] = useState(initialValues?.ol_work_key ?? '')
   const [coverUrl, setCoverUrl] = useState<string | null>(initialValues?.cover_url ?? null)
   const [isbn, setIsbn] = useState(initialValues?.isbn ?? '')
@@ -203,8 +204,8 @@ export default function PostForm({ city, action, error, initialValues, submitLab
   const [photo3Preview, setPhoto3Preview] = useState<string | null>(initialValues?.photo_url_3 ?? null)
   const [isBundle, setIsBundle] = useState(initialValues?.is_bundle ?? false)
   const [bundleName, setBundleName] = useState(initialValues?.bundle_name ?? '')
-  const [books, setBooks] = useState<{ title: string; author: string; ol_work_key: string; cover_url: string | null }[]>(
-    initialValues?.books?.map(b => ({ ...b, ol_work_key: b.ol_work_key ?? '', cover_url: b.cover_url ?? null })) ?? []
+  const [books, setBooks] = useState<{ title: string; author: string; ol_work_key: string; cover_url: string | null; authorQuery: string }[]>(
+    initialValues?.books?.map(b => ({ ...b, ol_work_key: b.ol_work_key ?? '', cover_url: b.cover_url ?? null, authorQuery: '' })) ?? []
   )
 
   const MAX_BUNDLE_BOOKS = 20
@@ -221,6 +222,7 @@ export default function PostForm({ city, action, error, initialValues, submitLab
   function clearMainSelection() {
     setTitle('')
     setAuthor('')
+    setAuthorQuery('')
     setOlWorkKey('')
     setCoverUrl(null)
     setIsbn('')
@@ -233,11 +235,11 @@ export default function PostForm({ city, action, error, initialValues, submitLab
       return next
     })
   }
-  function updateBook(i: number, next: { title: string; author: string; ol_work_key: string; cover_url: string | null }) {
-    setBooks(prev => prev.map((b, idx) => (idx === i ? next : b)))
+  function updateBook(i: number, next: Partial<{ title: string; author: string; ol_work_key: string; cover_url: string | null; authorQuery: string }>) {
+    setBooks(prev => prev.map((b, idx) => (idx === i ? { ...b, ...next } : b)))
   }
   function addBook() {
-    setBooks(prev => (prev.length >= MAX_BUNDLE_BOOKS ? prev : [...prev, { title: '', author: '', ol_work_key: '', cover_url: null }]))
+    setBooks(prev => (prev.length >= MAX_BUNDLE_BOOKS ? prev : [...prev, { title: '', author: '', ol_work_key: '', cover_url: null, authorQuery: '' }]))
   }
   function removeBook(i: number) {
     setBooks(prev => prev.filter((_, idx) => idx !== i))
@@ -286,6 +288,16 @@ export default function PostForm({ city, action, error, initialValues, submitLab
                 onChange={v => { setTitle(v); setAuthor(''); setOlWorkKey(''); setCoverUrl(null) }}
                 onSelect={selectBook}
                 placeholder="e.g. The Great Gatsby"
+                style={inputStyle}
+                search={search}
+              />
+              <p style={{ textAlign: 'center', fontSize: 11, fontWeight: 800, color: '#ccc', margin: '8px 0' }}>or search by author</p>
+              <BookSearchInput
+                name="author_search"
+                value={authorQuery}
+                onChange={setAuthorQuery}
+                onSelect={book => { selectBook(book); setAuthorQuery('') }}
+                placeholder="e.g. Agatha Christie"
                 style={inputStyle}
                 search={search}
               />
@@ -407,18 +419,30 @@ export default function PostForm({ city, action, error, initialValues, submitLab
                     title={book.title}
                     author={book.author}
                     coverUrl={book.cover_url}
-                    onChangeBook={() => updateBook(i, { title: '', author: '', ol_work_key: '', cover_url: null })}
+                    onChangeBook={() => updateBook(i, { title: '', author: '', ol_work_key: '', cover_url: null, authorQuery: '' })}
                   />
                 ) : (
-                  <BookSearchInput
-                    name={`book_title_search_${i + 1}`}
-                    value={book.title}
-                    onChange={v => updateBook(i, { title: v, author: '', ol_work_key: '', cover_url: null })}
-                    onSelect={s => updateBook(i, { title: s.title, author: s.author, ol_work_key: s.workKey, cover_url: s.coverUrl })}
-                    placeholder="Title in series"
-                    style={inputStyle}
-                    search={search}
-                  />
+                  <>
+                    <BookSearchInput
+                      name={`book_title_search_${i + 1}`}
+                      value={book.title}
+                      onChange={v => updateBook(i, { title: v, author: '', ol_work_key: '', cover_url: null })}
+                      onSelect={s => updateBook(i, { title: s.title, author: s.author, ol_work_key: s.workKey, cover_url: s.coverUrl })}
+                      placeholder="Title in series"
+                      style={inputStyle}
+                      search={search}
+                    />
+                    <p style={{ textAlign: 'center', fontSize: 10, fontWeight: 800, color: '#ccc', margin: '6px 0' }}>or search by author</p>
+                    <BookSearchInput
+                      name={`book_author_search_${i + 1}`}
+                      value={book.authorQuery}
+                      onChange={v => updateBook(i, { authorQuery: v })}
+                      onSelect={s => updateBook(i, { title: s.title, author: s.author, ol_work_key: s.workKey, cover_url: s.coverUrl, authorQuery: '' })}
+                      placeholder="Author in series"
+                      style={inputStyle}
+                      search={search}
+                    />
+                  </>
                 )}
                 <input type="hidden" name={`book_title_${i + 1}`} value={book.title} />
                 <input type="hidden" name={`book_author_${i + 1}`} value={book.author} />
