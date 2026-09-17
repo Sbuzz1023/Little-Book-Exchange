@@ -351,9 +351,6 @@ export default async function HomePage() {
           <div className="wrap section">
             <div className="closing">
               <p className="big">Need a hand?</p>
-              <span className="fine" style={{ maxWidth: 380, display: 'block' }}>
-                Questions about an order, credits, or anything else — we&rsquo;re happy to help.
-              </span>
               {isLoggedIn ? (
                 <form action={startSupportConversationAndRedirect}>
                   <button type="submit" className="btn btn-primary">💬 Message Support</button>
