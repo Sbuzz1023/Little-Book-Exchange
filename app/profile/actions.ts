@@ -401,3 +401,15 @@ export async function startSupportConversation(): Promise<{ ok: boolean; convers
   if (error || !created) return { ok: false, error: 'Could not start a support conversation. Please try again.' }
   return { ok: true, conversationId: created.id }
 }
+
+// Used by the "Message Support" link on the homepage, which — unlike ProfileCard's
+// button — isn't already mounted inside DashboardClient's tab UI, so it can't just
+// flip local state. Finds/creates the conversation the same way, then deep-links into
+// the Messages tab via the existing tab/conversation search params (app/profile/page.tsx).
+export async function startSupportConversationAndRedirect() {
+  const result = await startSupportConversation()
+  if (result.ok && result.conversationId) {
+    redirect(`/profile?tab=messages&conversation=${result.conversationId}`)
+  }
+  redirect('/auth/signin?redirect=%2Fprofile%3Ftab%3Dmessages')
+}

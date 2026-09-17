@@ -1,8 +1,21 @@
 import Link from 'next/link'
+import { cookies } from 'next/headers'
 import './home.css'
 import WelcomeBonusModal from '@/components/WelcomeBonusModal'
 import { createClient } from '@/lib/supabase/server'
 import { avatarInitials } from '@/lib/avatarInitials'
+import { startSupportConversationAndRedirect } from '@/app/profile/actions'
+
+async function getIsLoggedIn(): Promise<boolean> {
+  if (cookies().get('lbe_demo_user')?.value) return true
+  try {
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    return !!user
+  } catch {
+    return false
+  }
+}
 
 export const metadata = {
   title: 'Little Book Exchange — Local Used Books',
@@ -111,7 +124,7 @@ function ArrowRight() {
 }
 
 export default async function HomePage() {
-  const { stats, books, avatars } = await getHomeData()
+  const [{ stats, books, avatars }, isLoggedIn] = await Promise.all([getHomeData(), getIsLoggedIn()])
 
   return (
     <>
@@ -329,6 +342,25 @@ export default async function HomePage() {
               <p className="big">Clear a shelf. Make someone&rsquo;s week.</p>
               <Link className="btn btn-primary" href="/auth/signup">Create your free account</Link>
               <span className="fine">Free to browse. Free to join.</span>
+            </div>
+          </div>
+        </section>
+
+        {/* ---------- SUPPORT ---------- */}
+        <section>
+          <div className="wrap section">
+            <div className="closing">
+              <p className="big">Need a hand?</p>
+              <span className="fine" style={{ maxWidth: 380, display: 'block' }}>
+                Questions about an order, credits, or anything else — we&rsquo;re happy to help.
+              </span>
+              {isLoggedIn ? (
+                <form action={startSupportConversationAndRedirect}>
+                  <button type="submit" className="btn btn-primary">💬 Message Support</button>
+                </form>
+              ) : (
+                <a className="btn btn-outline" href="mailto:support@littlebookexchange.com">✉️ Email Support</a>
+              )}
             </div>
           </div>
         </section>

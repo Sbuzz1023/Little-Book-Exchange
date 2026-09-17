@@ -41,7 +41,6 @@ const baseProps = {
   resendEmailConfirmation: vi.fn(() => Promise.resolve({ ok: true })),
   sendPhoneOtp: vi.fn(() => Promise.resolve({ ok: true })),
   verifyPhoneOtp: vi.fn(() => Promise.resolve({ ok: true })),
-  startSupportConversation: vi.fn(() => Promise.resolve({ ok: true, conversationId: 'convo-support' })),
 }
 
 const pendingExchange = {
