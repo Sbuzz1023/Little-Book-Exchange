@@ -1,0 +1,95 @@
+/* ============================================================
+   Post a Book / Edit Listing — reskinned to match the homepage
+   theme. Nests under .home-v2 (imported from app/home.css) for
+   its tokens, fonts, .wrap, .btn; these rules are form-only.
+   ============================================================ */
+
+.home-v2 .pf-page-head { padding: 34px 0 22px; }
+.home-v2 .pf-page-head h1 { font-size: clamp(28px, 4vw, 34px); color: var(--pine); }
+.home-v2 .pf-page-head .sub { margin-top: 8px; font-size: 14.5px; color: var(--ink-soft); }
+
+.home-v2 .pf-card { background: var(--surface); border-radius: 20px; box-shadow: var(--shadow); padding: 30px; }
+.home-v2 .pf-section-h { font-family: var(--serif); font-weight: 500; font-size: 17px; color: var(--pine); padding-bottom: 10px; border-bottom: 1.5px solid var(--line); margin: 30px 0 18px; }
+.home-v2 .pf-section-h:first-child { margin-top: 0; }
+.home-v2 .pf-f-group { margin-bottom: 18px; }
+.home-v2 .pf-f-label { display: block; font-size: 11px; font-weight: 800; letter-spacing: .5px; text-transform: uppercase; color: var(--ink-faint); margin-bottom: 8px; }
+.home-v2 .pf-f-label .opt { text-transform: none; letter-spacing: 0; font-weight: 600; color: #B8AC9C; margin-left: 4px; }
+.home-v2 .pf-input { width: 100%; border: 1.5px solid var(--line); border-radius: 12px; padding: 11px 14px; font-family: var(--sans); font-size: 13.5px; font-weight: 700; background: var(--ground); color: var(--ink); outline: none; }
+.home-v2 select.pf-input { cursor: pointer; }
+.home-v2 .pf-hint { font-size: 11.5px; font-weight: 600; color: var(--ink-faint); margin-top: 6px; line-height: 1.4; }
+.home-v2 .pf-divider { text-align: center; font-size: 11px; font-weight: 800; color: #C9BEAE; margin: 8px 0; }
+
+/* matched book card */
+.home-v2 .pf-book-card { display: flex; align-items: center; gap: 12px; border: 1.5px solid var(--pine); border-radius: 14px; padding: 12px 14px; background: var(--sage); }
+.home-v2 .pf-book-card .cover { width: 40px; height: 56px; border-radius: 6px; flex-shrink: 0; object-fit: cover; border: 1.5px solid var(--line); }
+.home-v2 .pf-book-card .cover-fallback { width: 40px; height: 56px; border-radius: 6px; flex-shrink: 0; background: var(--surface); border: 1.5px solid var(--line); display: flex; align-items: center; justify-content: center; color: var(--ink-faint); }
+.home-v2 .pf-book-card .info { flex: 1; min-width: 0; }
+.home-v2 .pf-book-card .info .t { font-family: var(--serif); font-weight: 600; font-size: 14.5px; color: var(--pine); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.home-v2 .pf-book-card .info .a { font-size: 12px; color: var(--ink-soft); font-weight: 600; margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.home-v2 .pf-book-card .change { background: none; border: none; font-weight: 800; font-size: 12px; color: var(--coral); flex-shrink: 0; cursor: pointer; font-family: var(--sans); padding: 0; }
+
+/* format / two-col */
+.home-v2 .pf-two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 18px; }
+.home-v2 .pf-pill-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.home-v2 .pf-pill { padding: 9px 18px; border-radius: 999px; font-weight: 800; font-size: 13px; border: 1.5px solid var(--line); color: var(--ink-soft); background: var(--surface); cursor: pointer; font-family: var(--sans); }
+.home-v2 .pf-pill.on { background: var(--pine); border-color: var(--pine); color: #fff; }
+
+/* bundle toggle */
+.home-v2 .pf-bundle-toggle { width: 100%; display: flex; align-items: center; justify-content: space-between; padding: 15px 18px; border-radius: 14px; border: 1.5px solid var(--line); background: var(--ground); cursor: pointer; font-family: var(--sans); }
+.home-v2 .pf-bundle-toggle .lbl { font-weight: 700; font-size: 14px; color: var(--ink); }
+.home-v2 .pf-switch { width: 42px; height: 24px; border-radius: 999px; background: var(--line); position: relative; flex-shrink: 0; transition: background .15s; }
+.home-v2 .pf-switch.on { background: var(--pine); }
+.home-v2 .pf-switch .knob { position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.25); transition: left .15s; }
+.home-v2 .pf-switch.on .knob { left: 21px; }
+
+.home-v2 .pf-bundle-details { border-top: 1.5px solid var(--line); padding-top: 16px; margin: 18px 0; }
+.home-v2 .pf-bundle-details .eyebrow { font-size: 11px; font-weight: 800; letter-spacing: .5px; text-transform: uppercase; color: var(--coral); margin-bottom: 12px; }
+.home-v2 .pf-bundle-row { border: 1.5px solid var(--line); border-radius: 14px; padding: 14px; background: var(--ground); margin-bottom: 14px; }
+.home-v2 .pf-bundle-row .row-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.home-v2 .pf-bundle-row .row-head .n { font-size: 10.5px; font-weight: 800; letter-spacing: .5px; text-transform: uppercase; color: var(--ink-faint); }
+.home-v2 .pf-bundle-row .row-head .rm { background: none; border: none; font-size: 11.5px; font-weight: 800; color: var(--brick); cursor: pointer; font-family: var(--sans); padding: 0; }
+.home-v2 .pf-add-book { width: 100%; padding: 11px; border-radius: 12px; border: 1.5px dashed var(--line); background: var(--surface); color: var(--pine); font-weight: 800; font-size: 13px; text-align: center; margin-bottom: 14px; cursor: pointer; font-family: var(--sans); }
+.home-v2 .pf-bundle-total { background: var(--peach); border-radius: 12px; padding: 11px 16px; font-weight: 800; font-size: 13px; color: #8A5A2E; }
+
+/* genre grid */
+.home-v2 .pf-genre-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.home-v2 .pf-genre-opt { padding: 9px 14px; border-radius: 12px; font-weight: 700; font-size: 12.5px; border: 1.5px solid var(--line); color: var(--ink-soft); text-align: center; background: var(--surface); cursor: pointer; font-family: var(--sans); }
+.home-v2 .pf-genre-opt.on { background: var(--sage); border-color: var(--pine); color: var(--pine); font-weight: 800; }
+
+/* pricing */
+.home-v2 .pf-pricing { display: flex; align-items: center; gap: 14px; background: var(--peach); border-radius: 14px; padding: 15px 18px; margin: 18px 0; }
+.home-v2 .pf-pricing .icon { width: 36px; height: 36px; border-radius: 50%; background: var(--surface); display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: var(--pine); }
+.home-v2 .pf-pricing .t { font-weight: 800; font-size: 14px; color: #8A5A2E; margin-bottom: 2px; }
+.home-v2 .pf-pricing .s { font-size: 12px; color: #9C8567; font-weight: 600; }
+
+/* photo upload */
+.home-v2 .pf-photo-slot { border: 2px dashed var(--line); border-radius: 14px; text-align: center; cursor: pointer; position: relative; overflow: hidden; background: var(--ground); }
+.home-v2 .pf-photo-slot.filled { border-color: var(--pine); background: #000; }
+.home-v2 .pf-photo-slot.big { padding: 32px; }
+.home-v2 .pf-photo-slot.big.filled { padding: 0; min-height: 180px; }
+.home-v2 .pf-photo-slot.small { padding: 18px; }
+.home-v2 .pf-photo-slot.small.filled { padding: 0; min-height: 100px; }
+.home-v2 .pf-photo-slot .icon { color: var(--ink-faint); margin-bottom: 10px; }
+.home-v2 .pf-photo-slot .cta { font-weight: 800; font-size: 14px; color: var(--ink); }
+.home-v2 .pf-photo-slot.big .cta { font-size: 14px; }
+.home-v2 .pf-photo-slot.small .cta { font-size: 12.5px; }
+.home-v2 .pf-photo-slot .cta span { color: var(--pine); }
+.home-v2 .pf-photo-slot .note { font-size: 12px; color: var(--ink-faint); font-weight: 600; margin-top: 5px; }
+.home-v2 .pf-photo-slot img { width: 100%; display: block; object-fit: contain; }
+.home-v2 .pf-photo-slot.big img { max-height: 260px; }
+.home-v2 .pf-photo-slot.small img { max-height: 140px; }
+.home-v2 .pf-photo-slot .change-tag { position: absolute; bottom: 8px; right: 8px; background: rgba(0,0,0,.55); color: #fff; font-size: 10.5px; font-weight: 700; padding: 3px 9px; border-radius: 999px; }
+.home-v2 .pf-photo-slot input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+.home-v2 .pf-photo-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 18px; }
+
+/* preview box */
+.home-v2 .pf-preview-box { background: var(--peach); border-radius: 14px; padding: 16px 20px; margin: 18px 0; }
+.home-v2 .pf-preview-box .lbl { font-size: 13px; font-weight: 800; color: #8A5A2E; margin-bottom: 3px; }
+.home-v2 .pf-preview-box .line { font-size: 12px; font-weight: 600; color: #9C8567; }
+.home-v2 .pf-preview-box .line b { color: var(--pine); font-weight: 800; }
+
+.home-v2 .pf-error-box { background: #FBEAE7; border: 1.5px solid #E3B3AA; color: var(--brick); border-radius: 12px; padding: 12px 16px; font-weight: 700; font-size: 13px; margin-bottom: 16px; }
+.home-v2 .pf-blocked-msg { font-size: 12px; font-weight: 700; color: var(--brick); text-align: center; margin-bottom: 10px; }
+
+.home-v2 .pf-submit-btn { display: block; width: 100%; text-align: center; background: var(--pine); color: #fff; font-weight: 800; font-size: 16px; padding: 16px; border-radius: 14px; border: none; cursor: pointer; font-family: var(--sans); }
+.home-v2 .pf-submit-btn:disabled { background: var(--line); color: var(--ink-faint); cursor: not-allowed; }

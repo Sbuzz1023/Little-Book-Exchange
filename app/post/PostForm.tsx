@@ -3,22 +3,24 @@
 import { useState, useRef } from 'react'
 import BookSearchInput from '@/components/BookSearchInput'
 import type { BookSuggestion } from '@/lib/openLibrary'
+import '../home.css'
+import './postform.css'
 
 const DESCRIPTION_MAX_LENGTH = 500
 
 const GENRES = [
-  { key: 'Fiction', label: '📚 Fiction' },
-  { key: 'Non-Fiction', label: '🌍 Non-Fiction' },
-  { key: 'Mystery', label: '🔍 Mystery / Thriller' },
-  { key: 'Sci-Fi', label: '🚀 Sci-Fi / Fantasy' },
-  { key: 'Romance', label: '💕 Romance' },
-  { key: "Children's", label: "👶 Children's" },
-  { key: 'Biography', label: '📖 Biography' },
-  { key: 'Self-Help', label: '🧠 Self-Help' },
-  { key: 'History', label: '🏛️ History' },
-  { key: 'Cooking', label: '🍳 Cooking' },
-  { key: 'Art', label: '🎨 Art / Design' },
-  { key: 'Other', label: '✨ Other' },
+  { key: 'Fiction', label: 'Fiction' },
+  { key: 'Non-Fiction', label: 'Non-Fiction' },
+  { key: 'Mystery', label: 'Mystery / Thriller' },
+  { key: 'Sci-Fi', label: 'Sci-Fi / Fantasy' },
+  { key: 'Romance', label: 'Romance' },
+  { key: "Children's", label: "Children's" },
+  { key: 'Biography', label: 'Biography' },
+  { key: 'Self-Help', label: 'Self-Help' },
+  { key: 'History', label: 'History' },
+  { key: 'Cooking', label: 'Cooking' },
+  { key: 'Art', label: 'Art / Design' },
+  { key: 'Other', label: 'Other' },
 ]
 
 type Props = {
@@ -47,15 +49,32 @@ type Props = {
   search?: (query: string) => Promise<BookSuggestion[]>
 }
 
-function SectionHeading({ emoji, title }: { emoji: string; title: string }) {
+function BookIcon() {
   return (
-    <div
-      className="font-display text-[15px] text-bk-orange flex items-center gap-2"
-      style={{ margin: '28px 0 16px', paddingBottom: 8, borderBottom: '2px dashed #fed7aa' }}
-    >
-      <span>{emoji}</span> {title}
-    </div>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+    </svg>
   )
+}
+
+function ImageIcon({ size = 20 }: { size?: number }) {
+  return (
+    <svg className="icon" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <rect x="3" y="5" width="18" height="14" rx="2" /><circle cx="9" cy="11" r="2" /><path d="M21 17l-5-4-4 3-3-2-6 5" />
+    </svg>
+  )
+}
+
+function CoinIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <circle cx="12" cy="12" r="9" /><path d="M12 7v10M9 9.5c0-1.4 1.3-2.5 3-2.5s3 1 3 2.2c0 2.8-6 1.5-6 4.3 0 1.2 1.3 2.2 3 2.2s3-1.1 3-2.5" />
+    </svg>
+  )
+}
+
+function SectionHeading({ title }: { title: string }) {
+  return <div className="pf-section-h">{title}</div>
 }
 
 function SelectedBookCard({
@@ -67,44 +86,26 @@ function SelectedBookCard({
   onChangeBook: () => void
 }) {
   return (
-    <div
-      className="flex items-center gap-3"
-      style={{ border: '2px solid #0d9488', borderRadius: 14, padding: '10px 14px', background: '#f0fdfa' }}
-    >
+    <div className="pf-book-card">
       {coverUrl ? (
-        <img
-          src={coverUrl}
-          alt="Cover preview"
-          style={{ width: 40, height: 56, objectFit: 'cover', borderRadius: 6, flexShrink: 0, border: '2px solid #fed7aa' }}
-        />
+        <img src={coverUrl} alt="Cover preview" className="cover" />
       ) : (
-        <span style={{ width: 40, height: 56, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>
-          📖
-        </span>
+        <span className="cover-fallback"><BookIcon /></span>
       )}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <p className="truncate" style={{ fontWeight: 900, fontSize: 14, color: '#0d9488' }}>{title}</p>
-        <p className="truncate" style={{ fontWeight: 700, fontSize: 12, color: '#555' }}>{author}</p>
+      <div className="info">
+        <p className="t">{title}</p>
+        <p className="a">{author}</p>
       </div>
-      <button
-        type="button"
-        onClick={onChangeBook}
-        style={{ background: 'none', border: 'none', color: '#f97316', fontWeight: 800, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0 }}
-      >
-        🔄 Change
-      </button>
+      <button type="button" onClick={onChangeBook} className="change">Change</button>
     </div>
   )
 }
 
 function FieldLabel({ children, optional }: { children: React.ReactNode; optional?: boolean }) {
   return (
-    <label
-      className="block mb-1.5"
-      style={{ fontSize: 12, fontWeight: 900, color: '#444', textTransform: 'uppercase', letterSpacing: '0.5px' }}
-    >
+    <label className="pf-f-label">
       {children}
-      {optional && <span style={{ color: '#bbb', fontWeight: 600, fontSize: 11, textTransform: 'none', letterSpacing: 0, marginLeft: 4 }}>(optional)</span>}
+      {optional && <span className="opt">(optional)</span>}
     </label>
   )
 }
@@ -119,74 +120,26 @@ function PhotoUploadSlot({
   size: 'large' | 'small'
 }) {
   const inputRef = useRef<HTMLInputElement>(null)
+  const sizeClass = size === 'large' ? 'big' : 'small'
 
   return (
-    <div
-      style={{
-        border: `2.5px dashed ${preview ? '#0d9488' : '#fed7aa'}`,
-        borderRadius: 14,
-        padding: preview ? 0 : (size === 'large' ? 28 : 16),
-        textAlign: 'center',
-        cursor: 'pointer',
-        background: preview ? '#000' : '#fffbf0',
-        position: 'relative',
-        overflow: 'hidden',
-        minHeight: preview ? (size === 'large' ? 180 : 100) : undefined,
-      }}
-      onClick={() => inputRef.current?.click()}
-    >
+    <div className={`pf-photo-slot ${sizeClass}${preview ? ' filled' : ''}`} onClick={() => inputRef.current?.click()}>
       {preview ? (
         <>
-          <img
-            src={preview}
-            alt={`${label} preview`}
-            style={{ width: '100%', maxHeight: size === 'large' ? 260 : 140, objectFit: 'contain', display: 'block' }}
-          />
-          <div style={{
-            position: 'absolute', bottom: 8, right: 8,
-            background: 'rgba(0,0,0,0.6)', color: '#fff',
-            padding: '4px 10px', borderRadius: 999,
-            fontSize: 11, fontWeight: 700,
-          }}>
-            📸 Change
-          </div>
+          <img src={preview} alt={`${label} preview`} />
+          <div className="change-tag">Change</div>
         </>
       ) : (
         <>
-          <div style={{ fontSize: size === 'large' ? 36 : 22, marginBottom: 8 }}>📸</div>
-          <p className="text-[14px] font-bold" style={{ color: '#aaa' }}>
-            <span style={{ color: '#f97316', fontWeight: 800 }}>Click to upload</span> {label}
-          </p>
-          {size === 'large' && (
-            <p className="text-[12px] font-semibold mt-1.5" style={{ color: '#aaa' }}>JPG or PNG · Max 5MB</p>
-          )}
+          <ImageIcon size={size === 'large' ? 32 : 20} />
+          <p className="cta"><span>Click to upload</span> {label}</p>
+          {size === 'large' && <p className="note">JPG or PNG · Max 5MB</p>}
         </>
       )}
-      <input
-        ref={inputRef}
-        name={name}
-        type="file"
-        accept="image/*"
-        onChange={onChange}
-        className="absolute inset-0 opacity-0 cursor-pointer"
-        style={{ width: '100%', height: '100%' }}
-      />
+      <input ref={inputRef} name={name} type="file" accept="image/*" onChange={onChange} />
     </div>
   )
 }
-
-const inputStyle = {
-  width: '100%',
-  border: '2px solid #fed7aa',
-  borderRadius: 14,
-  padding: '12px 16px',
-  fontFamily: 'inherit',
-  fontSize: 14,
-  fontWeight: 700,
-  background: '#fffbf0',
-  color: '#2d2d2d',
-  outline: 'none',
-} as React.CSSProperties
 
 export default function PostForm({ city, action, error, initialValues, submitLabel, search }: Props) {
   const [genre, setGenre] = useState(initialValues?.genre ?? 'Fiction')
@@ -269,15 +222,12 @@ export default function PostForm({ city, action, error, initialValues, submitLab
       <input type="hidden" name="ol_work_key" value={olWorkKey} />
       <input type="hidden" name="cover_url" value={coverUrl ?? ''} />
 
-      <div
-        className="bg-white border-2 border-gray-100 shadow-[0_8px_0_#e5e7eb] p-5 md:p-9"
-        style={{ borderRadius: 28 }}
-      >
+      <div className="pf-card">
         {/* Book Info */}
-        <SectionHeading emoji="📖" title="Book Info" />
+        <SectionHeading title="Book Info" />
 
-        <div style={{ marginBottom: 18 }}>
-          <FieldLabel>Book *</FieldLabel>
+        <div className="pf-f-group">
+          <FieldLabel>Book</FieldLabel>
           {olWorkKey ? (
             <SelectedBookCard title={title} author={author} coverUrl={coverUrl} onChangeBook={clearMainSelection} />
           ) : (
@@ -288,49 +238,32 @@ export default function PostForm({ city, action, error, initialValues, submitLab
                 onChange={v => { setTitle(v); setAuthor(''); setOlWorkKey(''); setCoverUrl(null) }}
                 onSelect={selectBook}
                 placeholder="e.g. The Great Gatsby"
-                style={inputStyle}
+                className="pf-input"
                 search={search}
               />
-              <p style={{ textAlign: 'center', fontSize: 11, fontWeight: 800, color: '#ccc', margin: '8px 0' }}>or search by author</p>
+              <p className="pf-divider">or search by author</p>
               <BookSearchInput
                 name="author_search"
                 value={authorQuery}
                 onChange={setAuthorQuery}
                 onSelect={book => { selectBook(book); setAuthorQuery('') }}
                 placeholder="e.g. Agatha Christie"
-                style={inputStyle}
+                className="pf-input"
                 search={search}
               />
-              <p style={{ fontSize: 11, fontWeight: 700, color: '#bbb', marginTop: 6 }}>
+              <p className="pf-hint">
                 Search and select your book — title, author, and cover come from Open Library, so every listing stays spelled right.
               </p>
             </>
           )}
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-[14px] mb-[18px]">
+        <div className="pf-two-col">
           <div>
             <FieldLabel>Format</FieldLabel>
-            <div className="flex gap-2 flex-wrap">
+            <div className="pf-pill-row">
               {['Paperback', 'Hardcover'].map(f => (
-                <button
-                  key={f}
-                  type="button"
-                  onClick={() => setFormat(f)}
-                  style={{
-                    padding: '9px 18px',
-                    borderRadius: 999,
-                    fontWeight: 800,
-                    fontSize: 13,
-                    border: '2px solid',
-                    borderColor: format === f ? '#f97316' : '#e5e7eb',
-                    background: format === f ? '#f97316' : '#fff',
-                    color: format === f ? '#fff' : '#555',
-                    cursor: 'pointer',
-                    fontFamily: 'inherit',
-                    transition: 'all 0.12s',
-                  }}
-                >
+                <button key={f} type="button" onClick={() => setFormat(f)} className={`pf-pill${format === f ? ' on' : ''}`}>
                   {f}
                 </button>
               ))}
@@ -338,81 +271,35 @@ export default function PostForm({ city, action, error, initialValues, submitLab
           </div>
           <div>
             <FieldLabel optional>Year</FieldLabel>
-            <input
-              name="year"
-              type="number"
-              placeholder="e.g. 2019"
-              min={1800}
-              max={2026}
-              style={inputStyle}
-            />
+            <input name="year" type="number" placeholder="e.g. 2019" min={1800} max={2026} className="pf-input" />
           </div>
         </div>
 
         {/* Bundle toggle */}
-        <div style={{ marginBottom: 18 }}>
-          <button
-            type="button"
-            onClick={toggleBundle}
-            style={{
-              width: '100%',
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              padding: '14px 18px',
-              borderRadius: 14,
-              border: `2px solid ${isBundle ? '#f97316' : '#e5e7eb'}`,
-              background: isBundle ? '#fff7ed' : '#fff',
-              cursor: 'pointer',
-              fontFamily: 'inherit',
-            }}
-          >
-            <span style={{ fontWeight: 900, fontSize: 14, color: isBundle ? '#c2410c' : '#555' }}>
-              📚 List as a Bundle / Series
-            </span>
-            <span
-              style={{
-                width: 44, height: 26, borderRadius: 999,
-                background: isBundle ? '#f97316' : '#e5e7eb',
-                position: 'relative', transition: 'background 0.15s', flexShrink: 0,
-              }}
-            >
-              <span
-                style={{
-                  position: 'absolute', top: 3, left: isBundle ? 21 : 3,
-                  width: 20, height: 20, borderRadius: '50%', background: '#fff',
-                  transition: 'left 0.15s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
-                }}
-              />
-            </span>
-          </button>
-        </div>
+        <button type="button" onClick={toggleBundle} className="pf-bundle-toggle">
+          <span className="lbl">List as a Bundle / Series</span>
+          <span className={`pf-switch${isBundle ? ' on' : ''}`}><span className="knob" /></span>
+        </button>
 
         {isBundle && (
-          <div style={{ marginBottom: 18, borderTop: '2px dashed #fed7aa', paddingTop: 16 }}>
-            <p style={{ fontSize: 11, fontWeight: 900, color: '#f97316', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 12 }}>
-              📚 Bundle Details
-            </p>
-            <div style={{ marginBottom: 18 }}>
+          <div className="pf-bundle-details">
+            <p className="eyebrow">Bundle Details</p>
+            <div className="pf-f-group">
               <FieldLabel optional>Series / Bundle Name</FieldLabel>
               <input
                 name="bundle_name"
                 value={bundleName}
                 onChange={e => setBundleName(e.target.value)}
                 placeholder="e.g. Harry Potter Complete Series"
-                style={inputStyle}
+                className="pf-input"
               />
             </div>
 
             {books.map((book, i) => (
-              <div key={i} style={{ marginBottom: 14, padding: 14, border: '2px solid #fed7aa', borderRadius: 14, background: '#fffbf0' }}>
-                <div className="flex items-center justify-between" style={{ marginBottom: 10 }}>
-                  <span style={{ fontSize: 11, fontWeight: 900, color: '#aaa', textTransform: 'uppercase' }}>Book {i + 2}</span>
-                  <button
-                    type="button"
-                    onClick={() => removeBook(i)}
-                    style={{ background: 'none', border: 'none', color: '#e11d48', fontWeight: 800, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}
-                  >
-                    ✕ Remove
-                  </button>
+              <div key={i} className="pf-bundle-row">
+                <div className="row-head">
+                  <span className="n">Book {i + 2}</span>
+                  <button type="button" onClick={() => removeBook(i)} className="rm">Remove</button>
                 </div>
                 {book.ol_work_key ? (
                   <SelectedBookCard
@@ -429,17 +316,17 @@ export default function PostForm({ city, action, error, initialValues, submitLab
                       onChange={v => updateBook(i, { title: v, author: '', ol_work_key: '', cover_url: null })}
                       onSelect={s => updateBook(i, { title: s.title, author: s.author, ol_work_key: s.workKey, cover_url: s.coverUrl })}
                       placeholder="Title in series"
-                      style={inputStyle}
+                      className="pf-input"
                       search={search}
                     />
-                    <p style={{ textAlign: 'center', fontSize: 10, fontWeight: 800, color: '#ccc', margin: '6px 0' }}>or search by author</p>
+                    <p className="pf-divider">or search by author</p>
                     <BookSearchInput
                       name={`book_author_search_${i + 1}`}
                       value={book.authorQuery}
                       onChange={v => updateBook(i, { authorQuery: v })}
                       onSelect={s => updateBook(i, { title: s.title, author: s.author, ol_work_key: s.workKey, cover_url: s.coverUrl, authorQuery: '' })}
                       placeholder="Author in series"
-                      style={inputStyle}
+                      className="pf-input"
                       search={search}
                     />
                   </>
@@ -452,48 +339,26 @@ export default function PostForm({ city, action, error, initialValues, submitLab
             ))}
 
             {books.length < MAX_BUNDLE_BOOKS && (
-              <button
-                type="button"
-                onClick={addBook}
-                style={{
-                  width: '100%', padding: '10px', borderRadius: 12,
-                  border: '2px dashed #fed7aa', background: '#fffbf0',
-                  color: '#f97316', fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit',
-                  marginBottom: 14,
-                }}
-              >
+              <button type="button" onClick={addBook} className="pf-add-book">
                 + Add Another Book
               </button>
             )}
 
-            <div style={{ background: '#fff7ed', border: '2px solid #fed7aa', borderRadius: 12, padding: '10px 16px', fontWeight: 900, fontSize: 13, color: '#c2410c' }}>
+            <div className="pf-bundle-total">
               This bundle: {books.length + 1} book{books.length === 0 ? '' : 's'} · {books.length + 1} credit{books.length === 0 ? '' : 's'}
             </div>
           </div>
         )}
 
         {/* Genre */}
-        <SectionHeading emoji="🏷️" title="Genre *" />
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 4 }}>
+        <SectionHeading title="Genre" />
+        <div className="pf-genre-grid">
           {GENRES.map(g => (
             <button
               key={g.key}
               type="button"
               onClick={() => setGenre(g.key)}
-              style={{
-                padding: '8px 14px',
-                borderRadius: 12,
-                fontWeight: 800,
-                fontSize: 12,
-                border: '2px solid',
-                borderColor: genre === g.key ? '#fed7aa' : '#e5e7eb',
-                background: genre === g.key ? '#fff7ed' : '#fff',
-                color: genre === g.key ? '#c2410c' : '#555',
-                cursor: 'pointer',
-                fontFamily: 'inherit',
-                textAlign: 'center',
-                transition: 'all 0.12s',
-              }}
+              className={`pf-genre-opt${genre === g.key ? ' on' : ''}`}
             >
               {g.label}
             </button>
@@ -501,17 +366,11 @@ export default function PostForm({ city, action, error, initialValues, submitLab
         </div>
 
         {/* Condition */}
-        <SectionHeading emoji="📋" title="Condition" />
+        <SectionHeading title="Condition" />
 
-        <div style={{ marginBottom: 18 }}>
-          <FieldLabel>Condition *</FieldLabel>
-          <select
-            name="condition"
-            value={condition}
-            onChange={e => setCondition(e.target.value)}
-            required
-            style={{ ...inputStyle, cursor: 'pointer' }}
-          >
+        <div className="pf-f-group">
+          <FieldLabel>Condition</FieldLabel>
+          <select name="condition" value={condition} onChange={e => setCondition(e.target.value)} required className="pf-input">
             <option value="Good">Good — barely used</option>
             <option value="Fair">Fair — some wear</option>
             <option value="Well-Loved">Well-Loved — lots of character</option>
@@ -519,22 +378,18 @@ export default function PostForm({ city, action, error, initialValues, submitLab
         </div>
 
         {/* Pricing notice */}
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 14,
-          background: '#fff7ed', border: '2px solid #fed7aa', borderRadius: 14,
-          padding: '14px 18px', marginBottom: 18,
-        }}>
-          <span style={{ fontSize: 28 }}>🪙</span>
+        <div className="pf-pricing">
+          <span className="icon"><CoinIcon /></span>
           <div>
-            <p style={{ fontWeight: 900, fontSize: 14, color: '#c2410c', marginBottom: 2 }}>All books are listed at 1 credit</p>
-            <p style={{ fontWeight: 600, fontSize: 12, color: '#aaa' }}>Credits cost $5 each — buyers use 1 credit to claim any book.</p>
+            <p className="t">All books are listed at 1 credit</p>
+            <p className="s">Credits cost $5 each — buyers use 1 credit to claim any book.</p>
           </div>
         </div>
 
         {/* Extra Details */}
-        <SectionHeading emoji="📝" title="Extra Details" />
+        <SectionHeading title="Extra Details" />
 
-        <div style={{ marginBottom: 18 }}>
+        <div className="pf-f-group">
           <FieldLabel optional>Description</FieldLabel>
           <textarea
             name="description"
@@ -543,35 +398,36 @@ export default function PostForm({ city, action, error, initialValues, submitLab
             value={description}
             onChange={e => setDescription(e.target.value)}
             placeholder="Any notes — edition, highlighting, pickup preferences..."
-            style={{ ...inputStyle, resize: 'none' }}
+            className="pf-input"
+            style={{ resize: 'none' }}
           />
-          <p style={{ fontSize: 11, fontWeight: 700, color: '#bbb', textAlign: 'right', marginTop: 4 }}>
+          <p className="pf-hint" style={{ textAlign: 'right' }}>
             {description.length}/{DESCRIPTION_MAX_LENGTH}
           </p>
         </div>
 
-        <div style={{ marginBottom: 18 }}>
+        <div className="pf-f-group">
           <FieldLabel optional>Pickup Spot for This Book</FieldLabel>
           <input
             name="pickup_description"
             type="text"
             defaultValue={initialValues?.pickup_description ?? ''}
             placeholder="e.g. front porch, side gate — overrides your profile default"
-            style={inputStyle}
+            className="pf-input"
           />
-          <p style={{ fontSize: 11, color: '#bbb', fontWeight: 600, marginTop: 5 }}>
-            🏠 Shared with the buyer after you approve their purchase. Overrides your profile pickup spot for this book only.
+          <p className="pf-hint">
+            Shared with the buyer after you approve their purchase. Overrides your profile pickup spot for this book only.
           </p>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 4 }}>
+        <div className="pf-two-col" style={{ marginBottom: 4 }}>
           <div>
             <FieldLabel optional>ISBN</FieldLabel>
-            <input name="isbn" type="text" value={isbn} onChange={e => setIsbn(e.target.value)} placeholder="978-..." maxLength={20} style={inputStyle} />
+            <input name="isbn" type="text" value={isbn} onChange={e => setIsbn(e.target.value)} placeholder="978-..." maxLength={20} className="pf-input" />
           </div>
           <div>
             <FieldLabel optional>Language</FieldLabel>
-            <select name="language" style={{ ...inputStyle, cursor: 'pointer' }}>
+            <select name="language" className="pf-input">
               <option>English</option>
               <option>Spanish</option>
               <option>French</option>
@@ -583,8 +439,8 @@ export default function PostForm({ city, action, error, initialValues, submitLab
         </div>
 
         {/* Photo */}
-        <SectionHeading emoji="📸" title="Photo" />
-        <p style={{ fontSize: 12, fontWeight: 700, color: '#aaa', marginTop: -8, marginBottom: 14 }}>
+        <SectionHeading title="Photo" />
+        <p className="pf-hint" style={{ marginTop: -10, marginBottom: 14 }}>
           This won&apos;t be the main photo on Browse — that always shows the official cover art. It&apos;ll still appear on your listing&apos;s page.
         </p>
 
@@ -598,7 +454,7 @@ export default function PostForm({ city, action, error, initialValues, submitLab
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-3" style={{ marginBottom: 16 }}>
+        <div className="pf-photo-row">
           <PhotoUploadSlot
             name="photo_2"
             label="Photo 2"
@@ -616,47 +472,23 @@ export default function PostForm({ city, action, error, initialValues, submitLab
         </div>
 
         {/* Preview */}
-        <div
-          style={{
-            background: '#fff7ed',
-            border: '2px solid #fed7aa',
-            borderRadius: 14,
-            padding: '16px 20px',
-            marginBottom: 16,
-          }}
-        >
-          <p className="text-[13px] font-bold mb-1" style={{ color: '#c2410c' }}>Your listing will appear as:</p>
-          <p className="text-[12px] font-semibold" style={{ color: '#aaa' }}>
-            {title || 'Your Book'} · {author || 'Author'} · {genre} · {format} · {condition} condition · <span style={{ color: '#f97316', fontWeight: 800 }}>{isBundle ? `${books.length + 1} credit${books.length === 0 ? '' : 's'}` : '1 credit'}</span> · {city || 'your city'}
+        <div className="pf-preview-box">
+          <p className="lbl">Your listing will appear as:</p>
+          <p className="line">
+            {title || 'Your Book'} · {author || 'Author'} · {genre} · {format} · {condition} condition · <b>{isBundle ? `${books.length + 1} credit${books.length === 0 ? '' : 's'}` : '1 credit'}</b> · {city || 'your city'}
           </p>
         </div>
 
-        {error && (
-          <div className="bg-red-50 border-2 border-red-200 rounded-xl px-4 py-3 text-red-700 font-bold text-sm mb-4">
-            {error}
-          </div>
-        )}
+        {error && <div className="pf-error-box">{error}</div>}
 
         {!canSubmit && (
-          <p style={{ fontSize: 12, fontWeight: 700, color: '#e11d48', textAlign: 'center', marginBottom: 10 }}>
+          <p className="pf-blocked-msg">
             {!mainMatched
               ? 'Search and select your book above to continue.'
               : 'Every book in the bundle needs to be selected from search results too.'}
           </p>
         )}
-        <button
-          type="submit"
-          disabled={!canSubmit}
-          className="w-full text-white font-black text-[17px] shadow-[0_5px_0_#c2410c] hover:shadow-[0_3px_0_#c2410c] hover:translate-y-0.5 transition-all"
-          style={{
-            background: canSubmit ? '#f97316' : '#e5e7eb',
-            padding: 16,
-            borderRadius: 14,
-            border: 'none',
-            cursor: canSubmit ? 'pointer' : 'not-allowed',
-            fontFamily: 'inherit',
-          }}
-        >
+        <button type="submit" disabled={!canSubmit} className="pf-submit-btn">
           {submitLabel ?? 'Post My Book →'}
         </button>
       </div>

@@ -76,7 +76,7 @@ describe('PostForm', () => {
     expect(screen.queryByPlaceholderText('e.g. The Great Gatsby')).not.toBeInTheDocument()
     expect(screen.getByText('Dune')).toBeInTheDocument()
     expect(screen.getByText('Frank Herbert')).toBeInTheDocument()
-    expect(screen.getByText('🔄 Change')).toBeInTheDocument()
+    expect(screen.getByText('Change')).toBeInTheDocument()
   })
 
   it('uses a custom submit label when provided', () => {
@@ -102,7 +102,7 @@ describe('PostForm — requires a matched book to submit', () => {
   it('keeps submit disabled if a bundle row is unmatched', async () => {
     render(<PostForm action={vi.fn()} search={vi.fn().mockResolvedValue([DUNE])} />)
     await selectDune()
-    fireEvent.click(screen.getByText('📚 List as a Bundle / Series'))
+    fireEvent.click(screen.getByText('List as a Bundle / Series'))
     fireEvent.click(screen.getByText('+ Add Another Book'))
     expect(screen.getByText('Post My Book →').closest('button')).toBeDisabled()
     expect(screen.getByText('Every book in the bundle needs to be selected from search results too.')).toBeInTheDocument()
@@ -118,7 +118,7 @@ describe('PostForm — requires a matched book to submit', () => {
       .mockResolvedValueOnce([CHAMBER])
     render(<PostForm action={vi.fn()} search={search} />)
     await selectDune()
-    fireEvent.click(screen.getByText('📚 List as a Bundle / Series'))
+    fireEvent.click(screen.getByText('List as a Bundle / Series'))
     fireEvent.click(screen.getByText('+ Add Another Book'))
     fireEvent.change(screen.getByPlaceholderText('Title in series'), { target: { value: 'Chamber' } })
     fireEvent.click(within(await screen.findByRole('listbox')).getByRole('button'))
@@ -134,14 +134,14 @@ describe('PostForm — bundle toggle', () => {
 
   it('reveals Bundle Details when the toggle is clicked, defaulting to a 1-book/1-credit total', () => {
     render(<PostForm action={vi.fn()} search={noopSearch} />)
-    fireEvent.click(screen.getByText('📚 List as a Bundle / Series'))
+    fireEvent.click(screen.getByText('List as a Bundle / Series'))
     expect(screen.getByText('Series / Bundle Name')).toBeInTheDocument()
     expect(screen.getByText('This bundle: 1 book · 1 credit')).toBeInTheDocument()
   })
 
   it('adds an empty, unmatched search row when Add Another Book is clicked', () => {
     render(<PostForm action={vi.fn()} search={noopSearch} />)
-    fireEvent.click(screen.getByText('📚 List as a Bundle / Series'))
+    fireEvent.click(screen.getByText('List as a Bundle / Series'))
     fireEvent.click(screen.getByText('+ Add Another Book'))
 
     expect(screen.getByPlaceholderText('Title in series')).toHaveValue('')
@@ -150,16 +150,16 @@ describe('PostForm — bundle toggle', () => {
 
   it('does not show an Auto-fill from Book 1 button', () => {
     render(<PostForm action={vi.fn()} search={noopSearch} />)
-    fireEvent.click(screen.getByText('📚 List as a Bundle / Series'))
+    fireEvent.click(screen.getByText('List as a Bundle / Series'))
     fireEvent.click(screen.getByText('+ Add Another Book'))
     expect(screen.queryByText('✨ Auto-fill from Book 1')).not.toBeInTheDocument()
   })
 
   it('removes a book row when its Remove button is clicked', () => {
     render(<PostForm action={vi.fn()} search={noopSearch} />)
-    fireEvent.click(screen.getByText('📚 List as a Bundle / Series'))
+    fireEvent.click(screen.getByText('List as a Bundle / Series'))
     fireEvent.click(screen.getByText('+ Add Another Book'))
-    fireEvent.click(screen.getByText('✕ Remove'))
+    fireEvent.click(screen.getByText('Remove'))
     expect(screen.queryByPlaceholderText('Title in series')).not.toBeInTheDocument()
     expect(screen.getByText('This bundle: 1 book · 1 credit')).toBeInTheDocument()
   })
@@ -172,7 +172,7 @@ describe('PostForm — bundle toggle', () => {
 
   it('submits is_bundle=true, book_rows, and indexed book fields once populated', () => {
     const { container } = render(<PostForm action={vi.fn()} search={noopSearch} />)
-    fireEvent.click(screen.getByText('📚 List as a Bundle / Series'))
+    fireEvent.click(screen.getByText('List as a Bundle / Series'))
     fireEvent.click(screen.getByText('+ Add Another Book'))
     fireEvent.change(screen.getByPlaceholderText('Title in series'), { target: { value: 'Chamber of Secrets' } })
 
@@ -183,18 +183,18 @@ describe('PostForm — bundle toggle', () => {
 
   it('clears bundle data when the toggle is turned back off', () => {
     render(<PostForm action={vi.fn()} search={noopSearch} />)
-    fireEvent.click(screen.getByText('📚 List as a Bundle / Series'))
+    fireEvent.click(screen.getByText('List as a Bundle / Series'))
     fireEvent.click(screen.getByText('+ Add Another Book'))
-    fireEvent.click(screen.getByText('📚 List as a Bundle / Series'))
+    fireEvent.click(screen.getByText('List as a Bundle / Series'))
     expect(screen.queryByText('Series / Bundle Name')).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByText('📚 List as a Bundle / Series'))
+    fireEvent.click(screen.getByText('List as a Bundle / Series'))
     expect(screen.getByText('This bundle: 1 book · 1 credit')).toBeInTheDocument()
   })
 
   it('hides Add Another Book once 20 additional books are added', () => {
     render(<PostForm action={vi.fn()} search={noopSearch} />)
-    fireEvent.click(screen.getByText('📚 List as a Bundle / Series'))
+    fireEvent.click(screen.getByText('List as a Bundle / Series'))
     for (let i = 0; i < 20; i++) {
       fireEvent.click(screen.getByText('+ Add Another Book'))
     }
@@ -209,7 +209,7 @@ describe('PostForm — bundle toggle', () => {
 
   it('shows the bundle total in the preview line while composing a bundle', () => {
     render(<PostForm action={vi.fn()} search={noopSearch} />)
-    fireEvent.click(screen.getByText('📚 List as a Bundle / Series'))
+    fireEvent.click(screen.getByText('List as a Bundle / Series'))
     expect(screen.getByText('1 credit')).toBeInTheDocument()
 
     fireEvent.click(screen.getByText('+ Add Another Book'))
@@ -286,7 +286,7 @@ describe('PostForm — search by author', () => {
       coverUrl: null, workKey: '/works/OL82586W', genre: null,
     }
     render(<PostForm action={vi.fn()} search={vi.fn().mockResolvedValue([CHAMBER])} />)
-    fireEvent.click(screen.getByText('📚 List as a Bundle / Series'))
+    fireEvent.click(screen.getByText('List as a Bundle / Series'))
     fireEvent.click(screen.getByText('+ Add Another Book'))
     expect(screen.getByPlaceholderText('Author in series')).toBeInTheDocument()
 
@@ -317,7 +317,7 @@ describe('PostForm — Open Library integration', () => {
   it('clicking Change clears the selection and shows an empty search box again', async () => {
     const { container } = render(<PostForm action={vi.fn()} search={vi.fn().mockResolvedValue([DUNE])} />)
     await selectDune()
-    fireEvent.click(screen.getByText('🔄 Change'))
+    fireEvent.click(screen.getByText('Change'))
 
     expect(screen.getByPlaceholderText('e.g. The Great Gatsby')).toHaveValue('')
     expect(container.querySelector('input[name="title"]')).toHaveValue('')
@@ -359,7 +359,7 @@ describe('PostForm — Open Library integration', () => {
     const option = await within(await screen.findByRole('listbox')).findByRole('button')
     fireEvent.click(option)
 
-    expect(screen.getByText('🚀 Sci-Fi / Fantasy').closest('button')).toHaveStyle({ background: '#fff7ed' })
+    expect(screen.getByText('Sci-Fi / Fantasy').closest('button')).toHaveClass('on')
   })
 
   it('selecting a suggestion with no genre match leaves the current Genre selection untouched', async () => {
@@ -373,7 +373,7 @@ describe('PostForm — Open Library integration', () => {
     fireEvent.click(option)
 
     // Default genre ('Fiction') is untouched -- still selected, since UNMAPPED_BOOK.genre is null
-    expect(screen.getByText('📚 Fiction').closest('button')).toHaveStyle({ background: '#fff7ed' })
+    expect(screen.getByText('Fiction').closest('button')).toHaveClass('on')
   })
 
   it('selecting a suggestion fills the ISBN field', async () => {
@@ -396,7 +396,7 @@ describe('PostForm — bundle row Open Library integration', () => {
       coverUrl: 'https://covers.openlibrary.org/b/id/2-M.jpg', workKey: '/works/OL82586W', genre: null,
     }
     const { container } = render(<PostForm action={vi.fn()} search={vi.fn().mockResolvedValue([CHAMBER])} />)
-    fireEvent.click(screen.getByText('📚 List as a Bundle / Series'))
+    fireEvent.click(screen.getByText('List as a Bundle / Series'))
     fireEvent.click(screen.getByText('+ Add Another Book'))
     fireEvent.change(screen.getByPlaceholderText('Title in series'), { target: { value: 'Chamber' } })
     const listbox = await screen.findByRole('listbox')
@@ -418,12 +418,12 @@ describe('PostForm — bundle row Open Library integration', () => {
       coverUrl: null, workKey: '/works/OL82586W', genre: null,
     }
     render(<PostForm action={vi.fn()} search={vi.fn().mockResolvedValue([CHAMBER])} />)
-    fireEvent.click(screen.getByText('📚 List as a Bundle / Series'))
+    fireEvent.click(screen.getByText('List as a Bundle / Series'))
     fireEvent.click(screen.getByText('+ Add Another Book'))
     fireEvent.change(screen.getByPlaceholderText('Title in series'), { target: { value: 'Chamber' } })
     fireEvent.click(within(await screen.findByRole('listbox')).getByRole('button'))
 
-    fireEvent.click(screen.getByText('🔄 Change'))
+    fireEvent.click(screen.getByText('Change'))
     expect(screen.getByPlaceholderText('Title in series')).toHaveValue('')
   })
 })

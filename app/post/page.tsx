@@ -21,17 +21,20 @@ export default async function PostPage({
   }
 
   return (
-    <div className="max-w-[600px] mx-auto px-4 py-6 md:px-8 md:py-10">
-      <h1 className="font-display text-[30px] text-bk-orange mb-1">Post a Book</h1>
-      <p className="font-bold text-[14px] mb-7" style={{ color: '#aaa' }}>
-        Share a book with your neighbors in{' '}
-        <strong style={{ color: '#2d2d2d' }}>{profile?.city ?? 'your city'}</strong>
-      </p>
-      <PostForm
-        city={profile?.city}
-        action={createListing}
-        error={searchParams.error ? decodeURIComponent(searchParams.error) : undefined}
-      />
+    <div className="home-v2">
+      <div className="wrap" style={{ maxWidth: 680 }}>
+        <div className="pf-page-head">
+          <h1>Post a Book</h1>
+          <p className="sub">
+            Share a book with your neighbors in <b style={{ color: 'var(--ink)' }}>{profile?.city ?? 'your city'}</b>
+          </p>
+        </div>
+        <PostForm
+          city={profile?.city}
+          action={createListing}
+          error={searchParams.error ? decodeURIComponent(searchParams.error) : undefined}
+        />
+      </div>
     </div>
   )
 }

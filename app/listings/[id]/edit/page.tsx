@@ -26,34 +26,38 @@ export default async function EditListingPage({
   }
 
   return (
-    <div className="max-w-[600px] mx-auto px-4 py-6 md:px-8 md:py-10">
-      <h1 className="font-display text-[30px] text-bk-orange mb-1">Edit Listing</h1>
-      <p className="font-bold text-[14px] mb-7" style={{ color: '#aaa' }}>
-        Update the details for <strong style={{ color: '#2d2d2d' }}>{listing.title}</strong>
-      </p>
-      <PostForm
-        action={updateListing.bind(null, listing.id)}
-        submitLabel="Save Changes"
-        error={searchParams.error ? decodeURIComponent(searchParams.error) : undefined}
-        initialValues={{
-          title: listing.title,
-          author: listing.author,
-          condition: listing.condition,
-          genre: listing.genre ?? 'Fiction',
-          format: listing.format ?? 'Paperback',
-          description: listing.description,
-          pickup_description: listing.pickup_description,
-          photo_url: listing.photo_url,
-          photo_url_2: listing.photo_url_2,
-          photo_url_3: listing.photo_url_3,
-          is_bundle: listing.is_bundle ?? false,
-          bundle_name: listing.bundle_name,
-          books: bundleBooks,
-          ol_work_key: listing.ol_work_key,
-          cover_url: listing.cover_url,
-          isbn: listing.isbn,
-        }}
-      />
+    <div className="home-v2">
+      <div className="wrap" style={{ maxWidth: 680 }}>
+        <div className="pf-page-head">
+          <h1>Edit Listing</h1>
+          <p className="sub">
+            Update the details for <b style={{ color: 'var(--ink)' }}>{listing.title}</b>
+          </p>
+        </div>
+        <PostForm
+          action={updateListing.bind(null, listing.id)}
+          submitLabel="Save Changes"
+          error={searchParams.error ? decodeURIComponent(searchParams.error) : undefined}
+          initialValues={{
+            title: listing.title,
+            author: listing.author,
+            condition: listing.condition,
+            genre: listing.genre ?? 'Fiction',
+            format: listing.format ?? 'Paperback',
+            description: listing.description,
+            pickup_description: listing.pickup_description,
+            photo_url: listing.photo_url,
+            photo_url_2: listing.photo_url_2,
+            photo_url_3: listing.photo_url_3,
+            is_bundle: listing.is_bundle ?? false,
+            bundle_name: listing.bundle_name,
+            books: bundleBooks,
+            ol_work_key: listing.ol_work_key,
+            cover_url: listing.cover_url,
+            isbn: listing.isbn,
+          }}
+        />
+      </div>
     </div>
   )
 }
