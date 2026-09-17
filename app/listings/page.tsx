@@ -10,6 +10,24 @@ import { StarRatingBadge } from '@/components/StarRating'
 import { getListingAvailability } from '@/lib/listingAvailability'
 import { addTbrEntry } from '@/lib/actions/tbrEntries'
 import BookFilterField from './BookFilterField'
+import '../home.css'
+import './browse.css'
+
+function SearchIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <circle cx="11" cy="11" r="7" /><path d="M21 21l-4.35-4.35" />
+    </svg>
+  )
+}
+
+function PinIcon({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M12 22s7-7.4 7-12.5A7 7 0 0 0 5 9.5C5 14.6 12 22 12 22z" /><circle cx="12" cy="9.5" r="2.4" />
+    </svg>
+  )
+}
 
 function conditionLabel(c: string) {
   if (c === 'good') return 'Good'
@@ -145,19 +163,6 @@ async function getSellerRatings(listings: Listing[]): Promise<Record<string, { a
   }
 }
 
-const filterInputStyle = {
-  width: '100%',
-  border: '2px solid #fed7aa',
-  borderRadius: 12,
-  padding: '9px 12px',
-  fontFamily: 'inherit',
-  fontSize: 13,
-  fontWeight: 700,
-  background: '#fffbf0',
-  color: '#2d2d2d',
-  outline: 'none',
-} as React.CSSProperties
-
 export default async function ListingsPage({
   searchParams,
 }: {
@@ -189,10 +194,10 @@ export default async function ListingsPage({
   const myRequestedIds = await getMyRequestedListingIds(userId)
 
   const activeFilters = [
-    city && { label: `📍 ${city}`, key: 'city' },
+    city && { label: city, key: 'city' },
     title && { label: `Title: "${title}"`, key: 'title' },
     author && { label: `Author: "${author}"`, key: 'author' },
-    bookType !== 'all' && { label: bookType === 'single' ? '📖 Single books only' : '📚 Bundles only', key: 'book_type' },
+    bookType !== 'all' && { label: bookType === 'single' ? 'Single books only' : 'Bundles only', key: 'book_type' },
     genre !== 'all' && { label: genre, key: 'genre' },
     condition !== 'any' && { label: `${conditionLabel(condition)} condition`, key: 'condition' },
   ].filter(Boolean) as { label: string; key: string }[]
@@ -214,85 +219,60 @@ export default async function ListingsPage({
   // an always-visible desktop wrapper. Desktop no longer depends on the
   // <details> element's native open/closed rendering (see fix commit for why).
   const filterForm = (
-      <form
-        method="GET"
-        action="/listings"
-        className="bg-white border-2 border-gray-100 shadow-[0_5px_0_#e5e7eb]"
-        style={{ borderRadius: 24, padding: 24 }}
-      >
-        <h2 className="font-display text-[18px] text-bk-orange mb-5">🔍 Filters</h2>
+      <form method="GET" action="/listings" className="br-filters">
+        <h2>
+          <SearchIcon />
+          Filters
+        </h2>
 
-        <div style={{ marginBottom: 22 }}>
-          <span className="block mb-2.5" style={{ fontSize: 11, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.8px', color: '#aaa' }}>
-            City
-          </span>
-          <input name="city" type="text" defaultValue={city} placeholder="e.g. Chicago..." style={filterInputStyle} />
+        <div className="br-f-group">
+          <span className="br-f-label">City</span>
+          <div className="br-input-wrap">
+            <PinIcon />
+            <input className="br-input" name="city" type="text" defaultValue={city} placeholder="e.g. Chicago..." />
+          </div>
         </div>
 
-        <div style={{ marginBottom: 22 }}>
-          <span className="block mb-2.5" style={{ fontSize: 11, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.8px', color: '#aaa' }}>
-            Search Title
-          </span>
-          <BookFilterField defaultValue={title} style={filterInputStyle} defaultOlWorkKey={olWorkKey} />
+        <div className="br-f-group">
+          <span className="br-f-label">Search Title</span>
+          <div className="br-input-wrap">
+            <SearchIcon />
+            <BookFilterField defaultValue={title} style={{}} className="br-input" defaultOlWorkKey={olWorkKey} />
+          </div>
         </div>
 
-        <div style={{ marginBottom: 22 }}>
-          <span className="block mb-2.5" style={{ fontSize: 11, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.8px', color: '#aaa' }}>
-            Search Author
-          </span>
-          <input name="author" type="text" defaultValue={author} placeholder="e.g. Tara Westover..." style={filterInputStyle} />
+        <div className="br-f-group">
+          <span className="br-f-label">Search Author</span>
+          <div className="br-input-wrap">
+            <SearchIcon />
+            <input className="br-input" name="author" type="text" defaultValue={author} placeholder="e.g. Tara Westover..." />
+          </div>
         </div>
 
-        {/* Book Type: single books vs. bundles, three-way segmented toggle.
+        {/* Books &amp; Bundles: single books vs. bundles, three-way segmented toggle.
             Highlight is pure CSS (:checked in globals.css) so it flips instantly
             on click instead of waiting for the server-rendered state to catch up
             on form submit, like the other filters below still do. */}
-        <div style={{ marginBottom: 22 }}>
-          <span
-            className="block mb-2.5"
-            style={{ fontSize: 11, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.8px', color: '#aaa' }}
-          >
-            Books&Bundles
-          </span>
-          <div
-            className="flex bk-segmented"
-            style={{ border: '2px solid #fed7aa', borderRadius: 12, overflow: 'hidden' }}
-          >
+        <div className="br-f-group">
+          <span className="br-f-label">Books &amp; Bundles</span>
+          <div className="br-seg">
             {[
-              { val: 'single', label: '📖 Single' },
+              { val: 'single', label: 'Single' },
               { val: 'all', label: 'All' },
-              { val: 'bundle', label: '📚 Bundles' },
-            ].map((o, i) => (
-              <label key={o.val} style={{ cursor: 'pointer', flex: 1, display: 'flex' }}>
+              { val: 'bundle', label: 'Bundles' },
+            ].map(o => (
+              <label key={o.val}>
                 <input type="radio" name="book_type" value={o.val} defaultChecked={bookType === o.val} className="sr-only" />
-                <span
-                  className="flex items-center justify-center text-center"
-                  style={{
-                    width: '100%',
-                    padding: '7px 6px',
-                    fontWeight: 800,
-                    fontSize: 12,
-                    borderLeft: i > 0 ? '2px solid #fed7aa' : 'none',
-                    background: '#fffbf0',
-                    color: '#888',
-                  }}
-                >
-                  {o.label}
-                </span>
+                <span>{o.label}</span>
               </label>
             ))}
           </div>
         </div>
 
         {/* Genre */}
-        <div style={{ marginBottom: 22 }}>
-          <span
-            className="block mb-2.5"
-            style={{ fontSize: 11, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.8px', color: '#aaa' }}
-          >
-            Genre
-          </span>
-          <select name="genre" defaultValue={genre} style={filterInputStyle}>
+        <div className="br-f-group">
+          <span className="br-f-label">Genre</span>
+          <select name="genre" defaultValue={genre} className="br-input">
             <option value="all">All Genres</option>
             {['Fiction','Non-Fiction','Mystery','Sci-Fi','Romance','Biography',"Children's",'Self-Help','History','Cooking','Art','Other'].map(g => (
               <option key={g} value={g}>{g}</option>
@@ -301,235 +281,149 @@ export default async function ListingsPage({
         </div>
 
         {/* Condition chips */}
-        <div style={{ marginBottom: 22 }}>
-          <span
-            className="block mb-2.5"
-            style={{ fontSize: 11, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.8px', color: '#aaa' }}
-          >
-            Condition
-          </span>
-          <div className="flex flex-wrap gap-1.5">
+        <div className="br-f-group">
+          <span className="br-f-label">Condition</span>
+          <div className="br-chip-row">
             {[
               { val: 'any', label: 'Any' },
               { val: 'good', label: 'Good' },
               { val: 'fair', label: 'Fair' },
               { val: 'well-loved', label: 'Well-Loved' },
             ].map(o => (
-              <label key={o.val} style={{ cursor: 'pointer' }}>
+              <label key={o.val}>
                 <input type="radio" name="condition" value={o.val} defaultChecked={condition === o.val} className="sr-only" />
-                <span
-                  style={{
-                    display: 'inline-block',
-                    padding: '5px 12px',
-                    borderRadius: 999,
-                    fontWeight: 800,
-                    fontSize: 12,
-                    border: '2px solid',
-                    borderColor: condition === o.val ? '#f97316' : '#e5e7eb',
-                    background: condition === o.val ? '#f97316' : '#fff',
-                    color: condition === o.val ? '#fff' : '#555',
-                  }}
-                >
-                  {o.label}
-                </span>
+                <span className="br-chip-opt">{o.label}</span>
               </label>
             ))}
           </div>
         </div>
 
         {/* Sort */}
-        <div style={{ marginBottom: 22 }}>
-          <span
-            className="block mb-2.5"
-            style={{ fontSize: 11, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.8px', color: '#aaa' }}
-          >
-            Sort By
-          </span>
-          <select name="sort" defaultValue={sort} style={filterInputStyle}>
+        <div className="br-f-group">
+          <span className="br-f-label">Sort By</span>
+          <select name="sort" defaultValue={sort} className="br-input">
             <option value="newest">Newest First</option>
             <option value="price-asc">Price: Low to High</option>
             <option value="price-desc">Price: High to Low</option>
           </select>
         </div>
 
-        <button
-          type="submit"
-          className="w-full text-white font-black text-[15px] shadow-[0_3px_0_#c2410c]"
-          style={{ background: '#f97316', padding: 12, borderRadius: 14, border: 'none', cursor: 'pointer', fontFamily: 'inherit', marginTop: 4 }}
-        >
+        <button type="submit" className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }}>
           Apply Filters
         </button>
-        <Link
-          href="/listings"
-          className="block text-center font-extrabold text-[13px] mt-2"
-          style={{
-            border: '2px solid #e5e7eb',
-            padding: 10,
-            borderRadius: 14,
-            color: '#aaa',
-          }}
-        >
+        <Link href="/listings" className="br-clear-link">
           Clear All
         </Link>
       </form>
   )
 
   return (
-    <div className="mx-auto px-4 py-6 md:px-8 md:py-9 flex flex-col md:flex-row md:gap-7 md:items-start" style={{ maxWidth: 1160 }}>
-      {/* Sidebar / Filters */}
-      <div className="w-full md:w-[240px] md:flex-shrink-0 md:sticky md:top-6 mb-4 md:mb-0">
-        {/* Mobile: native collapsible accordion, closed unless a filter is already active */}
-        <details open={activeFilters.length > 0} className="md:hidden">
-          <summary className="cursor-pointer list-none flex items-center justify-between bg-white border-2 border-gray-100 rounded-[16px] px-5 py-3 font-extrabold text-[14px] text-bk-orange shadow-[0_3px_0_#e5e7eb] mb-2">
-            🔍 Filters {activeFilters.length > 0 ? `(${activeFilters.length} active)` : ''}
-            <span className="text-[18px] font-black">⌄</span>
-          </summary>
-          {filterForm}
-        </details>
-        {/* Desktop: always visible, independent of <details> open/closed rendering */}
-        <div className="hidden md:block">
-          {filterForm}
-        </div>
+    <div className="home-v2">
+      <div className="wrap browse-head">
+        <h1>Browse Books</h1>
+        <svg className="squiggle" width="120" height="12" viewBox="0 0 120 12" fill="none" aria-hidden="true">
+          <path d="M3 7 Q 18 -1 33 7 T 63 7 T 93 7 T 117 6" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+        </svg>
       </div>
 
-      {/* Main content */}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        {/* Active filter tags */}
-        {activeFilters.length > 0 && (
-          <div className="flex gap-2 flex-wrap mb-4">
-            {activeFilters.map(f => (
-              <Link
-                key={f.key}
-                href={clearFilterUrl(f.key)}
-                className="flex items-center gap-1.5 font-extrabold text-[12px]"
-                style={{
-                  background: '#fff7ed',
-                  border: '2px solid #fed7aa',
-                  color: '#c2410c',
-                  padding: '4px 12px',
-                  borderRadius: 999,
-                }}
-              >
-                {f.label} <span style={{ color: '#f97316', fontWeight: 900, fontSize: 14 }}>×</span>
-              </Link>
-            ))}
+      <div className="wrap browse-layout">
+        {/* Sidebar / Filters */}
+        <div className="br-filters-col">
+          {/* Mobile: native collapsible accordion, closed unless a filter is already active */}
+          <details open={activeFilters.length > 0} className="md:hidden">
+            <summary className="br-filters-toggle">
+              Filters {activeFilters.length > 0 ? `(${activeFilters.length} active)` : ''}
+              <span>⌄</span>
+            </summary>
+            {filterForm}
+          </details>
+          {/* Desktop: always visible, independent of <details> open/closed rendering */}
+          <div className="hidden md:block">
+            {filterForm}
           </div>
-        )}
+        </div>
 
-        <p className="font-bold text-[13px] mb-4" style={{ color: '#aaa' }}>
-          Showing {listings.length} book{listings.length !== 1 ? 's' : ''}
-        </p>
+        {/* Main content */}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          {/* Active filter tags */}
+          {activeFilters.length > 0 && (
+            <div className="br-active-row">
+              {activeFilters.map(f => (
+                <Link key={f.key} href={clearFilterUrl(f.key)} className="br-active-chip">
+                  {f.label} <span className="x">&times;</span>
+                </Link>
+              ))}
+            </div>
+          )}
+
+          <p className="br-count">
+            Showing {listings.length} book{listings.length !== 1 ? 's' : ''}
+          </p>
 
         {listings.length > 0 ? (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(185px, 1fr))', gap: 18 }}>
+          <div className="br-grid">
             {listings.map(l => {
               const avail = getListingAvailability((l.status ?? 'active') as ListingStatus, {
                 isOwner: l.user_id === userId,
                 isRequester: myRequestedIds.has(l.id),
               })
               const locked = avail === 'pending-locked'
+              const lockedStyle = locked ? { filter: 'grayscale(1)', opacity: 0.55 } : undefined
 
               const cardInner = (
                 <>
-                  <div
-                    className="relative flex items-center justify-center"
-                    style={{ height: 135 }}
-                  >
+                  <div className="br-cover-wrap">
                     {l.cover_url ? (
-                      <div className="absolute inset-0" style={{ background: '#fff' }}>
-                        <Image
-                          src={l.cover_url}
-                          alt={l.title}
-                          fill
-                          className="object-contain"
-                          style={locked ? { filter: 'grayscale(1)', opacity: 0.55 } : undefined}
-                        />
+                      <div className="absolute inset-0" style={{ background: '#fff', ...lockedStyle }}>
+                        <Image src={l.cover_url} alt={l.title} fill className="object-contain" />
                       </div>
                     ) : (
-                      <div
-                        className="absolute inset-0 flex items-center justify-center text-center"
-                        style={{ background: '#e8e4d9', padding: 14, ...(locked ? { filter: 'grayscale(1)', opacity: 0.55 } : {}) }}
-                      >
-                        <span
-                          style={{
-                            fontSize: 13,
-                            fontWeight: 800,
-                            color: '#8a8574',
-                            lineHeight: 1.3,
-                            display: '-webkit-box',
-                            WebkitLineClamp: 4,
-                            WebkitBoxOrient: 'vertical',
-                            overflow: 'hidden',
-                          }}
-                        >
-                          {l.is_bundle ? (l.bundle_name || l.title) : l.title}
-                        </span>
+                      <div className="br-cover-fallback" style={lockedStyle}>
+                        <span>{l.is_bundle ? (l.bundle_name || l.title) : l.title}</span>
                       </div>
                     )}
                     {avail === 'active' ? (
-                      <span
-                        className="absolute text-white font-black"
-                        style={{ top: 8, right: 8, padding: '3px 10px', borderRadius: 999, fontSize: 11, background: '#f97316' }}
-                      >
+                      <span className="br-badge-credit">
                         {l.is_bundle ? `${l.book_count ?? 1} credits` : '1 credit'}
                       </span>
                     ) : (
-                      <span
-                        className="absolute text-white font-black"
-                        style={{ top: 8, right: 8, padding: '3px 10px', borderRadius: 999, fontSize: 11, background: '#dc2626' }}
-                      >
-                        ⏳ Pending
-                      </span>
+                      <span className="br-badge-pending">Pending</span>
                     )}
-                    {l.genre && (
-                      <span
-                        className="absolute font-extrabold"
-                        style={{ bottom: 8, left: 8, padding: '2px 8px', borderRadius: 999, fontSize: 10, background: 'rgba(255,255,255,0.85)', color: '#555' }}
-                      >
-                        {l.genre}
-                      </span>
-                    )}
+                    {l.genre && <span className="br-badge-genre">{l.genre}</span>}
                   </div>
-                  <div style={{ padding: '12px 14px' }}>
-                    <p className="font-black text-[13px] truncate mb-0.5">{l.is_bundle ? (l.bundle_name || l.title) : l.title}</p>
-                    <p className="text-[11px] font-semibold mb-2" style={{ color: '#aaa' }}>{l.author}</p>
-                    {l.profiles?.username && (
-                      <div className="flex items-center gap-1.5 mb-2">
-                        <span className="text-[11px] font-bold truncate" style={{ color: '#888' }}>{l.profiles.username}</span>
-                        {/* No sellerId here: the whole card is already a <Link> to the
-                            listing detail page, and StarRatingBadge renders its own <Link>
-                            to the seller's reviews when given one — nesting an <a> inside
-                            an <a> is invalid HTML and was the actual cause of the browser's
-                            "Expected server HTML to contain a matching <div> in <a>"
-                            hydration error. Plain (non-link) badge here; the clickable
-                            version still appears on the listing detail page itself. */}
-                        <StarRatingBadge rating={sellerRatings[l.user_id] ?? null} />
-                      </div>
-                    )}
-                    <div className="flex items-center justify-between">
-                      <span
-                        className="font-extrabold text-[10px]"
-                        style={{ padding: '2px 7px', borderRadius: 6, background: '#fef9c3', color: '#854d0e', border: '1.5px solid #fde047' }}
-                      >
-                        {conditionLabel(l.condition)}
-                      </span>
-                      <span className="font-extrabold text-[10px]" style={{ color: '#f97316' }}>
-                        {l.is_bundle ? `📚 Bundle · ${l.book_count ?? 1} books · ${l.book_count ?? 1} credits` : '🪙 1 credit'}
+                  <div className="br-card-body">
+                    <p className="br-title">{l.is_bundle ? (l.bundle_name || l.title) : l.title}</p>
+                    <p className="br-author">{l.author}</p>
+                    <div className="br-seller-row">
+                      {l.profiles?.username && (
+                        <>
+                          <span className="br-seller-name">{l.profiles.username}</span>
+                          {/* No sellerId here: the whole card is already a <Link> to the
+                              listing detail page, and StarRatingBadge renders its own <Link>
+                              to the seller's reviews when given one — nesting an <a> inside
+                              an <a> is invalid HTML and was the actual cause of the browser's
+                              "Expected server HTML to contain a matching <div> in <a>"
+                              hydration error. Plain (non-link) badge here; the clickable
+                              version still appears on the listing detail page itself. */}
+                          <StarRatingBadge rating={sellerRatings[l.user_id] ?? null} />
+                        </>
+                      )}
+                    </div>
+                    <div className="br-foot-row">
+                      <span className="br-cond-badge">{conditionLabel(l.condition)}</span>
+                      <span className="br-credit-lbl">
+                        {l.is_bundle ? `Bundle · ${l.book_count ?? 1} books` : '1 credit'}
                       </span>
                     </div>
                     {locked && (
-                      <form action={addTbrEntry} className="mt-2">
+                      <form action={addTbrEntry}>
                         <input type="hidden" name="title" value={l.title} />
                         <input type="hidden" name="author" value={l.author} />
                         <input type="hidden" name="ol_work_key" value={l.ol_work_key ?? ''} />
                         <input type="hidden" name="cover_url" value={l.cover_url ?? ''} />
                         <input type="hidden" name="redirect_to" value="/profile?tab=tbr" />
-                        <button
-                          type="submit"
-                          className="w-full font-extrabold text-[11px]"
-                          style={{ background: '#f5f3ff', border: '1.5px solid #ddd6fe', color: '#7c3aed', padding: '6px 0', borderRadius: 10, cursor: 'pointer' }}
-                        >
-                          📚 Add to my TBR
+                        <button type="submit" className="br-tbr-btn">
+                          Add to my TBR
                         </button>
                       </form>
                     )}
@@ -548,18 +442,11 @@ export default async function ListingsPage({
                     <HeartButton listingId={l.id} isLoggedIn={isLoggedIn} initialSaved={savedIds.has(l.id)} />
                   )}
                   {locked ? (
-                    <div
-                      className="bg-white border-2 border-gray-100 shadow-[0_5px_0_#e5e7eb] overflow-hidden"
-                      style={{ borderRadius: 20 }}
-                    >
+                    <div className="br-card pending">
                       {cardInner}
                     </div>
                   ) : (
-                    <Link
-                      href={`/listings/${l.id}`}
-                      className="block bg-white border-2 border-gray-100 shadow-[0_5px_0_#e5e7eb] hover:-translate-y-1 transition-transform overflow-hidden"
-                      style={{ borderRadius: 20, textDecoration: 'none', color: 'inherit' }}
-                    >
+                    <Link href={`/listings/${l.id}`} className="br-card">
                       {cardInner}
                     </Link>
                   )}
@@ -568,12 +455,12 @@ export default async function ListingsPage({
             })}
           </div>
         ) : (
-          <div className="text-center py-16 font-bold" style={{ color: '#aaa' }}>
-            <div className="text-5xl mb-4">📭</div>
-            <p className="text-base mb-3">No books match your filters.</p>
-            <Link href="/listings" className="text-bk-orange font-extrabold hover:underline">Clear filters</Link>
+          <div className="br-empty">
+            <p style={{ marginBottom: 10 }}>No books match your filters.</p>
+            <Link href="/listings">Clear filters</Link>
           </div>
         )}
+        </div>
       </div>
     </div>
   )

@@ -7,11 +7,12 @@ import type { BookSuggestion } from '@/lib/openLibrary'
 type Props = {
   defaultValue: string
   style: React.CSSProperties
+  className?: string
   search?: (query: string) => Promise<BookSuggestion[]>
   defaultOlWorkKey?: string
 }
 
-export default function BookFilterField({ defaultValue, style, search, defaultOlWorkKey }: Props) {
+export default function BookFilterField({ defaultValue, style, className, search, defaultOlWorkKey }: Props) {
   const [title, setTitle] = useState(defaultValue)
   const [olWorkKey, setOlWorkKey] = useState(defaultOlWorkKey ?? '')
 
@@ -25,6 +26,7 @@ export default function BookFilterField({ defaultValue, style, search, defaultOl
         onSelect={b => { setTitle(b.title); setOlWorkKey(b.workKey) }}
         placeholder="e.g. Great Gatsby..."
         style={style}
+        className={className}
         search={search}
       />
     </>

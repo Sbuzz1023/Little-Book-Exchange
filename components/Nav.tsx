@@ -42,6 +42,9 @@ function DashboardBadge({ count }: { count?: number }) {
 export default function Nav({ userName: serverUserName, isAdmin, unreadCount }: { userName?: string | null; isAdmin?: boolean; unreadCount?: number }) {
   const pathname = usePathname()
   const isHome = pathname === '/'
+  // Browse has been reskinned to match the homepage's folk-editorial theme
+  // and reuses its nav; other pages still get the original nav below.
+  const useFolkNav = isHome || pathname === '/listings'
   const [mobileOpen, setMobileOpen] = useState(false)
   const detailsRef = useRef<HTMLDetailsElement>(null)
 
@@ -57,8 +60,8 @@ export default function Nav({ userName: serverUserName, isAdmin, unreadCount }: 
     if (detailsRef.current) detailsRef.current.open = false
   }, [pathname])
 
-  // The redesigned homepage has its own folk-styled nav.
-  if (isHome) {
+  // The redesigned homepage (and now Browse) uses the folk-styled nav.
+  if (useFolkNav) {
     return <HomeNav userName={userName} isAdmin={isAdmin} unreadCount={unreadCount} />
   }
 
