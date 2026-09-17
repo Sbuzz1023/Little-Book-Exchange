@@ -319,12 +319,20 @@ export default async function ListingsPage({
 
   return (
     <div className="home-v2">
-      <div className="wrap browse-head">
-        <h1>Browse Books</h1>
-        <svg className="squiggle" width="120" height="12" viewBox="0 0 120 12" fill="none" aria-hidden="true">
-          <path d="M3 7 Q 18 -1 33 7 T 63 7 T 93 7 T 117 6" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
-        </svg>
-      </div>
+      <section className="browse-hero">
+        <div className="wrap browse-hero-grid">
+          <img src="/home/browse-vine.png?v=12" alt="" aria-hidden="true" className="browse-vine" />
+          <div className="browse-hero-copy">
+            <h1>Browse Books</h1>
+            <p className="sub">Find your next good read nearby.</p>
+          </div>
+          <img
+            className="browse-hero-art"
+            src="/home/browse-hero.png?v=6"
+            alt="A colorful stack of books beside a yellow flower on a pink background, captioned Good books build brighter days"
+          />
+        </div>
+      </section>
 
       <div className="wrap browse-layout">
         {/* Sidebar / Filters */}
@@ -340,6 +348,7 @@ export default async function ListingsPage({
           {/* Desktop: always visible, independent of <details> open/closed rendering */}
           <div className="hidden md:block">
             {filterForm}
+            <img src="/home/browse-sidebar-flower.png?v=2" alt="" aria-hidden="true" className="br-sidebar-deco" />
           </div>
         </div>
 
@@ -355,10 +364,6 @@ export default async function ListingsPage({
               ))}
             </div>
           )}
-
-          <p className="br-count">
-            Showing {listings.length} book{listings.length !== 1 ? 's' : ''}
-          </p>
 
         {listings.length > 0 ? (
           <div className="br-grid">
