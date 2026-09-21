@@ -9,14 +9,32 @@
 .home-v2 .dash-wrap { position: relative; padding-bottom: 80px; }
 
 /* ---------- hero — wide illustration, top-aligned so it can run down
-   behind the tab row below it ---------- */
+   behind the tab row below it. Title, art and the description are three
+   separate grid items (not the description nested under the title) so
+   mobile can rearrange them independently: title+art side by side, the
+   description spanning the full width underneath. ---------- */
 .home-v2 .dash-hero { padding-bottom: 0; overflow: visible; }
-.home-v2 .dash-hero-grid { align-items: start; grid-template-columns: 0.95fr 1.15fr; }
-.home-v2 .dash-hero-art { position: relative; z-index: 2; transform: translateY(-24px); }
+.home-v2 .dash-hero-grid {
+  align-items: start; grid-template-columns: 0.95fr 1.15fr;
+  grid-template-areas: "title art" "sub art";
+}
+.home-v2 .dash-hero-title { grid-area: title; }
+.home-v2 .dash-hero-sub { grid-area: sub; }
+.home-v2 .dash-hero-art { grid-area: art; position: relative; z-index: 2; transform: translateY(-24px); }
 .home-v2 .dash-hero-art img { max-width: none; width: 100%; margin: 0; }
 @media (max-width: 900px) {
-  .home-v2 .dash-hero-art { transform: none; }
-  .home-v2 .dash-hero-art img { max-width: 420px; margin: 0 auto; }
+  /* Title left / art right on one row, description spanning both
+     columns underneath — instead of home.css's default homepage-hero
+     mobile behavior (image on its own row above a full-width title). */
+  .home-v2 .dash-hero-grid {
+    grid-template-columns: 1.1fr 1fr;
+    grid-template-areas: "title art" "sub sub";
+    align-items: center; column-gap: 16px;
+  }
+  .home-v2 .dash-hero-title { font-size: clamp(26px, 7vw, 34px); }
+  .home-v2 .dash-hero-sub { margin-top: 10px; }
+  .home-v2 .dash-hero-art { order: 0; transform: none; }
+  .home-v2 .dash-hero-art img { max-width: none; width: 100%; margin: 0; }
 }
 
 /* ---------- narrow content column (section head + cards) ----------

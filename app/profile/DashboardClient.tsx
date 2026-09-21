@@ -266,13 +266,11 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
             negative top margin) so it appears to run slightly under the cards. */}
         <section className="hero dash-hero">
           <div className="hero-grid dash-hero-grid">
-            <div>
-              <h1>Your Book Nook</h1>
-              <p className="sub">Manage your listings, track exchanges, and keep your reading journey going.</p>
-            </div>
+            <h1 className="dash-hero-title">Your Book Nook</h1>
             <div className="hero-art dash-hero-art">
               <img src="/home/dashboard-hero.png" alt="A cozy reading nook with an armchair, coffee, and plants — a brighter community, one book at a time" />
             </div>
+            <p className="sub dash-hero-sub">Manage your listings, track exchanges, and keep your reading journey going.</p>
           </div>
         </section>
 
