@@ -42,10 +42,10 @@ function DashboardBadge({ count }: { count?: number }) {
 export default function Nav({ userName: serverUserName, isAdmin, unreadCount }: { userName?: string | null; isAdmin?: boolean; unreadCount?: number }) {
   const pathname = usePathname()
   const isHome = pathname === '/'
-  // Browse and Post a Book (+ its edit-listing reuse) have been reskinned to
-  // match the homepage's folk-editorial theme and reuse its nav; other pages
-  // still get the original nav below.
-  const useFolkNav = isHome || pathname === '/listings' || pathname === '/post' || /^\/listings\/[^/]+\/edit$/.test(pathname ?? '')
+  // Browse, Post a Book (+ its edit-listing reuse), and the Dashboard have
+  // been reskinned to match the homepage's folk-editorial theme and reuse
+  // its nav; other pages still get the original nav below.
+  const useFolkNav = isHome || pathname === '/listings' || pathname === '/post' || pathname === '/profile' || /^\/listings\/[^/]+\/edit$/.test(pathname ?? '')
   const [mobileOpen, setMobileOpen] = useState(false)
   const detailsRef = useRef<HTMLDetailsElement>(null)
 

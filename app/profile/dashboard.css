@@ -1,0 +1,141 @@
+/* ============================================================
+   Dashboard — reskinned to match the homepage's folk-editorial
+   theme. Nests inside .home-v2 (imported from app/home.css) for
+   its tokens, fonts, .wrap, .btn, .hero, .hero-art, .eyebrow;
+   these rules are Dashboard-only.
+   ============================================================ */
+
+.home-v2 .dash-page { position: relative; }
+.home-v2 .dash-wrap { position: relative; padding-bottom: 80px; }
+
+/* ---------- hero — wide illustration, top-aligned so it can run down
+   behind the tab row below it ---------- */
+.home-v2 .dash-hero { padding-bottom: 0; overflow: visible; }
+.home-v2 .dash-hero-grid { align-items: start; grid-template-columns: 0.95fr 1.15fr; }
+.home-v2 .dash-hero-art { position: relative; z-index: 2; transform: translateY(-24px); }
+.home-v2 .dash-hero-art img { max-width: none; width: 100%; margin: 0; }
+@media (max-width: 900px) {
+  .home-v2 .dash-hero-art { transform: none; }
+  .home-v2 .dash-hero-art img { max-width: 420px; margin: 0 auto; }
+}
+
+/* ---------- narrow content column (section head + cards) ----------
+   Narrower (760px) than the 1180px hero/tab-grid above it, which
+   guarantees a fixed ~154px-wide gutter on each side once the page is
+   wide enough for the wrap to hit its own max-width (roughly any normal
+   desktop/laptop window, not just very wide monitors) — (1180 - 2*56px
+   wrap padding - 760) / 2 = 154px. The vine/sketch images are sized to
+   fit entirely inside that gutter (no z-index needed — they never touch
+   the cards, so there's nothing to layer against and nothing to hide
+   behind). If a window is too narrow for that gutter to exist, they're
+   hidden outright below the breakpoint rather than spilling over. */
+.home-v2 .dash-content { position: relative; max-width: 760px; margin: 0 auto; }
+/* Keeps the page tall enough that the footer can never start above the
+   vine's bottom edge (top: -60px + its rendered height at 260px wide,
+   plus a little buffer) — otherwise a page with little card content
+   (e.g. one listing) ends before the vine visually does, and the
+   footer cuts it off partway down instead of after it. */
+@media (min-width: 1101px) {
+  .home-v2 .dash-content { min-height: 500px; }
+}
+
+.home-v2 .dash-vine {
+  /* z-index: -1 here reliably made the WHOLE image disappear (even the
+     part that didn't overlap anything) rather than just tucking it
+     behind the card, so this deliberately carries no z-index at all.
+     Instead .dash-card below is raised above it with a positive
+     z-index, achieving the same "behind the card" look from the other
+     direction. */
+  position: absolute; left: -230px; top: -60px;
+  width: 260px; height: auto; pointer-events: none;
+}
+.home-v2 .dash-sketch {
+  position: absolute; right: -140px; top: 10px;
+  width: 110px; height: auto; pointer-events: none;
+}
+@media (max-width: 1100px) {
+  .home-v2 .dash-vine, .home-v2 .dash-sketch { display: none; }
+}
+
+/* ---------- tab grid ----------
+   Pulled up over the bottom of the hero illustration (negative margin +
+   higher z-index than .dash-hero-art) so the cards read as sitting
+   slightly on top of / under the art, not stacked cleanly below it. */
+.home-v2 .dash-tabs {
+  position: relative; z-index: 3; margin-top: -16px;
+  display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 12px;
+}
+@media (max-width: 900px) {
+  .home-v2 .dash-tabs { grid-template-columns: repeat(4, minmax(0, 1fr)); margin-top: 16px; }
+  .home-v2 .dash-tab-icon { width: 48px; height: 48px; }
+}
+.home-v2 .dash-tab {
+  position: relative; display: flex; flex-direction: column; align-items: center; text-align: center;
+  gap: 4px; padding: 14px 6px 12px; background: var(--surface); border: 1px solid var(--line);
+  border-radius: 16px; cursor: pointer; font-family: inherit; transition: transform .12s ease, box-shadow .12s ease;
+}
+.home-v2 .dash-tab:hover { transform: translateY(-2px); }
+.home-v2 .dash-tab.is-active { background: var(--sage); border-color: var(--pine); box-shadow: 0 10px 20px -14px rgba(35, 74, 64, .38); }
+.home-v2 .dash-tab-icon { width: 62px; height: 62px; object-fit: contain; }
+.home-v2 .dash-tab-label { font-weight: 800; font-size: 12.5px; color: var(--ink); line-height: 1.2; }
+.home-v2 .dash-tab.is-active .dash-tab-label { color: var(--pine); }
+.home-v2 .dash-tab-desc { font-weight: 600; font-size: 10.5px; color: var(--ink-faint); line-height: 1.2; }
+.home-v2 .dash-tab-badge {
+  position: absolute; top: -7px; right: -7px; background: #C24C3B; color: #fff; font-size: 10px; font-weight: 800;
+  border-radius: 999px; padding: 2px 6px; min-width: 18px; text-align: center;
+}
+
+/* ---------- section head ---------- */
+.home-v2 .dash-section-head { position: relative; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 36px; flex-wrap: wrap; }
+.home-v2 .dash-section-title { display: flex; align-items: center; gap: 10px; }
+.home-v2 .dash-section-title h2 { font-size: 25px; }
+.home-v2 .dash-section-title p { font-size: 13px; color: var(--ink-faint); font-weight: 600; margin-top: 2px; }
+
+/* ---------- cards ---------- */
+.home-v2 .dash-card { position: relative; z-index: 1; background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 24px; margin-top: 16px; }
+.home-v2 .dash-card:first-of-type { margin-top: 20px; }
+.home-v2 .dash-card--accent { border-color: #BFDBC7; }
+.home-v2 .dash-card h3 { font-size: 17px; }
+
+/* ---------- list rows (listings / saved) ---------- */
+.home-v2 .dash-row { display: flex; align-items: center; gap: 14px; padding: 14px 0; border-bottom: 1px solid var(--line); }
+.home-v2 .dash-row:last-child { border-bottom: none; }
+.home-v2 .dash-row-thumb { width: 48px; height: 64px; border-radius: 8px; flex: none; background-size: cover; background-position: center; }
+.home-v2 .dash-row-title { font-family: var(--serif); font-weight: 600; font-size: 15px; color: var(--ink); }
+.home-v2 .dash-row-title:hover { color: var(--pine); }
+.home-v2 .dash-row-meta { font-size: 12.5px; color: var(--ink-faint); margin-top: 2px; }
+
+/* ---------- pills / links ---------- */
+.home-v2 .dash-pill { display: inline-block; font-weight: 800; font-size: 11px; padding: 4px 12px; border-radius: 999px; white-space: nowrap; }
+.home-v2 .dash-link { font-weight: 800; font-size: 12.5px; color: var(--ink-soft); background: none; border: none; cursor: pointer; font-family: inherit; padding: 0; }
+.home-v2 .dash-link:hover { color: var(--pine); }
+.home-v2 .dash-link--danger { color: #B5462F; }
+.home-v2 .dash-link--danger:hover { color: #93381f; }
+
+/* ---------- badges (paused / sold / bought section labels) ---------- */
+.home-v2 .dash-badge-soft {
+  display: inline-block; font-weight: 800; font-size: 11px; text-transform: uppercase; letter-spacing: .6px;
+  padding: 7px 12px; border-radius: 10px;
+}
+
+/* ---------- buttons reused from home.css (.btn / .btn-primary / .btn-outline) ---------- */
+.home-v2 .dash-btn-danger { background: #FBEAE5; color: #B5462F; border: 1.5px solid #F0C6B8; }
+.home-v2 .dash-btn-danger:hover { background: #F6DCD2; color: #93381f; }
+
+/* ---------- wallet balance card ---------- */
+.home-v2 .dash-balance { border-radius: 18px; padding: 28px; background: linear-gradient(135deg, var(--pine), var(--pine-deep)); color: #fff; }
+
+/* ---------- modals ---------- */
+.home-v2 .dash-modal-overlay { position: fixed; inset: 0; background: rgba(43, 38, 34, .45); display: flex; align-items: center; justify-content: center; z-index: 50; }
+.home-v2 .dash-modal { background: #fff; border-radius: 20px; padding: 26px; width: 380px; max-width: 90vw; max-height: 85vh; overflow-y: auto; position: relative; }
+.home-v2 .dash-modal h3 { font-size: 19px; padding-right: 24px; }
+.home-v2 .dash-modal label { font-weight: 800; font-size: 11px; color: var(--ink-soft); }
+.home-v2 .dash-modal input[type="text"],
+.home-v2 .dash-modal input:not([type]),
+.home-v2 .dash-modal input[type="date"],
+.home-v2 .dash-modal input[type="time"],
+.home-v2 .dash-modal textarea,
+.home-v2 .dash-modal select {
+  width: 100%; border: 1.5px solid var(--line); border-radius: 12px; padding: 10px; font-family: var(--sans);
+  font-size: 13px; font-weight: 600; color: var(--ink); background: var(--ground); outline: none;
+}
