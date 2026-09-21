@@ -84,7 +84,15 @@
   display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 12px;
 }
 @media (max-width: 900px) {
-  .home-v2 .dash-tabs { grid-template-columns: repeat(4, minmax(0, 1fr)); margin-top: 16px; }
+  /* 7 tabs in a 4-across grid wrap to a trailing row of 3, which the
+     browser left-aligns by default. Doubling the column count (8 units,
+     each tab spanning 2) and giving the last 3 tabs explicit start/end
+     positions centers that trailing row under the 4 above it. */
+  .home-v2 .dash-tabs { grid-template-columns: repeat(8, minmax(0, 1fr)); margin-top: 16px; }
+  .home-v2 .dash-tab { grid-column: span 2; }
+  .home-v2 .dash-tab:nth-child(5) { grid-column: 2 / 4; }
+  .home-v2 .dash-tab:nth-child(6) { grid-column: 4 / 6; }
+  .home-v2 .dash-tab:nth-child(7) { grid-column: 6 / 8; }
   .home-v2 .dash-tab-icon { width: 48px; height: 48px; }
 }
 .home-v2 .dash-tab {
