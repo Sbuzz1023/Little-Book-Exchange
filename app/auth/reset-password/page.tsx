@@ -1,3 +1,6 @@
+import '../../home.css'
+import '../../post/postform.css'
+
 export default function ResetPasswordPage({ searchParams }: { searchParams: { error?: string } }) {
   async function setNewPassword(formData: FormData) {
     'use server'
@@ -22,49 +25,39 @@ export default function ResetPasswordPage({ searchParams }: { searchParams: { er
   }
 
   return (
-    <div className="flex items-center justify-center px-4 md:px-8 py-8 md:py-10" style={{ minHeight: 'calc(100vh - 68px)' }}>
-      <div className="bg-white rounded-[28px] p-6 md:p-10 w-full max-w-[440px] border-2 border-gray-100 shadow-[0_8px_0_#e5e7eb]">
-        <h1 className="font-display text-[28px] text-bk-orange text-center mb-1.5">Set New Password</h1>
-        <p className="text-[14px] font-bold text-center mb-7" style={{ color: '#aaa' }}>Choose a new password for your account.</p>
+    <div className="home-v2">
+    <div className="pf-auth-wrap">
+      <div className="pf-card pf-auth-card">
+        <div className="pf-auth-head">
+          <h1>Set New Password</h1>
+          <p className="sub">Choose a new password for your account.</p>
+        </div>
 
         {searchParams.error && (
-          <div className="bg-red-50 border-2 border-red-200 rounded-xl px-4 py-3 text-red-700 font-bold text-sm mb-4">
-            {decodeURIComponent(searchParams.error)}
-          </div>
+          <div className="pf-error-box">{decodeURIComponent(searchParams.error)}</div>
         )}
 
-        <form action={setNewPassword} className="space-y-4">
-          <div>
-            <label className="block mb-1.5" style={{ fontSize: 12, fontWeight: 900, color: '#888', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-              New Password
-            </label>
+        <form action={setNewPassword}>
+          <div className="pf-f-group">
+            <label className="pf-f-label">New Password</label>
             <input
               name="password" type="password" placeholder="At least 6 characters" required minLength={6}
               autoComplete="new-password"
-              className="w-full border-2 border-[#fed7aa] rounded-[14px] px-4 bg-cream font-bold text-[15px] focus:outline-none focus:border-bk-orange"
-              style={{ padding: '13px 16px' }}
+              className="pf-input"
             />
           </div>
-          <div>
-            <label className="block mb-1.5" style={{ fontSize: 12, fontWeight: 900, color: '#888', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-              Confirm Password
-            </label>
+          <div className="pf-f-group">
+            <label className="pf-f-label">Confirm Password</label>
             <input
               name="confirm" type="password" placeholder="Re-enter password" required minLength={6}
               autoComplete="new-password"
-              className="w-full border-2 border-[#fed7aa] rounded-[14px] px-4 bg-cream font-bold text-[15px] focus:outline-none focus:border-bk-orange"
-              style={{ padding: '13px 16px' }}
+              className="pf-input"
             />
           </div>
-          <button
-            type="submit"
-            className="w-full bg-bk-orange text-white rounded-[14px] font-black text-base shadow-[0_5px_0_#c2410c] hover:shadow-[0_3px_0_#c2410c] hover:translate-y-0.5 transition-all mt-2"
-            style={{ padding: 15, border: 'none' }}
-          >
-            Set Password →
-          </button>
+          <button type="submit" className="pf-submit-btn">Set Password →</button>
         </form>
       </div>
+    </div>
     </div>
   )
 }
