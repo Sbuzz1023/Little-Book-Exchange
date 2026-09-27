@@ -98,10 +98,10 @@ function formatDate(iso: string) {
 type LocType = 'lfl' | 'library' | 'bookstore' | 'fair'
 
 const TYPE_META: Record<LocType, { emoji: string; label: string; icon: string }> = {
-  lfl:       { emoji: '📚', label: 'Little Free Library', icon: '/home/trail-icon-lfl.png' },
-  library:   { emoji: '🏛️', label: 'Public Library',      icon: '/home/trail-icon-library.png' },
-  bookstore: { emoji: '📖', label: 'Book Store',           icon: '/home/trail-icon-bookstore.png' },
-  fair:      { emoji: '🎪', label: 'Book Fair',            icon: '/home/trail-icon-fair.png' },
+  lfl:       { emoji: '📚', label: 'Little Free Library', icon: '/home/trail-icon-lfl.png?v=2' },
+  library:   { emoji: '🏛️', label: 'Public Library',      icon: '/home/trail-icon-library.png?v=2' },
+  bookstore: { emoji: '📖', label: 'Book Store',           icon: '/home/trail-icon-bookstore.png?v=2' },
+  fair:      { emoji: '🎪', label: 'Book Fair',            icon: '/home/trail-icon-fair.png?v=2' },
 }
 
 const TYPE_ORDER: LocType[] = ['lfl', 'library', 'bookstore', 'fair']
@@ -111,9 +111,9 @@ const TYPE_ORDER: LocType[] = ['lfl', 'library', 'bookstore', 'fair']
 // the handful of spots (dates, distance) where inline color beats a CSS hook.
 const TYPE_COLOR: Record<LocType, string> = {
   lfl: '#B5462F',
-  library: '#33475C',
-  bookstore: '#9C6B1F',
-  fair: '#234A40',
+  library: '#234A40',
+  bookstore: '#6E7B3E',
+  fair: '#9C6B1F',
 }
 
 type FlyTo = { center: [number, number]; zoom: number; nonce: number }

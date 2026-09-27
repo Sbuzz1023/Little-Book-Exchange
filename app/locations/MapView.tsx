@@ -21,24 +21,25 @@ export type Bounds = [[number, number], [number, number]]
 
 const TYPE_META: Record<'lfl' | 'library' | 'bookstore' | 'fair', {
   emoji: string
+  icon: string
   label: string
   bg: string
   ring: string
   badgeBg: string
   badgeColor: string
 }> = {
-  lfl:       { emoji: '📚', label: 'Little Free Library', bg: '#E07A5F', ring: '#B5462F', badgeBg: '#F8E4E1', badgeColor: '#B5462F' },
-  library:   { emoji: '🏛️', label: 'Public Library',      bg: '#4C6B8A', ring: '#33475C', badgeBg: '#E4EDF3', badgeColor: '#33475C' },
-  bookstore: { emoji: '📖', label: 'Book Store',           bg: '#E4B04A', ring: '#9C6B1F', badgeBg: '#F8ECD1', badgeColor: '#9C6B1F' },
-  fair:      { emoji: '🎪', label: 'Library Fair',         bg: '#234A40', ring: '#1A3830', badgeBg: '#EAF1EA', badgeColor: '#234A40' },
+  lfl:       { emoji: '📚', icon: '/home/trail-icon-lfl.png?v=2', label: 'Little Free Library', bg: '#E07A5F', ring: '#B5462F', badgeBg: '#F8E4E1', badgeColor: '#B5462F' },
+  library:   { emoji: '🏛️', icon: '/home/trail-icon-library.png?v=2', label: 'Public Library',      bg: '#234A40', ring: '#1A3830', badgeBg: '#EAF1EA', badgeColor: '#234A40' },
+  bookstore: { emoji: '📖', icon: '/home/trail-icon-bookstore.png?v=2', label: 'Book Store',           bg: '#6E7B3E', ring: '#4E5A29', badgeBg: '#E9EEDD', badgeColor: '#4E5A29' },
+  fair:      { emoji: '🎪', icon: '/home/trail-icon-fair.png?v=2', label: 'Library Fair',         bg: '#E4B04A', ring: '#9C6B1F', badgeBg: '#F8ECD1', badgeColor: '#9C6B1F' },
 }
 
 // Classic map-pin silhouette: a square rotated 45° with three corners
 // rounded and the bottom-left corner square, so it comes to a point at the
-// bottom — the emoji is counter-rotated back to upright inside it.
+// bottom — the icon image is counter-rotated back to upright inside it.
 function Pin({ type }: { type: 'lfl' | 'library' | 'bookstore' | 'fair' | 'pending' }) {
   const c = type === 'pending'
-    ? { emoji: '📌', bg: '#6E7B3E', ring: '#4E5A29' }
+    ? { icon: null as string | null, bg: '#6E7B3E', ring: '#4E5A29' }
     : TYPE_META[type]
   return (
     <div style={{
@@ -50,7 +51,13 @@ function Pin({ type }: { type: 'lfl' | 'library' | 'bookstore' | 'fair' | 'pendi
       cursor: 'pointer',
       boxShadow: '0 4px 12px rgba(43,38,34,0.35)',
     }}>
-      <span style={{ fontSize: 16, transform: 'rotate(45deg)' }}>{c.emoji}</span>
+      <div style={{ width: 20, height: 20, transform: 'rotate(45deg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        {c.icon ? (
+          <img src={c.icon} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+        ) : (
+          <span style={{ fontSize: 15 }}>📌</span>
+        )}
+      </div>
     </div>
   )
 }
