@@ -194,13 +194,13 @@ export default function MapView({
           key={loc.id}
           longitude={loc.lng}
           latitude={loc.lat}
-          anchor="bottom"
           offset={44}
+          maxWidth="240px"
           closeButton
           closeOnClick={false}
           onClose={() => setOpenPopupId(null)}
         >
-          <div style={{ fontFamily: 'Nunito, sans-serif', padding: '2px 0', minWidth: 180 }}>
+          <div style={{ fontFamily: 'Nunito, sans-serif', padding: '2px 0', minWidth: 180, maxHeight: '55vh', overflowY: 'auto' }}>
             <div style={{ fontWeight: 900, fontSize: 15, marginBottom: 3 }}>{loc.name}</div>
             <span style={{
               display: 'inline-block',
@@ -266,7 +266,6 @@ export default function MapView({
         <Popup
           longitude={pendingPin[1]}
           latitude={pendingPin[0]}
-          anchor="bottom"
           offset={44}
           closeButton
           closeOnClick={false}
