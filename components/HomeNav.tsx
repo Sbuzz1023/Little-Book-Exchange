@@ -1,8 +1,12 @@
 'use client'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { avatarInitials } from '@/lib/avatarInitials'
+
+function clearDemoUser() {
+  try { localStorage.removeItem('lbe_demo_user') } catch {}
+}
 
 function LeafMark() {
   return (
@@ -26,7 +30,11 @@ export default function HomeNav({
 }) {
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
-  useEffect(() => setOpen(false), [pathname])
+  const avatarRef = useRef<HTMLDetailsElement>(null)
+  useEffect(() => {
+    setOpen(false)
+    if (avatarRef.current) avatarRef.current.open = false
+  }, [pathname])
 
   const signedIn = !!userName
 
@@ -59,9 +67,16 @@ export default function HomeNav({
         <nav className="hnav-links">
           {links}
           {signedIn ? (
-            <Link href="/profile" className="hnav-avatar" aria-label="Your dashboard">
-              {avatarInitials(userName!)}
-            </Link>
+            <details ref={avatarRef} className="hnav-avatar-menu">
+              <summary className="hnav-avatar" aria-label="Account menu">
+                {avatarInitials(userName!)}
+              </summary>
+              <div className="hnav-avatar-panel">
+                <div className="hnav-avatar-name">{userName}</div>
+                {isAdmin && <Link href="/admin">Admin Panel</Link>}
+                <a href="/auth/signout" onClick={clearDemoUser}>Sign Out</a>
+              </div>
+            </details>
           ) : (
             <Link href="/auth/signup" className="hnav-cta">Sign Up</Link>
           )}
