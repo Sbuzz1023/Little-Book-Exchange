@@ -27,26 +27,30 @@ const TYPE_META: Record<'lfl' | 'library' | 'bookstore' | 'fair', {
   badgeBg: string
   badgeColor: string
 }> = {
-  lfl:       { emoji: '📚', label: 'Little Free Library', bg: '#f97316', ring: '#c2410c', badgeBg: '#fff7ed', badgeColor: '#f97316' },
-  library:   { emoji: '🏛️', label: 'Public Library',      bg: '#0d9488', ring: '#0f766e', badgeBg: '#ecfdf5', badgeColor: '#0d9488' },
-  bookstore: { emoji: '📖', label: 'Book Store',           bg: '#2563eb', ring: '#1d4ed8', badgeBg: '#eff6ff', badgeColor: '#2563eb' },
-  fair:      { emoji: '🎪', label: 'Library Fair',         bg: '#db2777', ring: '#be185d', badgeBg: '#fdf2f8', badgeColor: '#db2777' },
+  lfl:       { emoji: '📚', label: 'Little Free Library', bg: '#E07A5F', ring: '#B5462F', badgeBg: '#F8E4E1', badgeColor: '#B5462F' },
+  library:   { emoji: '🏛️', label: 'Public Library',      bg: '#4C6B8A', ring: '#33475C', badgeBg: '#E4EDF3', badgeColor: '#33475C' },
+  bookstore: { emoji: '📖', label: 'Book Store',           bg: '#E4B04A', ring: '#9C6B1F', badgeBg: '#F8ECD1', badgeColor: '#9C6B1F' },
+  fair:      { emoji: '🎪', label: 'Library Fair',         bg: '#234A40', ring: '#1A3830', badgeBg: '#EAF1EA', badgeColor: '#234A40' },
 }
 
+// Classic map-pin silhouette: a square rotated 45° with three corners
+// rounded and the bottom-left corner square, so it comes to a point at the
+// bottom — the emoji is counter-rotated back to upright inside it.
 function Pin({ type }: { type: 'lfl' | 'library' | 'bookstore' | 'fair' | 'pending' }) {
   const c = type === 'pending'
-    ? { emoji: '📌', bg: '#22c55e', ring: '#15803d' }
+    ? { emoji: '📌', bg: '#6E7B3E', ring: '#4E5A29' }
     : TYPE_META[type]
   return (
     <div style={{
-      width: 40, height: 40, borderRadius: '50%',
+      width: 34, height: 34, borderRadius: '50% 50% 50% 0',
       background: c.bg, border: '3px solid white',
       outline: `2px solid ${c.ring}`,
+      transform: 'rotate(-45deg)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontSize: 19, cursor: 'pointer',
-      boxShadow: '0 4px 12px rgba(0,0,0,0.35)',
+      cursor: 'pointer',
+      boxShadow: '0 4px 12px rgba(43,38,34,0.35)',
     }}>
-      {c.emoji}
+      <span style={{ fontSize: 16, transform: 'rotate(45deg)' }}>{c.emoji}</span>
     </div>
   )
 }
@@ -148,7 +152,7 @@ export default function MapView({
       ref={mapRef}
       mapboxAccessToken={MAPBOX_TOKEN}
       initialViewState={{ longitude: -98.35, latitude: 39.5, zoom: 4 }}
-      mapStyle="mapbox://styles/mapbox/streets-v12"
+      mapStyle="mapbox://styles/mapbox/light-v11"
       style={{ width: '100%', height: '100%' }}
       onLoad={() => setMapReady(true)}
       onClick={e => {
@@ -205,7 +209,7 @@ export default function MapView({
               marginBottom: (loc.description || (loc.type === 'fair' && loc.startDate && loc.endDate)) ? 6 : 10,
             }}>{loc.city}</div>
             {loc.type === 'fair' && loc.startDate && loc.endDate && (
-              <div style={{ fontSize: 13, color: '#db2777', fontWeight: 700, marginBottom: loc.description ? 6 : 10 }}>
+              <div style={{ fontSize: 13, color: TYPE_META.fair.badgeColor, fontWeight: 700, marginBottom: loc.description ? 6 : 10 }}>
                 🗓️ {formatDate(loc.startDate)} – {formatDate(loc.endDate)}
               </div>
             )}
@@ -218,7 +222,7 @@ export default function MapView({
                 target="_blank"
                 rel="noopener noreferrer"
                 style={{
-                  flex: 1, background: '#f97316', color: '#fff', borderRadius: 8,
+                  flex: 1, background: '#E07A5F', color: '#fff', borderRadius: 8,
                   padding: '5px 0', fontSize: 12, fontWeight: 800, textDecoration: 'none',
                   textAlign: 'center', display: 'block',
                 }}

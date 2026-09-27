@@ -1,0 +1,260 @@
+/* ============================================================
+   Reading Trail (locations) page — reskinned to match the
+   homepage theme. Nests inside .home-v2 (imported from
+   app/home.css) for its tokens, fonts, .wrap, .btn, and .eyebrow;
+   these rules are Reading Trail-only.
+   ============================================================ */
+
+.home-v2 .trail-page { background: var(--ground); }
+
+/* ---------- Hero ---------- */
+.home-v2 .trail-hero { padding: clamp(20px, 3vw, 36px) 0 clamp(18px, 2.5vw, 28px); }
+.home-v2 .trail-hero-grid {
+  display: grid; grid-template-columns: 1fr; gap: 18px; align-items: center;
+}
+@media (min-width: 900px) {
+  .home-v2 .trail-hero-grid { grid-template-columns: 200px 1fr 220px; gap: 20px; }
+}
+
+.home-v2 .trail-decor-left, .home-v2 .trail-decor-right { width: 100%; height: auto; display: none; }
+@media (min-width: 900px) {
+  .home-v2 .trail-decor-left, .home-v2 .trail-decor-right { display: block; }
+}
+.home-v2 .trail-decor-left img, .home-v2 .trail-decor-right img { width: 100%; height: auto; }
+
+.home-v2 .trail-hero-copy h1 { font-size: clamp(30px, 4.2vw, 44px); color: var(--pine); }
+.home-v2 .trail-hero-copy .sub { margin-top: 6px; font-size: 15px; font-weight: 600; color: var(--ink-soft); }
+
+.home-v2 .trail-search-row { margin-top: 18px; display: flex; flex-wrap: wrap; align-items: center; gap: 14px; }
+.home-v2 .trail-search-bar {
+  display: flex; align-items: center; gap: 8px; background: var(--surface);
+  border: 1.5px solid var(--line); border-radius: 999px; padding: 6px 6px 6px 16px;
+  box-shadow: var(--shadow); flex: 1 1 320px; max-width: 460px;
+}
+.home-v2 .trail-search-bar svg { color: var(--ink-faint); flex-shrink: 0; }
+.home-v2 .trail-search-bar input {
+  flex: 1; min-width: 0; border: none; outline: none; background: transparent;
+  font-family: var(--sans); font-size: 14px; font-weight: 700; color: var(--ink);
+}
+.home-v2 .trail-search-bar input::placeholder { color: var(--ink-faint); font-weight: 600; }
+.home-v2 .trail-search-go {
+  font-family: var(--sans); font-weight: 800; font-size: 13.5px; color: #fff;
+  background: var(--pine); border: none; border-radius: 999px; padding: 9px 20px;
+  cursor: pointer; white-space: nowrap; transition: background .12s ease;
+}
+.home-v2 .trail-search-go:hover { background: var(--pine-deep); }
+.home-v2 .trail-search-go:disabled { opacity: .6; cursor: default; }
+.home-v2 .trail-search-clear { color: var(--ink-faint); font-weight: 900; font-size: 16px; padding: 0 4px; }
+.home-v2 .trail-search-clear:hover { color: var(--brick); }
+
+.home-v2 .trail-mylocation {
+  display: inline-flex; align-items: center; gap: 6px; font-weight: 800; font-size: 14px;
+  color: var(--pine); white-space: nowrap; background: none; border: none; cursor: pointer;
+}
+.home-v2 .trail-mylocation:hover { color: var(--pine-deep); }
+.home-v2 .trail-mylocation:disabled { opacity: .6; cursor: default; }
+
+/* ---------- Type filter cards ---------- */
+.home-v2 .trail-type-cards { margin-top: 22px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+@media (min-width: 700px) {
+  .home-v2 .trail-type-cards { grid-template-columns: repeat(4, 1fr); max-width: 900px; margin: 22px auto 0; }
+}
+
+.home-v2 .trail-type-card {
+  display: flex; align-items: center; gap: 10px; border-radius: 18px; padding: 10px 12px;
+  border: 2px solid transparent; cursor: pointer; text-align: left; font-family: var(--sans);
+  transition: transform .12s ease, border-color .12s ease;
+}
+.home-v2 .trail-type-card:hover { transform: translateY(-2px); }
+.home-v2 .trail-type-card { opacity: .6; }
+.home-v2 .trail-type-card.active { opacity: 1; border-color: currentColor; }
+
+.home-v2 .trail-type-card[data-type="lfl"] { background: var(--rose-bg); color: var(--brick); }
+.home-v2 .trail-type-card[data-type="library"] { background: var(--sky-bg); color: var(--sky); }
+.home-v2 .trail-type-card[data-type="bookstore"] { background: var(--mustard-bg); color: #9C6B1F; }
+.home-v2 .trail-type-card[data-type="fair"] { background: var(--sage); color: var(--pine); }
+
+.home-v2 .trail-type-icon {
+  width: 52px; height: 52px; flex-shrink: 0; border-radius: 12px; overflow: hidden;
+  background: rgba(255,255,255,.55);
+}
+.home-v2 .trail-type-icon img { width: 100%; height: 100%; object-fit: cover; }
+
+.home-v2 .trail-type-label { flex: 1; font-weight: 800; font-size: 14px; color: var(--ink); line-height: 1.2; }
+
+.home-v2 .trail-type-arrow {
+  width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff;
+}
+.home-v2 .trail-type-arrow svg { color: #fff; }
+
+.home-v2 .trail-type-card[data-type="lfl"] .trail-type-arrow { background: var(--brick); }
+.home-v2 .trail-type-card[data-type="library"] .trail-type-arrow { background: var(--sky); }
+.home-v2 .trail-type-card[data-type="bookstore"] .trail-type-arrow { background: #9C6B1F; }
+.home-v2 .trail-type-card[data-type="fair"] .trail-type-arrow { background: var(--pine); }
+
+/* ---------- Add Location + active-filter row ---------- */
+.home-v2 .trail-add-btn {
+  margin-top: 16px; width: 100%; justify-content: center; font-size: 15px; padding: 13px 20px;
+}
+.home-v2 .trail-add-cancel {
+  margin-top: 16px; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;
+  background: var(--rose-bg); color: var(--brick); border: 2px solid transparent; border-radius: 999px;
+  font-family: var(--sans); font-weight: 800; font-size: 15px; padding: 13px 20px; cursor: pointer;
+}
+
+.home-v2 .trail-meta-row {
+  margin-top: 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+  font-size: 12.5px; font-weight: 700; color: var(--ink-faint);
+}
+.home-v2 .trail-meta-chip {
+  display: flex; align-items: center; gap: 6px; background: var(--sage); color: var(--pine);
+  border: 1.5px solid #CFE0CC; border-radius: 999px; padding: 5px 12px; font-size: 12px; font-weight: 800;
+}
+.home-v2 .trail-meta-chip .x { color: var(--brick); font-weight: 900; font-size: 14px; cursor: pointer; }
+.home-v2 .trail-meta-count { margin-left: auto; }
+
+/* ---------- Add-mode hint banner ---------- */
+.home-v2 .trail-addmode-hint {
+  margin-top: 12px; background: var(--sage); border: 1.5px solid #CFE0CC; border-radius: 16px;
+  padding: 12px 16px; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px;
+  color: var(--pine); font-weight: 700; font-size: 13px; text-align: center;
+}
+.home-v2 .trail-addmode-hint form { display: flex; align-items: center; gap: 8px; }
+.home-v2 .trail-addmode-hint input {
+  border: 1.5px solid var(--pine); border-radius: 10px; padding: 7px 11px; font-family: var(--sans);
+  font-weight: 700; font-size: 12.5px; background: var(--surface); color: var(--ink); outline: none; width: 190px;
+}
+.home-v2 .trail-addmode-hint button {
+  background: var(--pine); color: #fff; border: none; border-radius: 10px; padding: 7px 14px;
+  font-weight: 800; font-size: 12.5px; cursor: pointer;
+}
+
+/* ---------- List + map split ---------- */
+.home-v2 .trail-split {
+  margin-top: 18px; display: flex; flex-direction: column; gap: 0; border-radius: 20px;
+  overflow: hidden; box-shadow: var(--shadow);
+}
+@media (min-width: 900px) {
+  .home-v2 .trail-split { flex-direction: row; height: min(70vh, 680px); }
+}
+
+.home-v2 .trail-list-col {
+  background: var(--surface); width: 100%; display: flex; flex-direction: column;
+  border-bottom: 4px solid var(--line);
+}
+@media (min-width: 900px) {
+  .home-v2 .trail-list-col { width: 380px; flex-shrink: 0; overflow-y: auto; border-bottom: none; border-right: 4px solid var(--line); }
+}
+
+.home-v2 .trail-map-col { width: 100%; position: relative; height: 320px; }
+@media (min-width: 900px) {
+  .home-v2 .trail-map-col { height: auto; flex: 1; }
+}
+
+.home-v2 .trail-empty { text-align: center; padding: 60px 20px; color: var(--ink-faint); }
+.home-v2 .trail-empty .big { font-size: 34px; margin-bottom: 10px; }
+.home-v2 .trail-empty p:first-of-type { font-weight: 800; font-size: 14px; color: var(--ink-soft); }
+.home-v2 .trail-empty p:last-of-type { font-size: 12.5px; font-weight: 600; margin-top: 4px; }
+
+/* ---------- List rows ---------- */
+.home-v2 .trail-row {
+  display: flex; gap: 0; border-left: 4px solid transparent; border-bottom: 1px solid var(--line);
+  cursor: pointer; transition: background .12s ease;
+}
+.home-v2 .trail-row:hover { background: var(--ground); }
+.home-v2 .trail-row[data-type="lfl"] { border-left-color: var(--coral); }
+.home-v2 .trail-row[data-type="library"] { border-left-color: var(--sky); }
+.home-v2 .trail-row[data-type="bookstore"] { border-left-color: var(--mustard); }
+.home-v2 .trail-row[data-type="fair"] { border-left-color: var(--pine); }
+
+.home-v2 .trail-row-type {
+  width: 64px; flex-shrink: 0; display: flex; flex-direction: column; align-items: center;
+  justify-content: flex-start; gap: 5px; padding: 12px 4px;
+}
+.home-v2 .trail-row-icon { width: 30px; height: 30px; border-radius: 8px; overflow: hidden; }
+.home-v2 .trail-row-icon img { width: 100%; height: 100%; object-fit: cover; }
+.home-v2 .trail-row-type-label {
+  font-size: 8.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .3px;
+  text-align: center; line-height: 1.15;
+}
+.home-v2 .trail-row[data-type="lfl"] .trail-row-type-label { color: var(--brick); }
+.home-v2 .trail-row[data-type="library"] .trail-row-type-label { color: var(--sky); }
+.home-v2 .trail-row[data-type="bookstore"] .trail-row-type-label { color: #9C6B1F; }
+.home-v2 .trail-row[data-type="fair"] .trail-row-type-label { color: var(--pine); }
+
+.home-v2 .trail-row-body { flex: 1; min-width: 0; padding: 12px 10px; }
+.home-v2 .trail-row-name { font-family: var(--serif); font-size: 15px; font-weight: 600; color: var(--ink); line-height: 1.2; }
+.home-v2 .trail-row-addr { font-size: 12px; font-weight: 600; color: var(--ink-soft); margin-top: 2px; }
+.home-v2 .trail-row-desc { font-size: 11.5px; font-weight: 600; color: var(--ink-faint); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.home-v2 .trail-row-dates { font-size: 11px; font-weight: 800; margin-top: 3px; }
+.home-v2 .trail-row-dist { font-size: 11px; font-weight: 800; color: var(--pine); margin-top: 4px; }
+
+.home-v2 .trail-row-actions { flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; padding: 12px 12px 12px 4px; }
+.home-v2 .trail-row-directions { font-size: 11.5px; font-weight: 800; color: var(--coral); white-space: nowrap; }
+.home-v2 .trail-row-directions:hover { color: var(--brick); }
+.home-v2 .trail-row-report { font-size: 11px; font-weight: 700; color: var(--ink-faint); background: none; border: none; cursor: pointer; }
+.home-v2 .trail-row-report:hover { color: var(--ink-soft); }
+
+/* ---------- Generic image-placeholder fallback ---------- */
+.home-v2 .trail-img-fallback {
+  display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 2px;
+  background: var(--ground); border: 1.5px dashed var(--line); color: var(--ink-faint);
+}
+.home-v2 .trail-img-fallback .emoji { font-size: 1.4em; line-height: 1; }
+.home-v2 .trail-img-fallback .txt { font-size: 7.5px; font-weight: 800; text-transform: uppercase; text-align: center; padding: 0 2px; }
+
+/* ---------- Modals ---------- */
+.home-v2 .trail-modal-overlay {
+  position: fixed; inset: 0; z-index: 9999; display: flex; align-items: flex-end; justify-content: center;
+  background: rgba(43,38,34,.5); padding: 0 16px;
+}
+@media (min-width: 640px) { .home-v2 .trail-modal-overlay { align-items: center; } }
+.home-v2 .trail-modal-card {
+  background: var(--surface); width: 100%; max-width: 440px; padding: 26px;
+  border-radius: 24px 24px 0 0; max-height: 90vh; overflow-y: auto; box-shadow: var(--shadow);
+}
+@media (min-width: 640px) { .home-v2 .trail-modal-card { border-radius: 22px; } }
+.home-v2 .trail-modal-card h2 { font-size: 22px; margin-bottom: 4px; }
+.home-v2 .trail-modal-hint { color: var(--ink-faint); font-weight: 600; font-size: 13px; margin-bottom: 16px; }
+.home-v2 .trail-modal-hint button { color: var(--coral); font-weight: 800; margin-left: 10px; font-size: 12px; }
+
+.home-v2 .trail-field { margin-bottom: 12px; }
+.home-v2 .trail-field label { display: block; font-weight: 800; font-size: 13px; margin-bottom: 5px; color: var(--ink-soft); }
+.home-v2 .trail-field label .hint { font-weight: 600; color: var(--ink-faint); margin-left: 5px; }
+.home-v2 .trail-input, .home-v2 .trail-textarea {
+  width: 100%; border: 1.5px solid var(--line); border-radius: 12px; padding: 10px 13px;
+  font-family: var(--sans); font-size: 14px; font-weight: 700; color: var(--ink); background: var(--ground); outline: none;
+}
+.home-v2 .trail-input:focus, .home-v2 .trail-textarea:focus { border-color: var(--pine); }
+.home-v2 .trail-textarea { resize: none; font-weight: 600; }
+select.trail-input { cursor: pointer; }
+
+.home-v2 .trail-modal-error { color: var(--brick); font-weight: 700; font-size: 13px; margin-bottom: 12px; }
+.home-v2 .trail-modal-note { color: var(--ink-faint); font-size: 12px; font-weight: 600; margin-bottom: 12px; }
+
+.home-v2 .trail-modal-actions { display: flex; gap: 12px; }
+.home-v2 .trail-modal-actions .btn { flex: 1; justify-content: center; }
+.home-v2 .trail-modal-cancel {
+  flex: 1; border: 1.5px solid var(--line); border-radius: 999px; padding: 12px; font-weight: 800;
+  font-size: 14px; color: var(--ink-faint); background: none; cursor: pointer; font-family: var(--sans);
+}
+
+.home-v2 .trail-report-preview {
+  border-left: 4px solid var(--pine); border-radius: 12px; padding: 10px 14px; margin-bottom: 14px; background: var(--sage);
+}
+.home-v2 .trail-report-preview[data-type="lfl"] { border-left-color: var(--coral); background: var(--rose-bg); }
+.home-v2 .trail-report-preview[data-type="library"] { border-left-color: var(--sky); background: var(--sky-bg); }
+.home-v2 .trail-report-preview[data-type="bookstore"] { border-left-color: var(--mustard); background: var(--mustard-bg); }
+.home-v2 .trail-report-preview[data-type="fair"] { border-left-color: var(--pine); background: var(--sage); }
+.home-v2 .trail-report-preview[data-type="lfl"] .type { color: var(--brick); }
+.home-v2 .trail-report-preview[data-type="library"] .type { color: var(--sky); }
+.home-v2 .trail-report-preview[data-type="bookstore"] .type { color: #9C6B1F; }
+.home-v2 .trail-report-preview[data-type="fair"] .type { color: var(--pine); }
+.home-v2 .trail-report-preview .name { font-weight: 800; font-size: 14px; color: var(--ink); }
+.home-v2 .trail-report-preview .addr { font-weight: 600; font-size: 12.5px; color: var(--ink-soft); }
+.home-v2 .trail-report-preview .type { font-weight: 800; font-size: 11px; margin-top: 2px; }
+
+.home-v2 .trail-report-success { text-align: center; padding: 24px 0; }
+.home-v2 .trail-report-success .big { font-size: 42px; margin-bottom: 14px; }
