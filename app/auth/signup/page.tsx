@@ -4,6 +4,8 @@ import ContactToggle from './ContactToggle'
 import AddressAutofillField from '@/components/AddressAutofillField'
 import { isValidStateCode } from '@/lib/usStates'
 import { normalizeCity } from '@/lib/normalizeCity'
+import '../../home.css'
+import '../../post/postform.css'
 
 export default function SignUpPage({
   searchParams,
@@ -55,108 +57,95 @@ export default function SignUpPage({
   }
 
   const labelStyle: React.CSSProperties = {
-    fontSize: 12, fontWeight: 900, color: '#888', textTransform: 'uppercase', letterSpacing: '0.5px',
+    fontSize: 11, fontWeight: 800, color: 'var(--ink-faint)', textTransform: 'uppercase', letterSpacing: '.5px',
+    fontFamily: 'var(--sans)', display: 'block', marginBottom: 8,
   }
-  const req = <span style={{ color: '#f97316', marginLeft: 2 }}>*</span>
-  const inputClass = "w-full border-2 border-[#fed7aa] rounded-[14px] px-4 bg-cream font-bold text-[15px] focus:outline-none focus:border-bk-orange"
-  const inputStyle: React.CSSProperties = { padding: '13px 16px' }
-  const hintStyle: React.CSSProperties = { fontSize: 11, color: '#bbb', fontWeight: 600, marginTop: 5 }
+  const req = <span className="pf-required">*</span>
+  const inputStyle: React.CSSProperties = {}
+  const hintStyle: React.CSSProperties = { fontSize: 11.5, fontWeight: 600, color: 'var(--ink-faint)', marginTop: 6, lineHeight: 1.4 }
 
   return (
-    <div className="flex items-center justify-center px-4 md:px-8 py-8 md:py-10" style={{ minHeight: 'calc(100vh - 68px)' }}>
-      <div className="bg-white rounded-[28px] p-6 md:p-10 w-full max-w-[440px] border-2 border-gray-100 shadow-[0_8px_0_#e5e7eb]">
-        <h1 className="font-display text-[28px] text-bk-orange text-center mb-1.5">Join the Exchange</h1>
-        <p className="text-[14px] font-bold text-center mb-7" style={{ color: '#aaa' }}>Free to join. Free to browse. 📚</p>
+    <div className="home-v2">
+    <div className="pf-auth-wrap">
+      <div className="pf-card pf-auth-card">
+        <div className="pf-auth-head">
+          <h1>Join the Exchange</h1>
+          <p className="sub">Free to join. Free to browse. 📚</p>
+        </div>
 
         {searchParams.error && (
-          <div className="bg-red-50 border-2 border-red-200 rounded-xl px-4 py-3 text-red-700 font-bold text-sm mb-4">
-            {decodeURIComponent(searchParams.error)}
-          </div>
+          <div className="pf-error-box">{decodeURIComponent(searchParams.error)}</div>
         )}
 
-        <p className="text-[11px] font-semibold mb-4" style={{ color: '#bbb' }}>
-          Fields marked <span style={{ color: '#f97316' }}>*</span> are required.
+        <p style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--ink-faint)', marginBottom: 16 }}>
+          Fields marked <span className="pf-required">*</span> are required.
         </p>
 
-        <form action={signUp} className="space-y-4">
+        <form action={signUp}>
 
           {/* Username */}
-          <div>
-            <label className="block mb-1.5" style={labelStyle}>Username{req}</label>
-            <input name="username" type="text" placeholder="e.g. sarahreads" required
-              className={inputClass} style={inputStyle} />
+          <div className="pf-f-group">
+            <label className="pf-f-label">Username{req}</label>
+            <input name="username" type="text" placeholder="e.g. sarahreads" required className="pf-input" />
           </div>
 
           {/* Street Address / City / State / Zip — Mapbox autofill */}
           <AddressAutofillField
-            inputClassName={inputClass}
+            inputClassName="pf-input"
             inputStyle={inputStyle}
             labelStyle={labelStyle}
             requiredMark={req}
             noteAfterAddress={
-              <p style={{ fontSize: 11, color: '#bbb', fontWeight: 600 }}>
-                🔒 Your street address is only shared with a buyer after you confirm their purchase.
-              </p>
+              <p style={hintStyle}>🔒 Your street address is only shared with a buyer after you confirm their purchase.</p>
             }
           />
 
           {/* Apt / Unit */}
-          <div>
-            <label className="block mb-1.5" style={labelStyle}>Apt / Unit # <span style={{ color: '#bbb', fontWeight: 600, fontSize: 11, textTransform: 'none', letterSpacing: 0 }}>(optional)</span></label>
-            <input name="address_unit" type="text" placeholder="e.g. Apt 2B"
-              className={inputClass} style={inputStyle} />
+          <div className="pf-f-group">
+            <label className="pf-f-label">Apt / Unit # <span className="opt">(optional)</span></label>
+            <input name="address_unit" type="text" placeholder="e.g. Apt 2B" className="pf-input" />
           </div>
 
           {/* Pickup Spot */}
-          <div>
-            <label className="block mb-1.5" style={labelStyle}>Default Pickup Spot <span style={{ color: '#bbb', fontWeight: 600, fontSize: 11, textTransform: 'none', letterSpacing: 0 }}>(optional)</span></label>
-            <input name="pickup_description" type="text" placeholder="e.g. front porch, behind the garden gnome"
-              className={inputClass} style={inputStyle} />
+          <div className="pf-f-group">
+            <label className="pf-f-label">Default Pickup Spot <span className="opt">(optional)</span></label>
+            <input name="pickup_description" type="text" placeholder="e.g. front porch, behind the garden gnome" className="pf-input" />
           </div>
 
           {/* Phone */}
-          <div>
-            <label className="block mb-1.5" style={labelStyle}>Phone Number{req}</label>
-            <input name="phone" type="tel" placeholder="e.g. (312) 555-0100" required
-              className={inputClass} style={inputStyle} />
-            <p style={hintStyle}>📱 Used for notifications only. We will never share your number.</p>
+          <div className="pf-f-group">
+            <label className="pf-f-label">Phone Number{req}</label>
+            <input name="phone" type="tel" placeholder="e.g. (312) 555-0100" required className="pf-input" />
+            <p className="pf-hint">📱 Used for notifications only. We will never share your number.</p>
           </div>
 
           {/* Email */}
-          <div>
-            <label className="block mb-1.5" style={labelStyle}>Email Address{req}</label>
-            <input name="email" type="email" placeholder="you@email.com" required
-              className={inputClass} style={inputStyle} />
-            <p style={hintStyle}>✉️ Used for notifications only. We will never share your email.</p>
+          <div className="pf-f-group">
+            <label className="pf-f-label">Email Address{req}</label>
+            <input name="email" type="email" placeholder="you@email.com" required className="pf-input" />
+            <p className="pf-hint">✉️ Used for notifications only. We will never share your email.</p>
           </div>
 
           {/* Preferred contact toggle */}
-          <div>
-            <label className="block mb-2" style={labelStyle}>Preferred Contact{req}</label>
+          <div className="pf-f-group">
+            <label className="pf-f-label">Preferred Contact{req}</label>
             <ContactToggle />
           </div>
 
           {/* Password */}
-          <div>
-            <label className="block mb-1.5" style={labelStyle}>Password{req}</label>
-            <input name="password" type="password" placeholder="At least 6 characters" required minLength={6}
-              className={inputClass} style={inputStyle} />
+          <div className="pf-f-group">
+            <label className="pf-f-label">Password{req}</label>
+            <input name="password" type="password" placeholder="At least 6 characters" required minLength={6} className="pf-input" />
           </div>
 
-          <button
-            type="submit"
-            className="w-full bg-bk-orange text-white rounded-[14px] font-black text-base shadow-[0_5px_0_#c2410c] hover:shadow-[0_3px_0_#c2410c] hover:translate-y-0.5 transition-all mt-2"
-            style={{ padding: 15, border: 'none' }}
-          >
-            Create My Account →
-          </button>
+          <button type="submit" className="pf-submit-btn">Create My Account →</button>
         </form>
 
-        <p className="text-center font-bold text-[14px] mt-5" style={{ color: '#aaa' }}>
-          Already have an account?{' '}
-          <Link href="/auth/signin" className="text-bk-orange font-extrabold hover:underline">Sign in</Link>
+        <p className="pf-auth-footer">
+          Already have an account? <Link href="/auth/signin">Sign in</Link>
         </p>
       </div>
+    </div>
     </div>
   )
 }

@@ -38,10 +38,10 @@ export default function ContactToggle() {
             onClick={() => toggle(opt.value)}
             className="flex-1 font-extrabold text-[13px] rounded-[12px] py-3 border-2 transition-all"
             style={{
-              background:  active ? '#f97316' : '#fffbf0',
-              borderColor: active ? '#f97316' : '#fed7aa',
-              color:       active ? '#fff'    : '#aaa',
-              boxShadow:   active ? '0 3px 0 #c2410c' : '0 3px 0 #fde5c4',
+              background:  active ? 'var(--pine)' : 'var(--ground)',
+              borderColor: active ? 'var(--pine)' : 'var(--line)',
+              color:       active ? '#fff'        : 'var(--ink-faint)',
+              boxShadow:   'none',
               fontFamily:  'inherit',
               cursor:      'pointer',
             }}

@@ -4,6 +4,18 @@
    its tokens, fonts, .wrap, .btn; these rules are form-only.
    ============================================================ */
 
+/* Auth pages (Sign In / Sign Up) reuse .pf-card + form field classes below,
+   centered in a narrower card instead of the wide Post a Book layout. */
+.home-v2 .pf-auth-wrap { display: flex; align-items: center; justify-content: center; min-height: calc(100vh - 66px); padding: 40px 20px; }
+.home-v2 .pf-auth-card { width: 100%; max-width: 440px; }
+.home-v2 .pf-auth-head { text-align: center; margin-bottom: 22px; }
+.home-v2 .pf-auth-head h1 { font-size: 28px; color: var(--pine); }
+.home-v2 .pf-auth-head .sub { margin-top: 6px; font-size: 14px; font-weight: 600; color: var(--ink-soft); }
+.home-v2 .pf-auth-footer { text-align: center; font-size: 14px; font-weight: 600; color: var(--ink-soft); margin-top: 20px; }
+.home-v2 .pf-auth-footer a { font-weight: 800; color: var(--pine); }
+.home-v2 .pf-auth-footer a:hover { color: var(--pine-deep); }
+.home-v2 .pf-required { color: var(--coral); margin-left: 2px; }
+
 .home-v2 .pf-page-head { padding: 34px 0 22px; }
 .home-v2 .pf-page-head h1 { font-size: clamp(28px, 4vw, 34px); color: var(--pine); }
 .home-v2 .pf-page-head .sub { margin-top: 8px; font-size: 14.5px; color: var(--ink-soft); }
@@ -89,6 +101,7 @@
 .home-v2 .pf-preview-box .line b { color: var(--pine); font-weight: 800; }
 
 .home-v2 .pf-error-box { background: #FBEAE7; border: 1.5px solid #E3B3AA; color: var(--brick); border-radius: 12px; padding: 12px 16px; font-weight: 700; font-size: 13px; margin-bottom: 16px; }
+.home-v2 .pf-info-box { background: var(--sage); border: 1.5px solid #CFE0CC; color: var(--pine); border-radius: 12px; padding: 12px 16px; font-weight: 700; font-size: 13px; margin-bottom: 16px; }
 .home-v2 .pf-blocked-msg { font-size: 12px; font-weight: 700; color: var(--brick); text-align: center; margin-bottom: 10px; }
 
 .home-v2 .pf-submit-btn { display: block; width: 100%; text-align: center; background: var(--pine); color: #fff; font-weight: 800; font-size: 16px; padding: 16px; border-radius: 14px; border: none; cursor: pointer; font-family: var(--sans); }
