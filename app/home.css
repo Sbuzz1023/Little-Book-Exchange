@@ -116,16 +116,34 @@
   margin-left: 6px; background: #C24C3B; color: #fff; font-size: 10px; font-weight: 800;
   border-radius: 999px; padding: 2px 6px; min-width: 16px; text-align: center; display: inline-block;
 }
-.hnav-toggle { display: none; background: none; border: 0; padding: 8px; cursor: pointer; }
-.hnav-toggle span { display: block; width: 22px; height: 2.5px; background: #2B2622; border-radius: 2px; }
-.hnav-toggle span + span { margin-top: 5px; }
-.hnav-mobile { display: none; background: #FAF7F6; border-bottom: 1px solid #E7DCCB; padding: 6px 0 12px; }
-.hnav-mobile a {
-  display: block; padding: 12px clamp(20px, 5vw, 56px); font-weight: 700; font-size: 15px;
-  color: #4A4038; text-decoration: none;
+
+/* Mobile bottom tab bar (HomeNav). Hidden on desktop; shown at the same
+   breakpoint where the page links leave the top bar (see RESPONSIVE). */
+.hnav-tabs {
+  display: none; position: fixed; left: 0; right: 0; bottom: 0; z-index: 45;
+  height: calc(64px + env(safe-area-inset-bottom));
+  padding-bottom: env(safe-area-inset-bottom);
+  background: #fff; border-top: 1px solid #E7DCCB;
+  box-shadow: 0 -6px 18px -14px rgba(43, 38, 34, .45);
+  grid-template-columns: repeat(4, 1fr);
+  font-family: 'Nunito', system-ui, sans-serif;
 }
-.hnav-mobile a:hover { background: #F1E9DA; color: var(--pine); }
-.hnav.is-open .hnav-mobile { display: block; }
+.hnav-tabs a {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+  font-weight: 700; font-size: 11px; color: #8A8178; text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.hnav-tabs a[aria-current="page"] { color: #234A40; font-weight: 900; }
+.hnav-tab-icon { position: relative; display: block; width: 24px; height: 24px; }
+.hnav-tab-icon svg {
+  width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.9;
+  stroke-linecap: round; stroke-linejoin: round;
+}
+.hnav-tabs a[aria-current="page"] svg { stroke-width: 2.3; }
+.hnav-tab-icon .hnav-badge {
+  position: absolute; top: -6px; left: 15px; margin: 0; padding: 0 4px;
+  min-width: 17px; height: 17px; line-height: 13px; border: 2px solid #fff;
+}
 
 /* ---------- HERO ---------- */
 .home-v2 .hero { padding: clamp(12px, 2.5vw, 32px) 0 0; position: relative; }
@@ -231,8 +249,11 @@
 
 /* ---------- RESPONSIVE ---------- */
 @media (max-width: 900px) {
-  .hnav-links { display: none; }
-  .hnav-toggle { display: block; }
+  /* Page links move to the bottom tab bar; the avatar / Sign Up stay up top. */
+  .hnav-links > a:not(.hnav-cta) { display: none; }
+  .hnav-cta { padding: 7px 16px; font-size: 13px; }
+  .hnav-tabs { display: grid; }
+  body:has(.hnav-tabs) { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
   .home-v2 .hero-grid { grid-template-columns: 1fr; }
   .home-v2 .hero-art { order: -1; }
   .home-v2 .hero-art img { max-width: 380px; margin: 0 auto; }

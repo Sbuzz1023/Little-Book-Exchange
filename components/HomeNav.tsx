@@ -1,7 +1,7 @@
 'use client'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import { avatarInitials } from '@/lib/avatarInitials'
 
 function clearDemoUser() {
@@ -19,6 +19,15 @@ function LeafMark() {
   )
 }
 
+// Mobile bottom tab bar icons (24×24 line icons, stroked in currentColor).
+const TAB_ICONS = {
+  browse: <><path d="M2 5h6.5A3.5 3.5 0 0 1 12 8.5V20a2.5 2.5 0 0 0-2.5-2.5H2z" /><path d="M22 5h-6.5A3.5 3.5 0 0 0 12 8.5V20a2.5 2.5 0 0 1 2.5-2.5H22z" /></>,
+  post: <><circle cx="12" cy="12" r="9" /><path d="M12 8v8M8 12h8" /></>,
+  trail: <><path d="M12 21s7-6.5 7-11.5A7 7 0 0 0 5 9.5C5 14.5 12 21 12 21z" /><circle cx="12" cy="9.5" r="2.5" /></>,
+  dashboard: <><rect x="3.5" y="3.5" width="7" height="7" rx="1.8" /><rect x="13.5" y="3.5" width="7" height="7" rx="1.8" /><rect x="3.5" y="13.5" width="7" height="7" rx="1.8" /><rect x="13.5" y="13.5" width="7" height="7" rx="1.8" /></>,
+  signin: <><path d="M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4" /><path d="M10 16l4-4-4-4M14 12H4" /></>,
+}
+
 export default function HomeNav({
   userName,
   isAdmin,
@@ -29,14 +38,13 @@ export default function HomeNav({
   unreadCount?: number
 }) {
   const pathname = usePathname()
-  const [open, setOpen] = useState(false)
   const avatarRef = useRef<HTMLDetailsElement>(null)
   useEffect(() => {
-    setOpen(false)
     if (avatarRef.current) avatarRef.current.open = false
   }, [pathname])
 
   const signedIn = !!userName
+  const badge = unreadCount > 0 && <span className="hnav-badge">{unreadCount > 99 ? '99+' : unreadCount}</span>
 
   const links = signedIn ? (
     <>
@@ -45,7 +53,7 @@ export default function HomeNav({
       <Link href="/locations">Reading Trail</Link>
       <Link href="/profile">
         Dashboard
-        {unreadCount > 0 && <span className="hnav-badge">{unreadCount > 99 ? '99+' : unreadCount}</span>}
+        {badge}
       </Link>
     </>
   ) : (
@@ -56,59 +64,61 @@ export default function HomeNav({
     </>
   )
 
+  const tabs: { href: string; label: string; icon: keyof typeof TAB_ICONS; section: string }[] = [
+    { href: '/listings', label: 'Browse', icon: 'browse', section: '/listings' },
+    { href: '/post', label: 'Post', icon: 'post', section: '/post' },
+    { href: '/locations', label: 'Trail', icon: 'trail', section: '/locations' },
+    signedIn
+      ? { href: '/profile', label: 'Dashboard', icon: 'dashboard', section: '/profile' }
+      : { href: '/auth/signin', label: 'Sign In', icon: 'signin', section: '/auth' },
+  ]
+  const isCurrent = (section: string) => pathname === section || !!pathname?.startsWith(section + '/')
+
   return (
-    <header className={`hnav${open ? ' is-open' : ''}`}>
-      <div className="hnav-inner">
-        <Link href="/" className="hnav-brand" aria-label="Little Book Exchange home">
-          <LeafMark />
-          <span className="name">Little Book Exchange</span>
-        </Link>
+    <>
+      <header className="hnav">
+        <div className="hnav-inner">
+          <Link href="/" className="hnav-brand" aria-label="Little Book Exchange home">
+            <LeafMark />
+            <span className="name">Little Book Exchange</span>
+          </Link>
 
-        <nav className="hnav-links">
-          {links}
-          {signedIn ? (
-            <details ref={avatarRef} className="hnav-avatar-menu">
-              <summary className="hnav-avatar" aria-label="Account menu">
-                {avatarInitials(userName!)}
-              </summary>
-              <div className="hnav-avatar-panel">
-                <div className="hnav-avatar-name">{userName}</div>
-                {isAdmin && <Link href="/admin">Admin Panel</Link>}
-                <a href="/auth/signout" onClick={clearDemoUser}>Sign Out</a>
-              </div>
-            </details>
-          ) : (
-            <Link href="/auth/signup" className="hnav-cta">Sign Up</Link>
-          )}
-        </nav>
+          {/* On mobile only the account control (avatar / Sign Up) stays up
+              here; the page links move to the bottom tab bar. */}
+          <nav className="hnav-links">
+            {links}
+            {signedIn ? (
+              <details ref={avatarRef} className="hnav-avatar-menu">
+                <summary className="hnav-avatar" aria-label="Account menu">
+                  {avatarInitials(userName!)}
+                </summary>
+                <div className="hnav-avatar-panel">
+                  <div className="hnav-avatar-name">{userName}</div>
+                  {isAdmin && <Link href="/admin">Admin Panel</Link>}
+                  <a href="/auth/signout" onClick={clearDemoUser}>Sign Out</a>
+                </div>
+              </details>
+            ) : (
+              <Link href="/auth/signup" className="hnav-cta">Sign Up</Link>
+            )}
+          </nav>
+        </div>
+      </header>
 
-        <button
-          className="hnav-toggle"
-          aria-label={open ? 'Close menu' : 'Open menu'}
-          aria-expanded={open}
-          onClick={() => setOpen(o => !o)}
-        >
-          <span /><span /><span />
-        </button>
-      </div>
-
-      <div className="hnav-mobile">
-        <Link href="/listings">Browse</Link>
-        <Link href="/post">Post a Book</Link>
-        {signedIn ? (
-          <>
-            <Link href="/locations">Reading Trail</Link>
-            <Link href="/profile">Dashboard</Link>
-            {isAdmin && <Link href="/admin">Admin Panel</Link>}
-            <a href="/auth/signout" onClick={() => { try { localStorage.removeItem('lbe_demo_user') } catch {} }}>Sign Out</a>
-          </>
-        ) : (
-          <>
-            <Link href="/auth/signin">Sign In</Link>
-            <Link href="/auth/signup">Sign Up</Link>
-          </>
-        )}
-      </div>
-    </header>
+      {/* Mobile bottom tab bar (hidden on desktop via CSS). Rendered outside
+          <header> because the header's backdrop-filter would otherwise make
+          it the containing block for position:fixed. */}
+      <nav className="hnav-tabs" aria-label="Tabs">
+        {tabs.map(t => (
+          <Link key={t.href} href={t.href} aria-current={isCurrent(t.section) ? 'page' : undefined}>
+            <span className="hnav-tab-icon">
+              <svg viewBox="0 0 24 24" aria-hidden="true">{TAB_ICONS[t.icon]}</svg>
+              {t.icon === 'dashboard' && badge}
+            </span>
+            {t.label}
+          </Link>
+        ))}
+      </nav>
+    </>
   )
 }

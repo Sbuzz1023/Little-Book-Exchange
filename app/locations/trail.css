@@ -266,7 +266,8 @@ select.trail-input { cursor: pointer; }
    Rendered only when useIsMobile() is true.
    ============================================================ */
 .home-v2 .trail-mobile {
-  position: fixed; top: 66px; left: 0; right: 0; bottom: 0; z-index: 40;
+  /* Ends above HomeNav's bottom tab bar (64px + iPhone home-bar inset). */
+  position: fixed; top: 66px; left: 0; right: 0; bottom: calc(64px + env(safe-area-inset-bottom)); z-index: 40;
   overflow: hidden; background: var(--sage);
 }
 .home-v2 .trail-m-map { position: absolute; inset: 0; }
