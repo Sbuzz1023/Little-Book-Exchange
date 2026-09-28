@@ -5,6 +5,7 @@ import Link from 'next/link'
 import HeartButton from '@/components/HeartButton'
 import PhotoGallery from './PhotoGallery'
 import ShortfallNote from './ShortfallNote'
+import ScrollToPurchaseStatus from './ScrollToPurchaseStatus'
 import { MOCK_LISTINGS, MOCK_CONVERSATIONS, MOCK_USER_ID } from '@/lib/mock-data'
 import { averageRating } from '@/lib/reviewAverages'
 import { StarRatingBadge } from '@/components/StarRating'
@@ -275,7 +276,11 @@ export default async function ListingDetailPage({ params, searchParams }: { para
               </>
             )}
 
-            <div className="ld-foot">
+            {/* Just redirected here from a purchase attempt: bring its message into view. */}
+            {(searchParams.requested === '1' || searchParams.insufficient_credits === '1' || searchParams.purchase_failed === '1') && (
+              <ScrollToPurchaseStatus />
+            )}
+            <div className="ld-foot" id="purchase-status">
               <div className="ld-seller">
                 <span>Listed by <strong>{listing.profiles?.username ?? 'a neighbor'}</strong></span>
                 <StarRatingBadge rating={sellerRating} sellerId={(listing.profiles as any)?.id ?? listing.user_id} />
