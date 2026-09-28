@@ -14,8 +14,8 @@ describe('ShortfallNote', () => {
   it('credits held by pending requests, none left (buzz)', () => {
     render(<ShortfallNote shortfall={{ reason: 'pending', balance: 2, held: 2, pendingCount: 2, cost: 1 }} />)
     expect(text()).toBe(
-      "🪙 You have 2 credits, but 2 are held for your 2 pending requests, so none are free for this one. " +
-      "They're released if a request is cancelled or declined.View your pending requests →"
+      "🪙 You have 2 credits, but 2 are held for your 2 pending requests, so no credits are available for this one. " +
+      "They will be processed after pickup or cancellation.View your pending requests →"
     )
     expect(screen.getByRole('link', { name: /View your pending requests/ })).toHaveAttribute('href', '/profile?tab=exchanges')
   })
