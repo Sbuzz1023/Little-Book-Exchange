@@ -4,11 +4,10 @@ import { useState } from 'react'
 import Image from 'next/image'
 
 export default function PhotoGallery({
-  photos, alt, gradient, children,
+  photos, alt, children,
 }: {
   photos: string[]
   alt: string
-  gradient: string
   children?: React.ReactNode
 }) {
   const [activeIndex, setActiveIndex] = useState(0)
@@ -16,31 +15,27 @@ export default function PhotoGallery({
 
   return (
     <>
-      <div
-        className="relative flex items-center justify-center text-[100px]"
-        style={{ height: 280, background: gradient }}
-      >
+      <div className="ld-cover">
         {active ? (
           <Image src={active} alt={alt} fill className="object-contain" />
         ) : (
-          <span>📚</span>
+          // No photo or Open Library cover — show the title on the same warm
+          // paper tone Browse cards use for their fallback.
+          <span className="ld-cover-fallback">{alt}</span>
         )}
         {children}
       </div>
 
       {photos.length > 1 && (
-        <div className="flex gap-2 px-5 py-3" style={{ background: '#fff', borderBottom: '2px solid #f3f4f6' }}>
+        <div className="ld-thumbs">
           {photos.map((url, i) => (
             <button
               key={url}
               type="button"
               onClick={() => setActiveIndex(i)}
-              className="relative shrink-0 overflow-hidden"
-              style={{
-                width: 56, height: 56, borderRadius: 10,
-                border: i === activeIndex ? '2.5px solid #f97316' : '2.5px solid #e5e7eb',
-                cursor: 'pointer', padding: 0, background: '#fff',
-              }}
+              className={`ld-thumb${i === activeIndex ? ' on' : ''}`}
+              aria-label={`Show photo ${i + 1}`}
+              aria-pressed={i === activeIndex}
             >
               <Image src={url} alt={`${alt} photo ${i + 1}`} fill className="object-cover" />
             </button>
