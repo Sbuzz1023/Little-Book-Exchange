@@ -83,6 +83,22 @@ interface Props {
   // Height (px) the bottom sheet covers, so flyTo centers the target in the
   // map area still visible above it.
   bottomInset?: number
+  // Height (px) of controls floating over the top of the map (mobile search
+  // bar + chips), kept clear the same way.
+  topInset?: number
+}
+
+// Extra breathing room (px) around the locations when fitting them on load,
+// and the closest the initial fit may zoom (so a single location doesn't
+// open at street level).
+const FIT_PADDING = 40
+const FIT_MAX_ZOOM = 13
+
+// [[west, south], [east, north]] around every location, in mapbox's lng/lat order.
+function boundsOf(locations: LibraryLocation[]): [[number, number], [number, number]] {
+  const lngs = locations.map(l => l.lng)
+  const lats = locations.map(l => l.lat)
+  return [[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]]
 }
 
 // mapbox-gl-js renders every Marker/Popup as its own absolutely-positioned
@@ -101,7 +117,7 @@ function clickedMarkerOrPopup(target: EventTarget | null): boolean {
 export default function MapView({
   locations, pendingPin, flyTo, addMode,
   onMapClick, onReport, onBoundsChange,
-  onMarkerSelect, onBackgroundClick, bottomInset,
+  onMarkerSelect, onBackgroundClick, bottomInset, topInset,
 }: Props) {
   const mapRef = useRef<MapRef>(null)
   const [openPopupId, setOpenPopupId] = useState<string | null>(null)
@@ -125,7 +141,7 @@ export default function MapView({
     if (!map) return
     map.flyTo({
       center: [flyTo.center[1], flyTo.center[0]], zoom: flyTo.zoom, duration: 1200,
-      ...(bottomInset ? { padding: { top: 0, bottom: bottomInset, left: 0, right: 0 } } : {}),
+      ...(bottomInset || topInset ? { padding: { top: topInset ?? 0, bottom: bottomInset ?? 0, left: 0, right: 0 } } : {}),
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [flyTo?.nonce, mapReady])
@@ -158,6 +174,12 @@ export default function MapView({
     if (openPopupId && !locations.some(l => l.id === openPopupId)) setOpenPopupId(null)
   }, [locations, openPopupId])
 
+  function reportBounds(map: { getBounds: () => { getSouth(): number; getWest(): number; getNorth(): number; getEast(): number } | null }) {
+    const b = map.getBounds()
+    if (!b) return
+    onBoundsChange([[b.getSouth(), b.getWest()], [b.getNorth(), b.getEast()]])
+  }
+
   if (!MAPBOX_TOKEN) {
     return (
       <div className="w-full h-full flex items-center justify-center bg-[#e8f4ea] font-bold text-[#888] text-center px-6">
@@ -173,7 +195,25 @@ export default function MapView({
       initialViewState={{ longitude: -98.35, latitude: 39.5, zoom: 4 }}
       mapStyle="mapbox://styles/mapbox/light-v11"
       style={{ width: '100%', height: '100%' }}
-      onLoad={() => setMapReady(true)}
+      onLoad={() => {
+        setMapReady(true)
+        const map = mapRef.current?.getMap()
+        if (!map) return
+        // Open on the locations themselves rather than the fixed default view,
+        // then report what's visible right away — otherwise the caller's list
+        // shows every location until the first pan/zoom, pins on screen or not.
+        if (locations.length) {
+          map.fitBounds(boundsOf(locations), {
+            padding: {
+              top: (topInset ?? 0) + FIT_PADDING, bottom: (bottomInset ?? 0) + FIT_PADDING,
+              left: FIT_PADDING, right: FIT_PADDING,
+            },
+            maxZoom: FIT_MAX_ZOOM,
+            duration: 0,
+          })
+        }
+        reportBounds(map)
+      }}
       onClick={e => {
         if (clickedMarkerOrPopup(e.originalEvent.target)) return
         if (addMode) {
@@ -184,11 +224,7 @@ export default function MapView({
           onBackgroundClick?.()
         }
       }}
-      onMoveEnd={e => {
-        const b = e.target.getBounds()
-        if (!b) return
-        onBoundsChange([[b.getSouth(), b.getWest()], [b.getNorth(), b.getEast()]])
-      }}
+      onMoveEnd={e => reportBounds(e.target)}
     >
       {locations.map(loc => (
         <Marker

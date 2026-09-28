@@ -11,7 +11,7 @@ const flyToSpy = vi.fn()
 vi.mock('react-map-gl/mapbox', () => {
   const Map = React.forwardRef((props: any, ref: any) => {
     React.useEffect(() => {
-      if (ref) ref.current = { getMap: () => ({ flyTo: flyToSpy, getCanvas: () => null }) }
+      if (ref) ref.current = { getMap: () => ({ flyTo: flyToSpy, fitBounds: vi.fn(), getCanvas: () => null, getBounds: () => null }) }
       props.onLoad?.()
     }, [])
     return React.createElement('div', null,

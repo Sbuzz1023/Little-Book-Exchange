@@ -118,6 +118,9 @@ const TYPE_COLOR: Record<LocType, string> = {
   fair: '#9C6B1F',
 }
 
+// Height (px) of the mobile search bar + type chips floating over the map.
+const MOBILE_TOP_INSET = 124
+
 type FlyTo = { center: [number, number]; zoom: number; nonce: number }
 
 export default function LocationsClient({ initialLocations, isLoggedIn }: {
@@ -454,6 +457,7 @@ export default function LocationsClient({ initialLocations, isLoggedIn }: {
               onMarkerSelect={selectLocation}
               onBackgroundClick={() => setSelected(null)}
               bottomInset={snaps[snapIndex]}
+            topInset={MOBILE_TOP_INSET}
             />
           </div>
 
