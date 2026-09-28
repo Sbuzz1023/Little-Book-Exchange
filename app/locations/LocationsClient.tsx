@@ -1,7 +1,9 @@
 'use client'
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import dynamic from 'next/dynamic'
 import type { LibraryLocation, Bounds } from './MapView'
+import TrailSheet from './TrailSheet'
+import { useIsMobile } from '@/lib/useIsMobile'
 import { addLibraryLocation } from '@/lib/actions/libraryLocations'
 import { submitLocationReport } from '@/lib/actions/locationReports'
 import '../home.css'
@@ -132,6 +134,14 @@ export default function LocationsClient({ initialLocations, isLoggedIn }: {
   const [geoLoading, setGeoLoading] = useState(false)
   const [mapBounds, setMapBounds] = useState<Bounds | null>(null)
 
+  // Mobile (Google Maps–style) layout: full-screen map + bottom sheet that
+  // shows either the list or one selected location.
+  const isMobile = useIsMobile()
+  const mobileRef = useRef<HTMLDivElement>(null)
+  const [viewH, setViewH] = useState(0)
+  const [snapIndex, setSnapIndex] = useState(1)
+  const [selected, setSelected] = useState<LibraryLocation | null>(null)
+
   // Add location state
   const [addMode, setAddMode] = useState(false)
   const [pendingPin, setPendingPin] = useState<[number, number] | null>(null)
@@ -163,6 +173,26 @@ export default function LocationsClient({ initialLocations, isLoggedIn }: {
     }
     return result
   }, [locations, userCoords, mapBounds, checkedTypes])
+
+  useEffect(() => {
+    if (!isMobile) return
+    // The mobile view is a fixed, app-like screen under the nav — stop the
+    // page behind it (and the footer) from scrolling.
+    const root = document.documentElement
+    root.style.overflow = 'hidden'
+    const measure = () => setViewH(mobileRef.current?.clientHeight ?? 0)
+    measure()
+    window.addEventListener('resize', measure)
+    return () => {
+      root.style.overflow = ''
+      window.removeEventListener('resize', measure)
+    }
+  }, [isMobile])
+
+  // Sheet stops, as visible heights: collapsed (handle + count), half
+  // screen, and full (just under the floating search bar and chips).
+  const sheetH = viewH || 640
+  const snaps = [92, Math.round(sheetH * 0.45), Math.max(sheetH - 128, Math.round(sheetH * 0.45) + 1)]
 
   function toggleType(t: LocType) {
     setCheckedTypes(prev => {
@@ -217,6 +247,8 @@ export default function LocationsClient({ initialLocations, isLoggedIn }: {
       return
     }
     setAddMode(true)
+    setSelected(null)
+    setSnapIndex(0)
   }
 
   function handleMapClick(lat: number, lng: number) {
@@ -242,6 +274,8 @@ export default function LocationsClient({ initialLocations, isLoggedIn }: {
 
   function selectLocation(loc: LibraryLocation) {
     setFlyTo({ center: [loc.lat, loc.lng], zoom: 16, nonce: Date.now() })
+    setSelected(loc)
+    setSnapIndex(1)
   }
 
   function cancelAdd() {
@@ -297,6 +331,238 @@ export default function LocationsClient({ initialLocations, isLoggedIn }: {
     if (!result.ok) { setReportError(result.error); return }
     setReportSent(true)
     setTimeout(() => { setReportTarget(null); setReportReason(''); setReportSent(false) }, 2200)
+  }
+
+  const modals = (
+    <>
+      {/* ── Add Location form modal ── */}
+      {showAddForm && pendingPin && (
+        <div className="trail-modal-overlay">
+          <div className="trail-modal-card">
+            <h2>Add a Location</h2>
+            <p className="trail-modal-hint">
+              📌 Pin at {pendingPin[0].toFixed(4)}°, {pendingPin[1].toFixed(4)}°
+              <button onClick={() => { setPendingPin(null); setShowAddForm(false) }}>Move pin</button>
+            </p>
+            <FormField label="Library Name *">
+              <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                placeholder="e.g. Corner Street LFL" className="trail-input" />
+            </FormField>
+            <FormField label="Type *">
+              <select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value as LocType }))}
+                className="trail-input">
+                <option value="lfl">📚 Little Free Library</option>
+                <option value="library">🏛️ Public Library</option>
+                <option value="bookstore">📖 Book Store</option>
+                <option value="fair">🎪 Library Fair</option>
+              </select>
+            </FormField>
+            {form.type === 'fair' && (
+              <>
+                <FormField label="Start Date *">
+                  <input type="date" value={form.startDate} onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))}
+                    className="trail-input" />
+                </FormField>
+                <FormField label="End Date *">
+                  <input type="date" value={form.endDate} onChange={e => setForm(f => ({ ...f, endDate: e.target.value }))}
+                    className="trail-input" />
+                </FormField>
+              </>
+            )}
+            <FormField label="Street *" hint="No exact address needed">
+              <input value={form.street} onChange={e => setForm(f => ({ ...f, street: e.target.value }))}
+                placeholder="e.g. Oak Street" className="trail-input" />
+            </FormField>
+            <FormField label="City *">
+              <input value={form.city} onChange={e => setForm(f => ({ ...f, city: e.target.value }))}
+                placeholder="e.g. Portland, OR" className="trail-input" />
+            </FormField>
+            <FormField label="Description" hint="optional">
+              <input value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+                placeholder="e.g. Red barn shape, near the oak tree" className="trail-input" />
+            </FormField>
+            <p className="trail-modal-note">🔒 Exact addresses are not stored — the pin marks the spot.</p>
+            {formError && <p className="trail-modal-error">⚠️ {formError}</p>}
+            <div className="trail-modal-actions">
+              <button onClick={cancelAdd} className="trail-modal-cancel">Cancel</button>
+              <button onClick={saveLocation} className="btn btn-primary">Save Location</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Request to Move modal ── */}
+      {reportTarget && (
+        <div className="trail-modal-overlay">
+          <div className="trail-modal-card">
+            {reportSent ? (
+              <div className="trail-report-success">
+                <div className="big">✅</div>
+                <h2>Request Sent!</h2>
+                <p>Our team will review your request and update the map.</p>
+              </div>
+            ) : (
+              <>
+                <h2>Request Location Change</h2>
+                <p className="trail-modal-hint">This will be sent to an admin for review.</p>
+                <div className="trail-report-preview" data-type={reportTarget.type}>
+                  <div className="name">{reportTarget.name}</div>
+                  <div className="addr">{reportTarget.street}, {reportTarget.city}</div>
+                  <div className="type">
+                    {TYPE_META[reportTarget.type].emoji} {TYPE_META[reportTarget.type].label}
+                  </div>
+                </div>
+                <FormField label="Reason for request *">
+                  <textarea
+                    value={reportReason}
+                    onChange={e => setReportReason(e.target.value)}
+                    placeholder="e.g. This library has moved / no longer exists / address is incorrect…"
+                    rows={4}
+                    className="trail-textarea"
+                  />
+                </FormField>
+                <p className="trail-modal-note">📬 Our team reviews requests within 1–3 business days.</p>
+                {reportError && <p className="trail-modal-error">⚠️ {reportError}</p>}
+                <div className="trail-modal-actions">
+                  <button onClick={() => { setReportTarget(null); setReportReason(''); setReportError('') }} className="trail-modal-cancel">Cancel</button>
+                  <button onClick={sendReport} disabled={!reportReason.trim() || reportSending} className="btn btn-primary">
+                    {reportSending ? 'Sending…' : 'Send Request'}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+    </>
+  )
+
+  if (isMobile) {
+    const countLabel = `${filteredLocations.length} location${filteredLocations.length !== 1 ? 's' : ''}`
+    return (
+      <div className="home-v2 trail-page">
+        <div className="trail-mobile" ref={mobileRef}>
+          <div className="trail-m-map">
+            <MapView
+              locations={filteredLocations}
+              pendingPin={pendingPin}
+              flyTo={flyTo}
+              addMode={addMode}
+              onMapClick={handleMapClick}
+              onReport={openReport}
+              onBoundsChange={setMapBounds}
+              onMarkerSelect={selectLocation}
+              onBackgroundClick={() => setSelected(null)}
+              bottomInset={snaps[snapIndex]}
+            />
+          </div>
+
+          {/* ── Floating search + type chips ── */}
+          <div className="trail-m-top">
+            <form onSubmit={handleSearch} className="trail-search-bar trail-m-search">
+              <SearchIcon />
+              <input
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder={searching ? 'Searching…' : 'Search a city or address'}
+                enterKeyHint="search"
+              />
+              {(search || searchLabel) && (
+                <button type="button" onClick={clearSearch} className="trail-search-clear" aria-label="Clear search">×</button>
+              )}
+              <button type="button" onClick={useMyLocation} disabled={geoLoading} className="trail-m-locate" aria-label="Use my location">
+                <PinIcon />
+              </button>
+            </form>
+            <div className="trail-m-chips">
+              {TYPE_ORDER.map(t => {
+                const meta = TYPE_META[t]
+                const checked = checkedTypes.has(t)
+                return (
+                  <button
+                    key={t}
+                    type="button"
+                    data-type={t}
+                    aria-pressed={checked}
+                    className={`trail-m-chip${checked ? ' active' : ''}`}
+                    onClick={() => toggleType(t)}
+                  >
+                    <TrailImg src={meta.icon} alt="" fallbackEmoji={meta.emoji} />
+                    {meta.label}
+                  </button>
+                )
+              })}
+            </div>
+            {addMode && !pendingPin && (
+              <div className="trail-addmode-hint">
+                <span>Tap the map to drop your pin 📌 or</span>
+                <form onSubmit={locateByAddress}>
+                  <input
+                    value={addressQuery}
+                    onChange={e => setAddressQuery(e.target.value)}
+                    placeholder="Enter an address…"
+                  />
+                  <button type="submit" disabled={addressSearching}>
+                    {addressSearching ? '…' : 'Locate'}
+                  </button>
+                </form>
+              </div>
+            )}
+          </div>
+
+          {/* ── Add Location button, riding just above the sheet ── */}
+          {snapIndex < snaps.length - 1 && (
+            addMode ? (
+              <button onClick={cancelAdd} className="trail-m-fab cancel" style={{ bottom: snaps[snapIndex] + 14 }}>
+                ✕ Cancel
+              </button>
+            ) : (
+              <button onClick={startAddMode} className="trail-m-fab" style={{ bottom: snaps[snapIndex] + 14 }} aria-label="Add a location">
+                +
+              </button>
+            )
+          )}
+
+          <TrailSheet
+            snaps={snaps}
+            snapIndex={snapIndex}
+            onSnapIndexChange={setSnapIndex}
+            header={selected ? (
+              <div className="trail-sheet-title">
+                <button onClick={() => setSelected(null)} className="trail-sheet-back" aria-label="Back to list">←</button>
+                <span className="trail-sheet-type" data-type={selected.type}>{TYPE_META[selected.type].label}</span>
+              </div>
+            ) : (
+              <div className="trail-sheet-title">
+                <span className="trail-sheet-count">{countLabel}</span>
+                {searchLabel && (
+                  <span className="trail-meta-chip">
+                    Near {searchLabel}
+                    <button type="button" className="x" onClick={clearSearch} aria-label="Clear search">×</button>
+                  </span>
+                )}
+              </div>
+            )}
+          >
+            {selected ? (
+              <LocationDetail loc={selected} userCoords={userCoords} onReport={openReport} />
+            ) : filteredLocations.length === 0 ? (
+              <div className="trail-empty">
+                <div className="big">📭</div>
+                <p>No locations here</p>
+                <p>Move the map, turn on more types, or clear the search</p>
+              </div>
+            ) : (
+              filteredLocations.map(loc => (
+                <TrailRow key={loc.id} loc={loc} userCoords={userCoords} onReport={openReport} onSelect={selectLocation} />
+              ))
+            )}
+          </TrailSheet>
+        </div>
+
+        {modals}
+      </div>
+    )
   }
 
   return (
@@ -445,105 +711,7 @@ export default function LocationsClient({ initialLocations, isLoggedIn }: {
         </div>
       </div>
 
-      {/* ── Add Location form modal ── */}
-      {showAddForm && pendingPin && (
-        <div className="trail-modal-overlay">
-          <div className="trail-modal-card">
-            <h2>Add a Location</h2>
-            <p className="trail-modal-hint">
-              📌 Pin at {pendingPin[0].toFixed(4)}°, {pendingPin[1].toFixed(4)}°
-              <button onClick={() => { setPendingPin(null); setShowAddForm(false) }}>Move pin</button>
-            </p>
-            <FormField label="Library Name *">
-              <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                placeholder="e.g. Corner Street LFL" className="trail-input" />
-            </FormField>
-            <FormField label="Type *">
-              <select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value as LocType }))}
-                className="trail-input">
-                <option value="lfl">📚 Little Free Library</option>
-                <option value="library">🏛️ Public Library</option>
-                <option value="bookstore">📖 Book Store</option>
-                <option value="fair">🎪 Library Fair</option>
-              </select>
-            </FormField>
-            {form.type === 'fair' && (
-              <>
-                <FormField label="Start Date *">
-                  <input type="date" value={form.startDate} onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))}
-                    className="trail-input" />
-                </FormField>
-                <FormField label="End Date *">
-                  <input type="date" value={form.endDate} onChange={e => setForm(f => ({ ...f, endDate: e.target.value }))}
-                    className="trail-input" />
-                </FormField>
-              </>
-            )}
-            <FormField label="Street *" hint="No exact address needed">
-              <input value={form.street} onChange={e => setForm(f => ({ ...f, street: e.target.value }))}
-                placeholder="e.g. Oak Street" className="trail-input" />
-            </FormField>
-            <FormField label="City *">
-              <input value={form.city} onChange={e => setForm(f => ({ ...f, city: e.target.value }))}
-                placeholder="e.g. Portland, OR" className="trail-input" />
-            </FormField>
-            <FormField label="Description" hint="optional">
-              <input value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-                placeholder="e.g. Red barn shape, near the oak tree" className="trail-input" />
-            </FormField>
-            <p className="trail-modal-note">🔒 Exact addresses are not stored — the pin marks the spot.</p>
-            {formError && <p className="trail-modal-error">⚠️ {formError}</p>}
-            <div className="trail-modal-actions">
-              <button onClick={cancelAdd} className="trail-modal-cancel">Cancel</button>
-              <button onClick={saveLocation} className="btn btn-primary">Save Location</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── Request to Move modal ── */}
-      {reportTarget && (
-        <div className="trail-modal-overlay">
-          <div className="trail-modal-card">
-            {reportSent ? (
-              <div className="trail-report-success">
-                <div className="big">✅</div>
-                <h2>Request Sent!</h2>
-                <p>Our team will review your request and update the map.</p>
-              </div>
-            ) : (
-              <>
-                <h2>Request Location Change</h2>
-                <p className="trail-modal-hint">This will be sent to an admin for review.</p>
-                <div className="trail-report-preview" data-type={reportTarget.type}>
-                  <div className="name">{reportTarget.name}</div>
-                  <div className="addr">{reportTarget.street}, {reportTarget.city}</div>
-                  <div className="type">
-                    {TYPE_META[reportTarget.type].emoji} {TYPE_META[reportTarget.type].label}
-                  </div>
-                </div>
-                <FormField label="Reason for request *">
-                  <textarea
-                    value={reportReason}
-                    onChange={e => setReportReason(e.target.value)}
-                    placeholder="e.g. This library has moved / no longer exists / address is incorrect…"
-                    rows={4}
-                    className="trail-textarea"
-                  />
-                </FormField>
-                <p className="trail-modal-note">📬 Our team reviews requests within 1–3 business days.</p>
-                {reportError && <p className="trail-modal-error">⚠️ {reportError}</p>}
-                <div className="trail-modal-actions">
-                  <button onClick={() => { setReportTarget(null); setReportReason(''); setReportError('') }} className="trail-modal-cancel">Cancel</button>
-                  <button onClick={sendReport} disabled={!reportReason.trim() || reportSending} className="btn btn-primary">
-                    {reportSending ? 'Sending…' : 'Send Request'}
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      )}
+      {modals}
     </div>
   )
 }
@@ -599,6 +767,42 @@ function TrailRow({ loc, userCoords, onReport, onSelect }: {
         <button onClick={e => { e.stopPropagation(); onReport(loc) }} className="trail-row-report">
           🚩 Report
         </button>
+      </div>
+    </div>
+  )
+}
+
+function LocationDetail({ loc, userCoords, onReport }: {
+  loc: LibraryLocation
+  userCoords: [number, number] | null
+  onReport: (loc: LibraryLocation) => void
+}) {
+  const dist = userCoords ? haversine(userCoords[0], userCoords[1], loc.lat, loc.lng) : null
+  const meta = TYPE_META[loc.type]
+  return (
+    <div className="trail-detail" data-type={loc.type}>
+      <div className="trail-detail-head">
+        <span className="trail-detail-icon">
+          <TrailImg src={meta.icon} alt="" fallbackEmoji={meta.emoji} />
+        </span>
+        <div>
+          <h2 className="trail-detail-name">{loc.name}</h2>
+          <div className="trail-row-addr">{loc.street}, {loc.city}</div>
+          {dist !== null && <div className="trail-row-dist">{dist.toFixed(1)} mi away</div>}
+        </div>
+      </div>
+      {loc.type === 'fair' && loc.startDate && loc.endDate && (
+        <div className="trail-row-dates" style={{ color: TYPE_COLOR[loc.type] }}>
+          🗓️ {formatDate(loc.startDate)} – {formatDate(loc.endDate)}
+        </div>
+      )}
+      {loc.description && <p className="trail-detail-desc">{loc.description}</p>}
+      <div className="trail-detail-actions">
+        <a href={`https://www.google.com/maps/dir/?api=1&destination=${loc.lat},${loc.lng}`}
+          target="_blank" rel="noopener noreferrer" className="btn btn-primary">
+          Directions ↗
+        </a>
+        <button onClick={() => onReport(loc)} className="trail-detail-report">🚩 Report</button>
       </div>
     </div>
   )

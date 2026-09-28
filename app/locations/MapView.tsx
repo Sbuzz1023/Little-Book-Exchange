@@ -75,6 +75,14 @@ interface Props {
   onMapClick: (lat: number, lng: number) => void
   onReport: (loc: LibraryLocation) => void
   onBoundsChange: (b: Bounds) => void
+  // Mobile "sheet mode": when set, tapping a pin hands the location to the
+  // caller (which shows it in the bottom sheet) instead of opening a Popup.
+  onMarkerSelect?: (loc: LibraryLocation) => void
+  // Fired on a tap of bare map outside add mode.
+  onBackgroundClick?: () => void
+  // Height (px) the bottom sheet covers, so flyTo centers the target in the
+  // map area still visible above it.
+  bottomInset?: number
 }
 
 // mapbox-gl-js renders every Marker/Popup as its own absolutely-positioned
@@ -93,6 +101,7 @@ function clickedMarkerOrPopup(target: EventTarget | null): boolean {
 export default function MapView({
   locations, pendingPin, flyTo, addMode,
   onMapClick, onReport, onBoundsChange,
+  onMarkerSelect, onBackgroundClick, bottomInset,
 }: Props) {
   const mapRef = useRef<MapRef>(null)
   const [openPopupId, setOpenPopupId] = useState<string | null>(null)
@@ -114,7 +123,10 @@ export default function MapView({
     if (!flyTo || !mapReady) return
     const map = mapRef.current?.getMap()
     if (!map) return
-    map.flyTo({ center: [flyTo.center[1], flyTo.center[0]], zoom: flyTo.zoom, duration: 1200 })
+    map.flyTo({
+      center: [flyTo.center[1], flyTo.center[0]], zoom: flyTo.zoom, duration: 1200,
+      ...(bottomInset ? { padding: { top: 0, bottom: bottomInset, left: 0, right: 0 } } : {}),
+    })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [flyTo?.nonce, mapReady])
 
@@ -169,6 +181,7 @@ export default function MapView({
         } else {
           setOpenPopupId(null)
           setPendingPopupOpen(false)
+          onBackgroundClick?.()
         }
       }}
       onMoveEnd={e => {
@@ -183,7 +196,7 @@ export default function MapView({
           longitude={loc.lng}
           latitude={loc.lat}
           anchor="bottom"
-          onClick={() => setOpenPopupId(loc.id)}
+          onClick={() => (onMarkerSelect ? onMarkerSelect(loc) : setOpenPopupId(loc.id))}
         >
           <Pin type={loc.type} />
         </Marker>

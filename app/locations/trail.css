@@ -258,3 +258,120 @@ select.trail-input { cursor: pointer; }
 
 .home-v2 .trail-report-success { text-align: center; padding: 24px 0; }
 .home-v2 .trail-report-success .big { font-size: 42px; margin-bottom: 14px; }
+
+/* ============================================================
+   Mobile (< 900px): Google Maps–style layout — full-screen map
+   under the nav, floating search + type chips, and a draggable
+   bottom sheet (TrailSheet.tsx) holding the list or one location.
+   Rendered only when useIsMobile() is true.
+   ============================================================ */
+.home-v2 .trail-mobile {
+  position: fixed; top: 66px; left: 0; right: 0; bottom: 0; z-index: 40;
+  overflow: hidden; background: var(--sage);
+}
+.home-v2 .trail-m-map { position: absolute; inset: 0; }
+
+/* ---------- Floating search + chips ---------- */
+.home-v2 .trail-m-top {
+  position: absolute; top: 10px; left: 0; right: 0; z-index: 3;
+  display: flex; flex-direction: column; gap: 8px; pointer-events: none;
+}
+.home-v2 .trail-m-top > * { pointer-events: auto; }
+.home-v2 .trail-m-search {
+  margin: 0 12px; max-width: none; flex: none; padding: 5px 5px 5px 16px;
+  box-shadow: 0 6px 18px -8px rgba(43, 38, 34, .45);
+}
+.home-v2 .trail-m-search input { font-size: 16px; padding: 8px 0; } /* 16px stops iOS zoom-on-focus */
+.home-v2 .trail-m-locate {
+  width: 38px; height: 38px; flex-shrink: 0; border-radius: 50%; border: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--sage); color: var(--pine);
+}
+.home-v2 .trail-m-locate svg { width: 18px; height: 18px; }
+.home-v2 .trail-m-locate:disabled { opacity: .5; }
+
+.home-v2 .trail-m-chips {
+  display: flex; gap: 8px; overflow-x: auto; padding: 2px 12px 6px;
+  scrollbar-width: none; -webkit-overflow-scrolling: touch;
+}
+.home-v2 .trail-m-chips::-webkit-scrollbar { display: none; }
+.home-v2 .trail-m-chip {
+  flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 13px 5px 6px; border-radius: 999px; border: 1.5px solid var(--line);
+  background: var(--surface); color: var(--ink-faint); font-family: var(--sans);
+  font-weight: 800; font-size: 13px; white-space: nowrap; cursor: pointer;
+  box-shadow: 0 4px 12px -8px rgba(43, 38, 34, .5);
+}
+.home-v2 .trail-m-chip img, .home-v2 .trail-m-chip .trail-img-fallback {
+  width: 24px; height: 24px; object-fit: contain; border-radius: 50%; border: none; opacity: .45;
+}
+.home-v2 .trail-m-chip.active img { opacity: 1; }
+.home-v2 .trail-m-chip.active[data-type="lfl"] { background: var(--rose-bg); color: var(--brick); border-color: var(--brick); }
+.home-v2 .trail-m-chip.active[data-type="library"] { background: var(--sage); color: var(--pine); border-color: var(--pine); }
+.home-v2 .trail-m-chip.active[data-type="bookstore"] { background: var(--moss-bg); color: var(--moss); border-color: var(--moss); }
+.home-v2 .trail-m-chip.active[data-type="fair"] { background: var(--mustard-bg); color: #9C6B1F; border-color: #9C6B1F; }
+
+.home-v2 .trail-m-top .trail-addmode-hint { margin: 0 12px; box-shadow: var(--shadow); }
+
+/* ---------- Add Location floating button ---------- */
+.home-v2 .trail-m-fab {
+  position: absolute; right: 14px; z-index: 3; min-width: 54px; height: 54px; padding: 0 18px;
+  border-radius: 999px; border: none; cursor: pointer; background: var(--pine); color: #fff;
+  font-family: var(--sans); font-weight: 800; font-size: 28px; line-height: 1;
+  box-shadow: 0 8px 20px -8px rgba(26, 56, 48, .7);
+  transition: bottom .28s cubic-bezier(.2, .8, .2, 1);
+}
+.home-v2 .trail-m-fab.cancel { background: var(--rose-bg); color: var(--brick); font-size: 14px; }
+
+/* ---------- Bottom sheet ---------- */
+.home-v2 .trail-sheet {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 4;
+  display: flex; flex-direction: column; background: var(--surface);
+  border-radius: 20px 20px 0 0; box-shadow: 0 -8px 28px -12px rgba(43, 38, 34, .45);
+  transition: height .28s cubic-bezier(.2, .8, .2, 1);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.home-v2 .trail-sheet.dragging { transition: none; }
+.home-v2 .trail-sheet-header {
+  flex-shrink: 0; padding: 8px 16px 12px; cursor: grab; touch-action: none; user-select: none;
+  border-bottom: 1px solid var(--line);
+}
+.home-v2 .trail-sheet-handle {
+  width: 40px; height: 5px; border-radius: 999px; background: var(--line); margin: 0 auto 10px;
+}
+.home-v2 .trail-sheet-title { display: flex; align-items: center; gap: 10px; min-height: 30px; }
+.home-v2 .trail-sheet-count { font-family: var(--serif); font-size: 19px; font-weight: 600; color: var(--ink); }
+.home-v2 .trail-sheet-title .trail-meta-chip { margin-left: auto; }
+.home-v2 .trail-sheet-title .trail-meta-chip .x { background: none; border: none; padding: 0; }
+.home-v2 .trail-sheet-back {
+  width: 34px; height: 34px; border-radius: 50%; border: none; background: var(--ground);
+  color: var(--ink); font-size: 18px; font-weight: 800; cursor: pointer;
+}
+.home-v2 .trail-sheet-type { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .4px; }
+.home-v2 .trail-sheet-type[data-type="lfl"] { color: var(--brick); }
+.home-v2 .trail-sheet-type[data-type="library"] { color: var(--pine); }
+.home-v2 .trail-sheet-type[data-type="bookstore"] { color: var(--moss); }
+.home-v2 .trail-sheet-type[data-type="fair"] { color: #9C6B1F; }
+.home-v2 .trail-sheet-body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+
+/* ---------- Selected location (inside the sheet) ---------- */
+.home-v2 .trail-detail { padding: 16px 18px 24px; }
+.home-v2 .trail-detail-head { display: flex; gap: 14px; align-items: flex-start; }
+.home-v2 .trail-detail-icon {
+  width: 56px; height: 56px; flex-shrink: 0; border-radius: 14px; padding: 5px; background: var(--sage);
+}
+.home-v2 .trail-detail[data-type="lfl"] .trail-detail-icon { background: var(--rose-bg); }
+.home-v2 .trail-detail[data-type="bookstore"] .trail-detail-icon { background: var(--moss-bg); }
+.home-v2 .trail-detail[data-type="fair"] .trail-detail-icon { background: var(--mustard-bg); }
+.home-v2 .trail-detail-icon img { width: 100%; height: 100%; object-fit: contain; }
+.home-v2 .trail-detail-name { font-size: 22px; line-height: 1.15; color: var(--ink); }
+.home-v2 .trail-detail .trail-row-addr { font-size: 14px; margin-top: 4px; }
+.home-v2 .trail-detail .trail-row-dist { font-size: 13px; }
+.home-v2 .trail-detail .trail-row-dates { font-size: 13px; margin-top: 12px; }
+.home-v2 .trail-detail-desc { margin-top: 12px; font-size: 14px; font-weight: 600; color: var(--ink-soft); line-height: 1.45; }
+.home-v2 .trail-detail-actions { margin-top: 18px; display: flex; align-items: center; gap: 12px; }
+.home-v2 .trail-detail-actions .btn { flex: 1; justify-content: center; }
+.home-v2 .trail-detail-report {
+  border: 1.5px solid var(--line); border-radius: 999px; padding: 11px 16px; background: none;
+  font-family: var(--sans); font-weight: 800; font-size: 13px; color: var(--ink-faint); cursor: pointer;
+}
