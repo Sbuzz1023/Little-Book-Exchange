@@ -13,9 +13,12 @@
 
 /* ---------- Cover + gallery ---------- */
 .home-v2 .ld-cover {
-  position: relative; height: 280px; background: #ECE3D3;
+  position: relative; height: 304px;
   display: flex; align-items: center; justify-content: center;
 }
+/* Image inset from the card's top edge; the heart + credit badge stay
+   positioned against the full cover area, up in the corners. */
+.home-v2 .ld-cover-img { position: absolute; inset: 24px 0 0; }
 .home-v2 .ld-cover-fallback {
   max-width: 70%; text-align: center; font-family: var(--serif); font-size: 22px;
   font-weight: 600; line-height: 1.3; color: var(--ink-soft);

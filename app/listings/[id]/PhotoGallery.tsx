@@ -17,10 +17,11 @@ export default function PhotoGallery({
     <>
       <div className="ld-cover">
         {active ? (
-          <Image src={active} alt={alt} fill className="object-contain" />
+          <div className="ld-cover-img">
+            <Image src={active} alt={alt} fill className="object-contain" />
+          </div>
         ) : (
-          // No photo or Open Library cover — show the title on the same warm
-          // paper tone Browse cards use for their fallback.
+          // No photo or Open Library cover — show the title in its place.
           <span className="ld-cover-fallback">{alt}</span>
         )}
         {children}
