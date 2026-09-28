@@ -4,6 +4,7 @@ import { cookies } from 'next/headers'
 import Link from 'next/link'
 import HeartButton from '@/components/HeartButton'
 import PhotoGallery from './PhotoGallery'
+import ShortfallNote from './ShortfallNote'
 import { MOCK_LISTINGS, MOCK_CONVERSATIONS, MOCK_USER_ID } from '@/lib/mock-data'
 import { averageRating } from '@/lib/reviewAverages'
 import { StarRatingBadge } from '@/components/StarRating'
@@ -11,6 +12,7 @@ import { getListingAvailability } from '@/lib/listingAvailability'
 import type { ListingStatus } from '@/lib/types'
 import { addTbrEntry } from '@/lib/actions/tbrEntries'
 import { saveListingAndGoToWallet } from '@/lib/actions/savedListings'
+import { availableCredits, creditShortfall, type CreditShortfall, type OpenRequestRow } from '@/lib/creditCheck'
 import '../../home.css'
 import './detail.css'
 
@@ -69,6 +71,22 @@ export default async function ListingDetailPage({ params, searchParams }: { para
       const { data: saved } = await supabase
         .from('saved_listings').select('id').eq('user_id', user.id).eq('listing_id', params.id).maybeSingle()
       initialSaved = !!saved
+    } catch {}
+  }
+
+  // Explain a blocked purchase: too few credits overall, or credits held by
+  // the buyer's other pending requests (see lib/creditCheck.ts).
+  let shortfall: CreditShortfall | null = null
+  if (user && searchParams.insufficient_credits === '1') {
+    try {
+      const supabase = createClient()
+      const [{ data: p }, { data: rows }] = await Promise.all([
+        supabase.from('profiles').select('credits').eq('id', user.id).single(),
+        supabase.from('conversations')
+          .select('exchange_status, listings(status, book_count)')
+          .eq('buyer_id', user.id).neq('listing_id', params.id),
+      ])
+      if (p) shortfall = creditShortfall(p.credits, (rows ?? []) as unknown as OpenRequestRow[], listing.book_count ?? 1)
     } catch {}
   }
 
@@ -144,8 +162,15 @@ export default async function ListingDetailPage({ params, searchParams }: { para
       const { data: { user: u } } = await supabase.auth.getUser()
       if (!u) redirect(`/auth/signin?redirect=/listings/${params.id}`)
 
-      const { data: buyerProfile } = await supabase.from('profiles').select('credits').eq('id', u!.id).single()
-      if (!buyerProfile || buyerProfile.credits < (listing.book_count ?? 1)) {
+      // Check against credits not already committed to the buyer's other open
+      // requests — see lib/creditCheck.ts.
+      const [{ data: buyerProfile }, { data: buyerExchanges }] = await Promise.all([
+        supabase.from('profiles').select('credits').eq('id', u!.id).single(),
+        supabase.from('conversations')
+          .select('exchange_status, listings(status, book_count)')
+          .eq('buyer_id', u!.id).neq('listing_id', listing.id),
+      ])
+      if (!buyerProfile || availableCredits(buyerProfile.credits, (buyerExchanges ?? []) as unknown as OpenRequestRow[]) < (listing.book_count ?? 1)) {
         redirect(`/listings/${params.id}?insufficient_credits=1`)
       }
 
@@ -262,7 +287,7 @@ export default async function ListingDetailPage({ params, searchParams }: { para
                 <div className="ld-note error">Purchase failed — please try again or message the seller.</div>
               ) : searchParams.insufficient_credits === '1' ? (
                 <div className="ld-stack">
-                  <div className="ld-note error">🪙 You don&apos;t have enough credits for this.</div>
+                  <ShortfallNote shortfall={shortfall} />
                   <form action={saveListingAndGoToWallet}>
                     <input type="hidden" name="listing_id" value={params.id} />
                     <button type="submit" className="btn btn-primary">Buy Credits &amp; Save Listing</button>

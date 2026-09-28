@@ -82,6 +82,9 @@
 }
 .home-v2 .ld-note.error { background: #FBEAE7; border: 1.5px solid #E3B3AA; color: var(--brick); }
 .home-v2 .ld-note.pending { background: var(--mustard-bg); border: 1.5px solid #EBD39C; color: #8A5A1C; }
+.home-v2 .ld-note { max-width: 420px; }
+.home-v2 .ld-note-link { display: block; margin-top: 8px; font-weight: 800; color: var(--pine); }
+.home-v2 .ld-note-link:hover { color: var(--pine-deep); text-decoration: underline; }
 .home-v2 .ld-note.muted { background: var(--ground); border: 1.5px solid var(--line); color: var(--ink-faint); }
 
 .home-v2 .ld-link-btn {
