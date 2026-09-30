@@ -4,6 +4,7 @@ import { cookies } from 'next/headers'
 import Link from 'next/link'
 import HeartButton from '@/components/HeartButton'
 import PhotoGallery from './PhotoGallery'
+import { listingPhotos } from '@/lib/listingPhotos'
 import ShortfallNote from './ShortfallNote'
 import ScrollToPurchaseStatus from './ScrollToPurchaseStatus'
 import { MOCK_LISTINGS, MOCK_CONVERSATIONS, MOCK_USER_ID } from '@/lib/mock-data'
@@ -224,8 +225,7 @@ export default async function ListingDetailPage({ params, searchParams }: { para
   }
 
 
-  const uploadedPhotos = [listing.photo_url, listing.photo_url_2, listing.photo_url_3].filter(Boolean)
-  const displayPhotos = uploadedPhotos.length > 0 ? uploadedPhotos : (listing.cover_url ? [listing.cover_url] : [])
+  const displayPhotos = listingPhotos(listing)
 
   const displayTitle = listing.is_bundle ? (listing.bundle_name || listing.title) : listing.title
   const sellerName = listing.profiles?.username ?? 'seller'
