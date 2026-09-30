@@ -236,7 +236,7 @@ export default async function ListingDetailPage({ params, searchParams }: { para
         <Link href="/listings" className="ld-back">← Back to Browse</Link>
 
         <div className="ld-card">
-          <PhotoGallery photos={displayPhotos} alt={displayTitle}>
+          <PhotoGallery photos={displayPhotos} stockUrl={listing.cover_url} alt={displayTitle}>
             {!isOwner && (
               <HeartButton listingId={listing.id} isLoggedIn={isLoggedIn} initialSaved={initialSaved} />
             )}

@@ -34,6 +34,17 @@
   border: 2px solid var(--line); background: var(--surface); padding: 0; cursor: pointer;
 }
 .home-v2 .ld-thumb.on { border-color: var(--pine); }
+.home-v2 .ld-thumb-stock {
+  position: absolute; left: 0; right: 0; bottom: 0; padding: 2px 0;
+  background: rgba(35, 74, 64, .85); color: #fff; font-size: 10px; font-weight: 800;
+  letter-spacing: .04em; text-transform: uppercase; text-align: center;
+}
+.home-v2 .ld-stock-caption {
+  margin: 0; padding: 10px 20px; text-align: center; font-size: 13px; line-height: 1.4;
+  color: var(--ink-soft); border-bottom: 1.5px solid var(--line);
+}
+.home-v2 .ld-stock-caption:has(+ .ld-thumbs) { border-bottom: 0; padding-bottom: 0; }
+.home-v2 .ld-stock-caption strong { color: var(--ink); font-weight: 800; }
 
 /* ---------- Body ---------- */
 .home-v2 .ld-body { padding: 28px 30px 30px; }
