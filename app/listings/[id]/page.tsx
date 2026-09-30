@@ -4,6 +4,7 @@ import { cookies } from 'next/headers'
 import Link from 'next/link'
 import HeartButton from '@/components/HeartButton'
 import PhotoGallery from './PhotoGallery'
+import PurchaseRequestedModal from './PurchaseRequestedModal'
 import { listingPhotos } from '@/lib/listingPhotos'
 import ShortfallNote from './ShortfallNote'
 import ScrollToPurchaseStatus from './ScrollToPurchaseStatus'
@@ -280,6 +281,7 @@ export default async function ListingDetailPage({ params, searchParams }: { para
             {(searchParams.requested === '1' || searchParams.insufficient_credits === '1' || searchParams.purchase_failed === '1') && (
               <ScrollToPurchaseStatus />
             )}
+            {searchParams.requested === '1' && !isOwner && <PurchaseRequestedModal sellerName={sellerName} />}
             <div className="ld-foot" id="purchase-status">
               <div className="ld-seller">
                 <span>Listed by <strong>{listing.profiles?.username ?? 'a neighbor'}</strong></span>
@@ -303,7 +305,7 @@ export default async function ListingDetailPage({ params, searchParams }: { para
                   <div className="ld-note pending">
                     ⏳ Pending — waiting for <strong>{sellerName}</strong> to confirm
                   </div>
-                  <Link href={`/profile?demo_pending=${params.id}`} className="ld-subtle-link">
+                  <Link href="/profile?tab=exchanges" className="ld-subtle-link">
                     View in Exchanges tab →
                   </Link>
                 </div>

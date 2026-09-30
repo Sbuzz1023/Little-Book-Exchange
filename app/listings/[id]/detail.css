@@ -117,3 +117,20 @@
   .home-v2 .ld-stack { align-items: stretch; }
   .home-v2 .ld-stack .btn { justify-content: center; width: 100%; }
 }
+
+/* ---------- Purchase-request popup ---------- */
+/* Above the sticky nav (50) and the mobile tab bar (45). */
+.home-v2 .ld-modal-backdrop {
+  position: fixed; inset: 0; z-index: 200; display: flex; align-items: center; justify-content: center;
+  padding: 16px; background: rgba(26, 56, 48, .45);
+}
+.home-v2 .ld-modal {
+  width: 100%; max-width: 420px; background: var(--surface); border-radius: 20px;
+  padding: 28px 26px 24px; text-align: center; box-shadow: 0 24px 60px -20px rgba(26, 56, 48, .55);
+}
+.home-v2 .ld-modal-icon { font-size: 36px; line-height: 1; margin-bottom: 10px; }
+.home-v2 .ld-modal-title { font-size: 24px; line-height: 1.2; color: var(--ink); }
+.home-v2 .ld-modal-text { margin: 10px 0 22px; font-size: 15px; line-height: 1.5; color: var(--ink-soft); }
+.home-v2 .ld-modal-text strong { color: var(--ink); }
+.home-v2 .ld-modal-actions { display: flex; flex-direction: column; gap: 10px; }
+.home-v2 .ld-modal-actions .btn { justify-content: center; width: 100%; }
