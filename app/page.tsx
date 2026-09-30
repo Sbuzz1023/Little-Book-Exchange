@@ -4,6 +4,7 @@ import './home.css'
 import WelcomeBonusModal from '@/components/WelcomeBonusModal'
 import { createClient } from '@/lib/supabase/server'
 import { avatarInitials } from '@/lib/avatarInitials'
+import { thumbnailUrl } from '@/lib/listingPhotos'
 import { startSupportConversationAndRedirect } from '@/app/profile/actions'
 
 async function getIsLoggedIn(): Promise<boolean> {
@@ -85,8 +86,8 @@ async function getHomeData(): Promise<{
             title: b.title,
             author: b.author,
             city: b.city || '',
-            // user's own photo first, then the Open Library cover, then a color block
-            photo: b.photo_url || b.cover_url || null,
+            // stock cover first, then the seller's photo, then a color block
+            photo: thumbnailUrl(b),
           }))
         : SAMPLE_BOOKS
 

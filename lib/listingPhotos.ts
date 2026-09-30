@@ -12,8 +12,8 @@ export function listingPhotos(listing: PhotoFields): string[] {
   return Array.from(new Set(all.filter((url): url is string => !!url)))
 }
 
-// Small listing thumbnails (Dashboard rows): always the stock cover, so every
-// row reads as the book itself. Older listings from before Open Library
+// Small listing thumbnails (Dashboard rows, the home page's Recently added):
+// always the stock cover, so each one reads as the book itself. Older listings from before Open Library
 // matching have no cover — those fall back to the seller's first photo.
 export function thumbnailUrl(listing: Pick<PhotoFields, 'cover_url' | 'photo_url'> | null | undefined): string | null {
   return listing?.cover_url || listing?.photo_url || null
