@@ -55,6 +55,7 @@ export default async function ProfilePage({
               title: pl.title,
               author: pl.author,
               photo_url: pl.photo_url ?? null,
+              cover_url: pl.cover_url ?? null,
               city: pl.city ?? null,
               state: pl.state ?? null,
             },
@@ -94,7 +95,7 @@ export default async function ProfilePage({
       const savedIds = (savedRows ?? []).map((r: any) => r.listing_id)
       if (savedIds.length > 0) {
         const { data: sl } = await supabase
-          .from('listings').select('id, title, author, photo_url, condition, price, status').in('id', savedIds)
+          .from('listings').select('id, title, author, photo_url, cover_url, condition, price, status').in('id', savedIds)
         savedListings = sl ?? []
       }
 
@@ -182,7 +183,7 @@ export default async function ProfilePage({
         // Fetch listings separately
         const listingIds = [...new Set(merged.map((r: any) => r.listing_id).filter(Boolean))]
         const { data: listingRows, error: listingsErr } = await supabase
-          .from('listings').select('id, title, author, photo_url, city, pickup_description').in('id', listingIds)
+          .from('listings').select('id, title, author, photo_url, cover_url, city, pickup_description').in('id', listingIds)
         if (listingsErr) console.error('profile page: listings lookup failed', listingsErr)
         const lm: Record<string, any> = {}
         for (const l of listingRows ?? []) lm[l.id] = l
@@ -234,7 +235,7 @@ export default async function ProfilePage({
             ...row,
             hasOpenDispute: disputedConvoIds.has(row.id),
             exchange_status: row.exchange_status ?? 'none',
-            listings: row.type === 'admin' ? null : (lm[row.listing_id] ?? { title: 'Unknown', author: '', photo_url: null, city: null, state: null }),
+            listings: row.type === 'admin' ? null : (lm[row.listing_id] ?? { title: 'Unknown', author: '', photo_url: null, cover_url: null, city: null, state: null }),
             buyer:    pm[row.buyer_id]   ?? { username: null, city: null, state: null },
             seller: sellerData,
             messages: mm[row.id] ?? [],

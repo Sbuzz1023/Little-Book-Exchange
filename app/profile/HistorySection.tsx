@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { StarRatingBadge, StarRatingPicker } from '@/components/StarRating'
+import { thumbnailUrl } from '@/lib/listingPhotos'
 
 const COVER_GRADIENTS = [
   'linear-gradient(145deg, #fde68a, #fca5a5)',
@@ -32,7 +33,7 @@ export type HistoryExchange = {
   exchange_status: string
   completed_at: string | null
   completion_type?: string | null
-  listings: { title: string; author: string; photo_url?: string | null }
+  listings: { title: string; author: string; photo_url?: string | null; cover_url?: string | null }
   buyer: { username?: string | null; name?: string | null }
   seller: { username?: string | null; name?: string | null }
   buyer_hidden: boolean
@@ -130,9 +131,9 @@ export default function HistorySection({
               }}
             >
               <div className="relative shrink-0 overflow-hidden" style={{ width: 42, height: 42, borderRadius: 10, background: coverGradient(ex.listing_id) }}>
-                {ex.listings?.photo_url ? (
+                {thumbnailUrl(ex.listings) ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={ex.listings.photo_url} alt={ex.listings.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <img src={thumbnailUrl(ex.listings)!} alt={ex.listings.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 ) : (
                   <span className="flex items-center justify-center w-full h-full text-[18px]">📚</span>
                 )}

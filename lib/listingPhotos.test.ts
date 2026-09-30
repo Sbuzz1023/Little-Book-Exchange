@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { listingPhotos } from './listingPhotos'
+import { listingPhotos, thumbnailUrl } from './listingPhotos'
 
 describe('listingPhotos', () => {
   it('puts the book cover first, ahead of uploaded photos', () => {
@@ -26,5 +26,20 @@ describe('listingPhotos', () => {
     expect(listingPhotos({
       cover_url: 'cover.jpg', photo_url: 'cover.jpg', photo_url_2: 'b.jpg',
     })).toEqual(['cover.jpg', 'b.jpg'])
+  })
+})
+
+describe('thumbnailUrl', () => {
+  it('uses the stock cover even when the seller uploaded a photo', () => {
+    expect(thumbnailUrl({ cover_url: 'cover.jpg', photo_url: 'a.jpg' })).toBe('cover.jpg')
+  })
+
+  it("falls back to the seller's photo for listings with no cover", () => {
+    expect(thumbnailUrl({ cover_url: null, photo_url: 'a.jpg' })).toBe('a.jpg')
+  })
+
+  it('returns null when there is neither', () => {
+    expect(thumbnailUrl({ cover_url: '', photo_url: null })).toBeNull()
+    expect(thumbnailUrl(null)).toBeNull()
   })
 })

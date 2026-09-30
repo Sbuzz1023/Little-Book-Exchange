@@ -14,6 +14,7 @@ import { createClient } from '@/lib/supabase/client'
 import { pickupState, formatDeadline } from '@/lib/pickupStatus'
 import { buildDirectionsUrl } from '@/lib/mapsLink'
 import { formatPickupAvailability } from '@/lib/formatPickupAvailability'
+import { thumbnailUrl } from '@/lib/listingPhotos'
 import '../home.css'
 import './dashboard.css'
 
@@ -27,6 +28,7 @@ type Listing = {
   condition: string
   status: string
   photo_url?: string | null
+  cover_url?: string | null
 }
 
 type SavedListing = {
@@ -34,6 +36,7 @@ type SavedListing = {
   title: string
   author: string
   photo_url?: string | null
+  cover_url?: string | null
   condition: string
   price?: number | null
   status: string
@@ -77,6 +80,7 @@ type Exchange = {
     title: string
     author: string
     photo_url?: string | null
+    cover_url?: string | null
     city?: string | null
     state?: string | null
     pickup_description?: string | null
@@ -325,8 +329,8 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
             <div className="dash-row">
               <div className="relative shrink-0 overflow-hidden dash-row-thumb"
                 style={{ background: coverGradient(l.id) }}>
-                {l.photo_url ? (
-                  <Image src={l.photo_url} alt={l.title} fill className="object-cover" style={{ borderRadius: 8 }} />
+                {thumbnailUrl(l) ? (
+                  <Image src={thumbnailUrl(l)!} alt={l.title} fill className="object-cover" style={{ borderRadius: 8 }} />
                 ) : (
                   <span className="flex items-center justify-center w-full h-full text-[18px]">📚</span>
                 )}
@@ -466,9 +470,9 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
                   {/* Book thumbnail */}
                   <div className="relative shrink-0 overflow-hidden"
                     style={{ width: 46, height: 58, borderRadius: 8, background: coverGradient(ex.listing_id) }}>
-                    {ex.listings?.photo_url ? (
+                    {thumbnailUrl(ex.listings) ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={ex.listings.photo_url} alt={ex.listings.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      <img src={thumbnailUrl(ex.listings)!} alt={ex.listings!.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     ) : (
                       <span className="flex items-center justify-center w-full h-full text-[20px]">📚</span>
                     )}
@@ -1047,8 +1051,8 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
                   <div key={l.id} className="dash-row" style={{ opacity: sold ? 0.6 : 1 }}>
                     <div className="relative shrink-0 overflow-hidden dash-row-thumb"
                       style={{ background: coverGradient(l.id) }}>
-                      {l.photo_url ? (
-                        <Image src={l.photo_url} alt={l.title} fill className="object-cover" style={{ borderRadius: 8 }} />
+                      {thumbnailUrl(l) ? (
+                        <Image src={thumbnailUrl(l)!} alt={l.title} fill className="object-cover" style={{ borderRadius: 8 }} />
                       ) : (
                         <span className="flex items-center justify-center w-full h-full text-[18px]">📚</span>
                       )}
