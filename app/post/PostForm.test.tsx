@@ -426,4 +426,17 @@ describe('PostForm — bundle row Open Library integration', () => {
     fireEvent.click(screen.getByText('Change'))
     expect(screen.getByPlaceholderText('Title in series')).toHaveValue('')
   })
+
+  // iPhone Safari restarts the photo picker if a file input gets a second
+  // .click() in the same tap, and the chosen photo never reaches onChange.
+  it('opens each photo picker with exactly one click per tap', () => {
+    const { container } = render(<PostForm action={vi.fn()} search={noopSearch} />)
+    for (const name of ['photo', 'photo_2', 'photo_3']) {
+      const input = container.querySelector<HTMLInputElement>(`input[type="file"][name="${name}"]`)!
+      let clicks = 0
+      input.addEventListener('click', () => { clicks++ })
+      fireEvent.click(input)
+      expect(clicks, name).toBe(1)
+    }
+  })
 })

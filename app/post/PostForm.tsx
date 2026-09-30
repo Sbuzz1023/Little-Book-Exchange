@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import BookSearchInput from '@/components/BookSearchInput'
 import type { BookSuggestion } from '@/lib/openLibrary'
 import '../home.css'
@@ -119,11 +119,13 @@ function PhotoUploadSlot({
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void
   size: 'large' | 'small'
 }) {
-  const inputRef = useRef<HTMLInputElement>(null)
   const sizeClass = size === 'large' ? 'big' : 'small'
 
+  // The file input is stretched invisibly over the whole slot, so taps land on it
+  // directly. Don't also call input.click() from the slot: iPhone Safari restarts
+  // the picker on the second click and the chosen photo never reaches onChange.
   return (
-    <div className={`pf-photo-slot ${sizeClass}${preview ? ' filled' : ''}`} onClick={() => inputRef.current?.click()}>
+    <div className={`pf-photo-slot ${sizeClass}${preview ? ' filled' : ''}`}>
       {preview ? (
         <>
           <img src={preview} alt={`${label} preview`} />
@@ -136,7 +138,7 @@ function PhotoUploadSlot({
           {size === 'large' && <p className="note">JPG or PNG · Max 5MB</p>}
         </>
       )}
-      <input ref={inputRef} name={name} type="file" accept="image/*" onChange={onChange} />
+      <input name={name} type="file" accept="image/*" onChange={onChange} />
     </div>
   )
 }
