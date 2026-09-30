@@ -532,39 +532,6 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
                         Waiting for <strong>{otherName}</strong> to approve your request
                       </p>
                     )}
-                    {role === 'buyer' && status === 'confirmed' && (
-                      <div className="mt-2 rounded-[10px] px-3 py-2" style={{ background: '#EAF1EA', border: '1.5px solid #BFDBC7' }}>
-                        <p className="font-extrabold text-[12px]" style={{ color: '#234A40' }}>📍 Ready for Pick Up!</p>
-                        {location && <p className="font-semibold text-[11px] mt-0.5" style={{ color: '#234A40' }}>📌 {location}</p>}
-                        {(ex.confirmed_address || ex.confirmed_address_unit) && (
-                          <p className="font-semibold text-[11px] flex items-center gap-2 flex-wrap" style={{ color: '#234A40' }}>
-                            🏠 {[ex.confirmed_address, ex.confirmed_address_unit].filter(Boolean).join(' ')}
-                            {directionsUrl && (
-                              <a href={directionsUrl} target="_blank" rel="noopener noreferrer"
-                                className="font-extrabold hover:opacity-80"
-                                style={{ color: '#234A40', textDecoration: 'underline', whiteSpace: 'nowrap' }}>
-                                🧭 Directions
-                              </a>
-                            )}
-                          </p>
-                        )}
-                        {ex.confirmed_pickup && (
-                          <p className="font-semibold text-[11px]" style={{ color: '#234A40' }}>📦 Pickup: {ex.confirmed_pickup}</p>
-                        )}
-                        {(() => {
-                          const availability = formatPickupAvailability({
-                            mode: ex.confirmed_pickup_mode,
-                            date: ex.confirmed_pickup_date,
-                            timeStart: ex.confirmed_pickup_time_start,
-                            timeEnd: ex.confirmed_pickup_time_end,
-                          })
-                          return availability && (
-                            <p className="font-semibold text-[11px]" style={{ color: '#234A40' }}>🕐 {availability}</p>
-                          )
-                        })()}
-                        <p className="font-semibold text-[11px]" style={{ color: '#234A40' }}>Contact: <strong>{otherName}</strong></p>
-                      </div>
-                    )}
                     {role === 'buyer' && status === 'none' && (
                       <p className="font-semibold text-[12px] mt-1" style={{ color: '#8A8178' }}>
                         from <strong style={{ color: '#4A4038' }}>{otherName}</strong>{location ? ` · ${location}` : ''}
@@ -593,8 +560,47 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
                   </div>
                 </div>
 
+                {/* Buyer's pickup details: full card width below the header (not squeezed
+                    into the title column between the cover and Dispute), one detail per line. */}
+                {role === 'buyer' && status === 'confirmed' && (
+                  <div className="dash-pickup-wrap">
+                    <div className="dash-pickup">
+                      <p className="dash-pickup-title">📍 Ready for Pick Up!</p>
+                      {location && <p className="dash-pickup-line"><span aria-hidden="true">📌</span><span>{location}</span></p>}
+                      {(ex.confirmed_address || ex.confirmed_address_unit) && (
+                        <p className="dash-pickup-line">
+                          <span aria-hidden="true">🏠</span>
+                          <span>
+                            {[ex.confirmed_address, ex.confirmed_address_unit].filter(Boolean).join(' ')}
+                            {directionsUrl && (
+                              <a href={directionsUrl} target="_blank" rel="noopener noreferrer" className="dash-pickup-directions">
+                                🧭 Directions
+                              </a>
+                            )}
+                          </span>
+                        </p>
+                      )}
+                      {ex.confirmed_pickup && (
+                        <p className="dash-pickup-line"><span aria-hidden="true">📦</span><span>Pickup: {ex.confirmed_pickup}</span></p>
+                      )}
+                      {(() => {
+                        const availability = formatPickupAvailability({
+                          mode: ex.confirmed_pickup_mode,
+                          date: ex.confirmed_pickup_date,
+                          timeStart: ex.confirmed_pickup_time_start,
+                          timeEnd: ex.confirmed_pickup_time_end,
+                        })
+                        return availability && (
+                          <p className="dash-pickup-line"><span aria-hidden="true">🕐</span><span>{availability}</span></p>
+                        )
+                      })()}
+                      <p className="dash-pickup-line"><span aria-hidden="true">👤</span><span>Contact: <strong>{otherName}</strong></span></p>
+                    </div>
+                  </div>
+                )}
+
                 {/* Action row below — status-driven */}
-                <div data-testid="exchange-action-row" className="flex gap-2 mt-3 flex-wrap items-center" style={{ paddingLeft: 58 }}>
+                <div data-testid="exchange-action-row" className="dash-action-row flex gap-2 mt-3 flex-wrap items-center">
                   {/* Seller: confirm a purchase request */}
                   {role === 'seller' && status === 'requested' && (
                     <button
