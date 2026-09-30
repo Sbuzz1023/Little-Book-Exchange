@@ -133,6 +133,8 @@
 
 /* ---------- pills / links ---------- */
 .home-v2 .dash-pill { display: inline-block; font-weight: 800; font-size: 11px; padding: 4px 12px; border-radius: 999px; white-space: nowrap; }
+.home-v2 .dash-pill--link { border: 1.5px solid #E8D39A; cursor: pointer; font-family: inherit; transition: filter .15s, transform .15s; }
+.home-v2 .dash-pill--link:hover { filter: brightness(.96); transform: translateY(-1px); }
 .home-v2 .dash-link { font-weight: 800; font-size: 12.5px; color: var(--ink-soft); background: none; border: none; cursor: pointer; font-family: inherit; padding: 0; }
 .home-v2 .dash-link:hover { color: var(--pine); }
 .home-v2 .dash-link--danger { color: #B5462F; }

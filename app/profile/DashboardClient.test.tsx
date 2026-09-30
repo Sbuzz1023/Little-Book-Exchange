@@ -325,9 +325,33 @@ describe('DashboardClient — My Listings active/paused split', () => {
     expect(screen.getByRole('button', { name: 'Delete' })).toBeInTheDocument()
   })
 
-  it('does not show pending or sold listings in My Listings at all', () => {
-    render(<DashboardClient {...baseProps} listings={[pendingListing, soldListing]} exchanges={[]} defaultTab="listings" />)
-    expect(screen.queryByText('Snow Crash')).not.toBeInTheDocument()
+  it('keeps a pending listing in My Listings, with a Pending button in place of Edit, Pause and Delete', () => {
+    render(<DashboardClient {...baseProps} listings={[pendingListing]} exchanges={[]} defaultTab="listings" />)
+    expect(screen.getByText('Snow Crash')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Pending — view in Exchanges' })).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Edit' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Pause' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Delete' })).not.toBeInTheDocument()
+    expect(screen.queryByText(/No active listings/)).not.toBeInTheDocument()
+  })
+
+  it("opens the Exchanges tab when a pending listing's Pending button is clicked", () => {
+    const exchange = { ...pendingExchange, listing_id: 'listing-pending', listings: { title: 'Snow Crash', author: 'Neal Stephenson' } }
+    const { container } = render(<DashboardClient {...baseProps} listings={[pendingListing]} exchanges={[exchange]} defaultTab="listings" />)
+    fireEvent.click(screen.getByRole('button', { name: 'Pending — view in Exchanges' }))
+    expect(container.querySelector('.dash-tab.is-active')?.textContent).toContain('Exchanges')
+    expect(container.textContent).toContain('Sold (1)')
+  })
+
+  it('keeps the active listing options on active rows alongside a pending one', () => {
+    render(<DashboardClient {...baseProps} listings={[pendingListing, activeListing]} exchanges={[]} defaultTab="listings" />)
+    expect(screen.getByRole('button', { name: 'Pause' })).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: 'Delete' })).toHaveLength(1)
+    expect(screen.getAllByRole('link', { name: 'Edit' })).toHaveLength(1)
+  })
+
+  it('drops a listing from My Listings once the purchase is completed (sold)', () => {
+    render(<DashboardClient {...baseProps} listings={[soldListing]} exchanges={[]} defaultTab="listings" />)
     expect(screen.queryByText('The Hobbit')).not.toBeInTheDocument()
     expect(screen.getByText(/No active listings/)).toBeInTheDocument()
   })

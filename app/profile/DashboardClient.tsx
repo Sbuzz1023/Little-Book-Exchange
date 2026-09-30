@@ -252,6 +252,12 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
     }
   }
 
+  function openTab(tabId: Tab) {
+    setActiveTab(tabId)
+    if (tabId === 'messages') setSelectedConversationId(null)
+    markTabRead(tabId)
+  }
+
   function tabBadgeCount(id: Tab): number {
     if (id === 'exchanges') return unreadCounts.exchanges
     if (id === 'tbr') return unreadCounts.tbr
@@ -285,7 +291,7 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
             return (
               <button
                 key={t.id}
-                onClick={() => { setActiveTab(t.id); if (t.id === 'messages') setSelectedConversationId(null); markTabRead(t.id) }}
+                onClick={() => openTab(t.id)}
                 className={`dash-tab${isActive ? ' is-active' : ''}`}
               >
                 {tabBadgeCount(t.id) > 0 && (
@@ -322,7 +328,11 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
 
         {/* ── MY LISTINGS ── */}
         {activeTab === 'listings' && (() => {
-          const active = listings.filter(l => l.status === 'active')
+          // A listing stays here until its purchase is completed (then it's 'sold'
+          // and lives in Exchanges → History). While a buyer's request is open it's
+          // 'pending': it can't be edited, paused or deleted, so the row offers a
+          // way to the exchange instead.
+          const active = listings.filter(l => l.status === 'active' || l.status === 'pending')
           const paused = listings.filter(l => l.status === 'paused')
 
           const ListingRow = ({ l, action }: { l: Listing; action: 'pause' | 'resume' }) => (
@@ -343,6 +353,17 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
                   {l.author} · 1 credit · {l.condition}
                 </p>
               </div>
+              {l.status === 'pending' ? (
+                <button
+                  type="button"
+                  onClick={() => openTab('exchanges')}
+                  className="dash-pill dash-pill--link whitespace-nowrap shrink-0"
+                  style={statusStyle('pending')}
+                  aria-label="Pending — view in Exchanges"
+                >
+                  Pending →
+                </button>
+              ) : (<>
               <span className="dash-pill whitespace-nowrap shrink-0" style={statusStyle(l.status)}>
                 {statusLabel(l.status)}
               </span>
@@ -364,6 +385,7 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
                   Delete
                 </button>
               </form>
+              </>)}
             </div>
           )
 
