@@ -7,6 +7,12 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  experimental: {
+    // Listing photos are resized in the browser (lib/resizeImage.ts), but three
+    // of them plus the form still top Next's 1 MB default. Stay under Vercel's
+    // 4.5 MB request cap.
+    serverActions: { bodySizeLimit: '4mb' },
+  },
   images: {
     remotePatterns: [
       {

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import BookSearchInput from '@/components/BookSearchInput'
 import type { BookSuggestion } from '@/lib/openLibrary'
+import { resizeImage } from '@/lib/resizeImage'
 import '../home.css'
 import './postform.css'
 
@@ -47,6 +48,7 @@ type Props = {
   }
   submitLabel?: string
   search?: (query: string) => Promise<BookSuggestion[]>
+  resizePhoto?: (file: File) => Promise<File>
 }
 
 function BookIcon() {
@@ -135,7 +137,7 @@ function PhotoUploadSlot({
         <>
           <ImageIcon size={size === 'large' ? 32 : 20} />
           <p className="cta"><span>Click to upload</span> {label}</p>
-          {size === 'large' && <p className="note">JPG or PNG · Max 5MB</p>}
+          {size === 'large' && <p className="note">Any photo works — we&apos;ll resize it for you</p>}
         </>
       )}
       <input name={name} type="file" accept="image/*" onChange={onChange} />
@@ -143,7 +145,7 @@ function PhotoUploadSlot({
   )
 }
 
-export default function PostForm({ city, action, error, initialValues, submitLabel, search }: Props) {
+export default function PostForm({ city, action, error, initialValues, submitLabel, search, resizePhoto = resizeImage }: Props) {
   const [genre, setGenre] = useState(initialValues?.genre ?? 'Fiction')
   const [format, setFormat] = useState(initialValues?.format ?? 'Paperback')
   const [title, setTitle] = useState(initialValues?.title ?? '')
@@ -205,10 +207,27 @@ export default function PostForm({ city, action, error, initialValues, submitLab
   const canSubmit = mainMatched && (!isBundle || bundleMatched)
 
   function makePhotoHandler(setPreview: (url: string | null) => void) {
-    return (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0]
+    return async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const input = e.target
+      const file = input.files?.[0]
       if (!file) { setPreview(null); return }
-      setPreview(URL.createObjectURL(file))
+      // Swap the picked photo for a smaller copy so it's what the form uploads.
+      // If the browser can't resize it, the original goes up unchanged.
+      let upload = file
+      try {
+        upload = await resizePhoto(file)
+        if (upload !== file && typeof DataTransfer !== 'undefined') {
+          const dt = new DataTransfer()
+          dt.items.add(upload)
+          input.files = dt.files
+        } else {
+          upload = file
+        }
+      } catch (err) {
+        console.warn('Photo resize failed; uploading the original', err)
+        upload = file
+      }
+      setPreview(URL.createObjectURL(upload))
     }
   }
 

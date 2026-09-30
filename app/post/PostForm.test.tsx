@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, within } from '@testing-library/react'
+import { render, screen, fireEvent, within, waitFor } from '@testing-library/react'
 import { describe, it, expect, vi } from 'vitest'
 import PostForm from './PostForm'
 import type { BookSuggestion } from '@/lib/openLibrary'
@@ -438,5 +438,50 @@ describe('PostForm — bundle row Open Library integration', () => {
       fireEvent.click(input)
       expect(clicks, name).toBe(1)
     }
+  })
+
+  it('swaps a picked photo for its resized copy before the form is submitted', async () => {
+    const picked = new File(['big'], 'IMG_0001.HEIC', { type: 'image/heic' })
+    const resized = new File(['small'], 'IMG_0001.jpg', { type: 'image/jpeg' })
+    const resizePhoto = vi.fn().mockResolvedValue(resized)
+
+    // jsdom has neither DataTransfer nor object URLs.
+    class FakeDataTransfer { files: File[] = []; items = { add: (f: File) => { this.files.push(f) } } }
+    vi.stubGlobal('DataTransfer', FakeDataTransfer)
+    const createObjectURL = vi.fn((f: File) => `blob:${f.name}`)
+    vi.stubGlobal('URL', Object.assign(URL, { createObjectURL }))
+
+    const { container } = render(<PostForm action={vi.fn()} search={noopSearch} resizePhoto={resizePhoto} />)
+    const input = container.querySelector<HTMLInputElement>('input[type="file"][name="photo"]')!
+    let assigned: File[] | undefined
+    Object.defineProperty(input, 'files', {
+      configurable: true,
+      get: () => assigned ?? [picked],
+      set: (v: File[]) => { assigned = v },
+    })
+
+    fireEvent.change(input)
+
+    await waitFor(() => expect(screen.getByAltText(/cover photo of your book preview/)).toHaveAttribute('src', 'blob:IMG_0001.jpg'))
+    expect(resizePhoto).toHaveBeenCalledWith(picked)
+    expect(assigned).toEqual([resized])
+    vi.unstubAllGlobals()
+  })
+
+  it('keeps the original photo if resizing fails', async () => {
+    const picked = new File(['big'], 'odd.tiff', { type: 'image/tiff' })
+    const resizePhoto = vi.fn().mockRejectedValue(new Error('cannot decode'))
+    vi.stubGlobal('URL', Object.assign(URL, { createObjectURL: (f: File) => `blob:${f.name}` }))
+
+    const { container } = render(<PostForm action={vi.fn()} search={noopSearch} resizePhoto={resizePhoto} />)
+    const input = container.querySelector<HTMLInputElement>('input[type="file"][name="photo"]')!
+    let assigned: unknown
+    Object.defineProperty(input, 'files', { configurable: true, get: () => [picked], set: v => { assigned = v } })
+
+    fireEvent.change(input)
+
+    await waitFor(() => expect(screen.getByAltText(/cover photo of your book preview/)).toHaveAttribute('src', 'blob:odd.tiff'))
+    expect(assigned).toBeUndefined()
+    vi.unstubAllGlobals()
   })
 })
