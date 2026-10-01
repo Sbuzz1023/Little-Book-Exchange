@@ -38,4 +38,23 @@ describe('TbrAddForm', () => {
 
     expect(container.querySelector('input[name="ol_work_key"]')).toHaveValue('')
   })
+
+  it("starts City and State from the signed-in user's profile", () => {
+    const { container } = render(<TbrAddForm addTbrEntry={vi.fn()} search={vi.fn().mockResolvedValue([])} defaultCity="Arroyo Grande" defaultState="CA" />)
+    expect(container.querySelector('input[name="city"]')).toHaveValue('Arroyo Grande')
+    expect(container.querySelector('select[name="state"]')).toHaveValue('CA')
+  })
+
+  it('lets the user change or clear the pre-filled city', () => {
+    const { container } = render(<TbrAddForm addTbrEntry={vi.fn()} search={vi.fn().mockResolvedValue([])} defaultCity="Arroyo Grande" defaultState="CA" />)
+    const city = container.querySelector('input[name="city"]') as HTMLInputElement
+    fireEvent.change(city, { target: { value: '' } })
+    expect(city).toHaveValue('')
+  })
+
+  it('leaves City and State blank (anywhere) when the profile has none', () => {
+    const { container } = render(<TbrAddForm addTbrEntry={vi.fn()} search={vi.fn().mockResolvedValue([])} />)
+    expect(container.querySelector('input[name="city"]')).toHaveValue('')
+    expect(container.querySelector('select[name="state"]')).toHaveValue('')
+  })
 })

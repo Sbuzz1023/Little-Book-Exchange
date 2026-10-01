@@ -67,7 +67,13 @@ describe('DashboardClient — notification badges and highlighting', () => {
     expect(tbrButton.textContent).toContain('1')
   })
 
-  it('offers a state dropdown (not free text) on the TBR add form, with "any state" as the default', () => {
+  it("pre-fills the TBR form's City and State from the user's profile", () => {
+    const { container } = render(<DashboardClient {...baseProps} exchanges={[]} defaultTab="tbr" />)
+    expect(container.querySelector('form input[name="city"]')).toHaveValue('Chicago')
+    expect(container.querySelector('form select[name="state"]')).toHaveValue('IL')
+  })
+
+  it('offers a state dropdown (not free text) on the TBR add form, with an "Any state" option', () => {
     render(<DashboardClient {...baseProps} exchanges={[]} defaultTab="tbr" />)
     // The TBR add form's state field is the only <select> rendered on this tab.
     expect(screen.getByRole('combobox')).toBeInTheDocument()

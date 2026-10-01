@@ -8,9 +8,13 @@ import type { BookSuggestion } from '@/lib/openLibrary'
 type Props = {
   addTbrEntry: (formData: FormData) => Promise<void>
   search?: (query: string) => Promise<BookSuggestion[]>
+  // The signed-in user's city/state, so matches default to their own area.
+  // Still editable: clearing them means "notify me wherever it's listed".
+  defaultCity?: string
+  defaultState?: string
 }
 
-export default function TbrAddForm({ addTbrEntry, search }: Props) {
+export default function TbrAddForm({ addTbrEntry, search, defaultCity = '', defaultState = '' }: Props) {
   const [title, setTitle] = useState('')
   const [author, setAuthor] = useState('')
   const [olWorkKey, setOlWorkKey] = useState('')
@@ -55,10 +59,10 @@ export default function TbrAddForm({ addTbrEntry, search }: Props) {
         className="flex-1 border-2 border-[#ddd6fe] rounded-[12px] font-bold text-[13px] bg-[#f5f3ff]"
         style={{ padding: '9px 12px', minWidth: 120 }}
       />
-      <input name="city" placeholder="City (optional)..."
+      <input name="city" placeholder="City (blank = anywhere)" defaultValue={defaultCity}
         className="flex-1 border-2 border-[#ddd6fe] rounded-[12px] font-bold text-[13px] bg-[#f5f3ff]"
         style={{ padding: '9px 12px', minWidth: 100 }} />
-      <StateSelect name="state" placeholder="Any state"
+      <StateSelect name="state" placeholder="Any state" defaultValue={defaultState}
         className="flex-1 border-2 border-[#ddd6fe] rounded-[12px] font-bold text-[13px] bg-[#f5f3ff]"
         style={{ padding: '9px 12px', minWidth: 100 }} />
       <button type="submit" className="text-white font-extrabold text-[13px]"

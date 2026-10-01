@@ -978,7 +978,7 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
               </div>
             )}
 
-            <TbrAddForm addTbrEntry={addTbrEntry} />
+            <TbrAddForm addTbrEntry={addTbrEntry} defaultCity={profile?.city ?? ''} defaultState={profile?.state ?? ''} />
 
             {tbrEntries.length === 0 ? (
               <div className="text-center py-8 font-bold text-[14px]" style={{ color: '#8A8178' }}>
