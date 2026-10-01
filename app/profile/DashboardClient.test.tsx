@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import DashboardClient from './DashboardClient'
 import { createClient } from '@/lib/supabase/client'
@@ -107,6 +107,14 @@ describe('DashboardClient — notification badges and highlighting', () => {
     expect(highlighted?.textContent).toContain('Dune')
   })
 
+  it('shows each book in the Sold section as its own card', () => {
+    const second = { ...pendingExchange, id: 'convo-9', listing_id: 'listing-9', exchange_status: 'confirmed' as const, listings: { title: 'Emma', author: 'Jane Austen' } }
+    render(<DashboardClient {...baseProps} exchanges={[pendingExchange, second]} defaultTab="exchanges" />)
+    const sold = screen.getByRole('region', { name: 'Sold · 2' })
+    expect(within(sold).getAllByRole('article').map(c => c.getAttribute('aria-label'))).toEqual(['Dune', 'Emma'])
+    expect(screen.getByRole('region', { name: 'Bought · 0' })).toBeInTheDocument()
+  })
+
   it('does not highlight a confirmed exchange row', () => {
     const confirmed = { ...pendingExchange, exchange_status: 'confirmed' as const }
     const { container } = render(<DashboardClient {...baseProps} exchanges={[confirmed]} defaultTab="exchanges" />)
@@ -158,16 +166,16 @@ describe('DashboardClient — notification badges and highlighting', () => {
     const declined = { ...pendingExchange, exchange_status: 'declined' as const }
     const { container } = render(<DashboardClient {...baseProps} exchanges={[declined]} defaultTab="exchanges" />)
     expect(container.querySelector('[data-testid="exchange-row-highlighted"]')).toBeNull()
-    expect(container.textContent).toContain('Sold (0)')
-    expect(container.textContent).toContain('History (1)')
+    expect(screen.getByRole('heading', { name: 'Sold · 0' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'History · 1' })).toBeInTheDocument()
   })
 
   it('excludes a plain message-only conversation (no purchase request) from Sold/Bought/History — it belongs only in Messages', () => {
     const messageOnly = { ...pendingExchange, exchange_status: 'none' as const }
     const { container } = render(<DashboardClient {...baseProps} exchanges={[messageOnly]} defaultTab="exchanges" />)
-    expect(container.textContent).toContain('Sold (0)')
-    expect(container.textContent).toContain('Bought (0)')
-    expect(container.textContent).toContain('History (0)')
+    expect(screen.getByRole('heading', { name: 'Sold · 0' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Bought · 0' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'History · 0' })).toBeInTheDocument()
   })
 
   it('resets to the conversation list when the Messages tab is clicked while a conversation is open', () => {
@@ -353,7 +361,7 @@ describe('DashboardClient — My Listings active/paused split', () => {
     const { container } = render(<DashboardClient {...baseProps} listings={[pendingListing]} exchanges={[exchange]} defaultTab="listings" />)
     fireEvent.click(screen.getByRole('button', { name: 'Pending — view in Exchanges' }))
     expect(container.querySelector('.dash-tab.is-active')?.textContent).toContain('Exchanges')
-    expect(container.textContent).toContain('Sold (1)')
+    expect(screen.getByRole('heading', { name: 'Sold · 1' })).toBeInTheDocument()
   })
 
   it('keeps the active listing options on active rows alongside a pending one', () => {

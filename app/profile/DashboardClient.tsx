@@ -15,6 +15,7 @@ import { pickupState, formatDeadline } from '@/lib/pickupStatus'
 import { buildDirectionsUrl } from '@/lib/mapsLink'
 import { formatPickupAvailability, sellerPickupReminder } from '@/lib/formatPickupAvailability'
 import { thumbnailUrl } from '@/lib/listingPhotos'
+import ExchangeSectionHeader from './ExchangeSectionHeader'
 import '../home.css'
 import './dashboard.css'
 
@@ -481,12 +482,10 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
             })
 
             return (
-              <div
+              <article
+                aria-label={ex.listings?.title ?? 'Unknown'}
                 data-testid={highlighted ? 'exchange-row-highlighted' : undefined}
-                style={{
-                  padding: '16px 0 16px 12px', borderBottom: '1px solid #E7DCCB',
-                  ...(highlighted ? { background: '#F4E3D5', borderRadius: 12, boxShadow: 'inset 3px 0 0 #B5462F' } : {}),
-                }}
+                className={`dash-xcard${highlighted ? ' is-attention' : ''}`}
               >
                 <div className="flex gap-3 items-start">
                   {/* Book thumbnail */}
@@ -705,35 +704,35 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
                   </button>
 
                 </div>
-              </div>
+              </article>
             )
           }
 
           return (
-            <div className="flex flex-col" style={{ gap: 16 }}>
+            <div className="dash-xsections">
               {/* Going Out */}
-              <div className="dash-card">
-                <div className="dash-badge-soft mb-4" style={{ background: '#F4E3D5', color: '#B5462F' }}>
-                  📤 Sold ({sold.length})
-                </div>
+              <section className="dash-xsection" aria-labelledby="exsec-sold">
+                <ExchangeSectionHeader id="exsec-sold" title="Sold" count={sold.length} description="Books you're handing off to a buyer" />
                 {sold.length === 0 ? (
-                  <div className="text-center py-6 font-bold text-[13px]" style={{ color: '#B5AFA4' }}>No active sales</div>
+                  <p className="dash-xempty">No active sales</p>
                 ) : (
-                  sold.map(ex => <ExchangeRow key={ex.id} ex={ex} role="seller" />)
+                  <div className="dash-xcards">
+                    {sold.map(ex => <ExchangeRow key={ex.id} ex={ex} role="seller" />)}
+                  </div>
                 )}
-              </div>
+              </section>
 
               {/* Coming In */}
-              <div className="dash-card">
-                <div className="dash-badge-soft mb-4" style={{ background: '#EAF1EA', color: '#234A40' }}>
-                  📥 Bought ({bought.length})
-                </div>
+              <section className="dash-xsection" aria-labelledby="exsec-bought">
+                <ExchangeSectionHeader id="exsec-bought" title="Bought" count={bought.length} description="Books on their way to you" />
                 {bought.length === 0 ? (
-                  <div className="text-center py-6 font-bold text-[13px]" style={{ color: '#B5AFA4' }}>No books on the way</div>
+                  <p className="dash-xempty">No books on the way</p>
                 ) : (
-                  bought.map(ex => <ExchangeRow key={ex.id} ex={ex} role="buyer" />)
+                  <div className="dash-xcards">
+                    {bought.map(ex => <ExchangeRow key={ex.id} ex={ex} role="buyer" />)}
+                  </div>
                 )}
-              </div>
+              </section>
 
               {/* History */}
               <HistorySection

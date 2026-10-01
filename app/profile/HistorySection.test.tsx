@@ -1,4 +1,4 @@
-import { render, fireEvent, waitFor } from '@testing-library/react'
+import { render, fireEvent, waitFor, screen, within } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import HistorySection, { type HistoryExchange } from './HistorySection'
 
@@ -171,5 +171,15 @@ describe('HistorySection — auto-completed tag and unread highlight', () => {
         unreadConversationIds={['some-other-convo']} />
     )
     expect(container.querySelector('[data-testid="history-row-highlighted"]')).toBeNull()
+  })
+
+  it('shows each finished exchange as its own card inside the History section', () => {
+    const second = { ...baseExchange, id: 'convo-2', listing_id: 'listing-2', listings: { title: 'Dune', author: 'Frank Herbert', photo_url: null } }
+    render(
+      <HistorySection exchanges={[baseExchange, second]} userId="me" hideExchangeHistory={hideExchangeHistory} submitReview={submitReview} />
+    )
+    const section = screen.getByRole('region', { name: 'History · 2' })
+    const cards = within(section).getAllByRole('article')
+    expect(cards.map(c => c.getAttribute('aria-label'))).toEqual(['The Hobbit', 'Dune'])
   })
 })

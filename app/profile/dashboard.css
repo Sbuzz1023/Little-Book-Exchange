@@ -202,3 +202,44 @@
   color: #8A5A12; font-size: 12px; font-weight: 800; line-height: 1.4;
 }
 @media (max-width: 640px) { .home-v2 .dash-seller-reminder { font-size: 13px; } }
+
+/* Exchanges section headings (Sold / Bought / History): plain serif type and a
+   thin rule — no fill, so they don't read as tappable like the boxed buttons. */
+.home-v2 .dash-exsec-head { padding-bottom: 12px; margin-bottom: 4px; border-bottom: 1px solid var(--line); }
+.home-v2 .dash-exsec-title { font-family: var(--serif); font-size: 22px; font-weight: 600; line-height: 1.2; color: var(--ink); }
+.home-v2 .dash-exsec-count { font-weight: 500; color: var(--ink-faint, #8A8178); font-variant-numeric: tabular-nums; }
+.home-v2 .dash-exsec-desc { margin-top: 2px; font-size: 13px; font-weight: 600; color: #8A8178; }
+
+/* Exchanges layout: each section is its heading plus a stack of book cards,
+   sitting directly on the page (no box around the section). One card = one book;
+   filled pills are buttons; plain text is a label. A solid pine rule separates
+   Sold / Bought / History. */
+.home-v2 .dash-xsections { margin-top: 16px; }
+.home-v2 .dash-xsection {
+  position: relative; z-index: 1; background: var(--surface);
+  border: 1px solid var(--line); border-radius: 18px; padding: 24px;
+}
+.home-v2 .dash-xsection + .dash-xsection { margin-top: 28px; }
+/* Solid divide between sections, centred in the gap between the panels. */
+.home-v2 .dash-xsection + .dash-xsection::before {
+  content: ''; position: absolute; left: 0; right: 0; top: -15px; height: 2px;
+  background: var(--pine); border-radius: 2px;
+}
+.home-v2 .dash-xsection .dash-exsec-head { border-bottom: 0; padding-bottom: 0; margin-bottom: 14px; }
+.home-v2 .dash-xcards { display: flex; flex-direction: column; gap: 12px; }
+.home-v2 .dash-xcard {
+  background: var(--ground); border: 1px solid var(--line); border-radius: 14px; padding: 16px;
+}
+/* Needs your attention (a request to OK, an unread update): peach with a red edge. */
+.home-v2 .dash-xcard.is-attention { background: #F4E3D5; border-color: #E9C8AC; box-shadow: inset 4px 0 0 #B5462F; }
+.home-v2 .dash-xempty { padding: 18px 0 4px; font-size: 13.5px; font-weight: 700; color: #B5AFA4; }
+@media (max-width: 640px) {
+  .home-v2 .dash-xsection { padding: 16px; }
+  .home-v2 .dash-xcard { padding: 14px; }
+  /* History card: title + who/when keep the full width; the Bought/Sold tag,
+     Rate Seller and ✕ wrap to a second line under the text (42px cover + 12px gap). */
+  .home-v2 .dash-hcard { flex-wrap: wrap; row-gap: 8px; }
+  .home-v2 .dash-hcard > .flex-1 { flex-basis: calc(100% - 54px); }
+  .home-v2 .dash-hcard > .flex-1 + * { margin-left: 54px; }
+  .home-v2 .dash-hcard-dismiss { margin-left: auto; }
+}

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { StarRatingBadge, StarRatingPicker } from '@/components/StarRating'
 import { thumbnailUrl } from '@/lib/listingPhotos'
+import ExchangeSectionHeader from './ExchangeSectionHeader'
 
 const COVER_GRADIENTS = [
   'linear-gradient(145deg, #fde68a, #fca5a5)',
@@ -41,14 +42,6 @@ export type HistoryExchange = {
   sellerRating: { average: number; count: number } | null
   reviewed: boolean
 }
-
-const cardStyle = {
-  background: '#fff',
-  borderRadius: 20,
-  padding: 24,
-  border: '2px solid #f3f4f6',
-  boxShadow: '0 6px 0 #e5e7eb',
-} as React.CSSProperties
 
 export default function HistorySection({
   exchanges, userId, hideExchangeHistory, submitReview, unreadConversationIds = [],
@@ -103,16 +96,14 @@ export default function HistorySection({
   }
 
   return (
-    <div style={cardStyle}>
-      <div className="font-extrabold text-[11px] mb-4"
-        style={{ textTransform: 'uppercase', letterSpacing: '0.8px', padding: '7px 12px', borderRadius: 10, background: '#f3f4f6', color: '#555', display: 'inline-block' }}>
-        📜 History ({completed.length})
-      </div>
+    <section className="dash-xsection" aria-labelledby="exsec-history">
+      <ExchangeSectionHeader id="exsec-history" title="History" count={completed.length} description="Finished exchanges" />
 
       {completed.length === 0 ? (
-        <div className="text-center py-6 font-bold text-[13px]" style={{ color: '#ccc' }}>No completed exchanges yet</div>
+        <p className="dash-xempty">No completed exchanges yet</p>
       ) : (
-        completed.map(ex => {
+        <div className="dash-xcards">
+        {completed.map(ex => {
           const role = ex.seller_id === userId ? 'seller' : 'buyer'
           const other = role === 'seller' ? ex.buyer : ex.seller
           const otherName = other?.name || other?.username || 'Neighbor'
@@ -121,14 +112,11 @@ export default function HistorySection({
           const isUnread = unreadConversationIds.includes(ex.id)
 
           return (
-            <div
+            <article
               key={ex.id}
+              aria-label={ex.listings?.title ?? 'Unknown'}
               data-testid={isUnread ? 'history-row-highlighted' : undefined}
-              className="flex items-center gap-3"
-              style={{
-                padding: '12px 0 12px 12px', borderBottom: '2px solid #f3f4f6',
-                ...(isUnread ? { background: '#fff7ed', borderRadius: 12, boxShadow: 'inset 3px 0 0 #f97316' } : {}),
-              }}
+              className={`dash-xcard dash-hcard flex items-center gap-3${isUnread ? ' is-attention' : ''}`}
             >
               <div className="relative shrink-0 overflow-hidden" style={{ width: 42, height: 42, borderRadius: 10, background: coverGradient(ex.listing_id) }}>
                 {thumbnailUrl(ex.listings) ? (
@@ -181,7 +169,7 @@ export default function HistorySection({
                 )
               )}
 
-              <form action={hideExchangeHistory} className="shrink-0">
+              <form action={hideExchangeHistory} className="dash-hcard-dismiss shrink-0">
                 <input type="hidden" name="conversation_id" value={ex.id} />
                 <input type="hidden" name="role" value={role} />
                 <button className="font-extrabold text-[11px] hover:opacity-80"
@@ -189,9 +177,10 @@ export default function HistorySection({
                   ✕
                 </button>
               </form>
-            </div>
+            </article>
           )
-        })
+        })}
+        </div>
       )}
 
       {ratingTarget && (
@@ -222,6 +211,6 @@ export default function HistorySection({
           </form>
         </div>
       )}
-    </div>
+    </section>
   )
 }
