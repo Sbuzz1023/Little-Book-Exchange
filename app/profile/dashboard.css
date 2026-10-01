@@ -193,3 +193,12 @@
   .home-v2 .dash-pickup-directions { display: table; margin: 3px 0 0; }
   .home-v2 .dash-action-row { padding-left: 0; }
 }
+
+/* Seller's ready-by reminder on a confirmed Exchanges row (in place of the
+   "Ready for Pick Up" pill, which is the buyer's message). */
+.home-v2 .dash-seller-reminder {
+  display: grid; grid-template-columns: 20px 1fr; align-items: start;
+  padding: 7px 10px; border-radius: 10px; background: #FBF3DA; border: 1.5px solid #EBD9A0;
+  color: #8A5A12; font-size: 12px; font-weight: 800; line-height: 1.4;
+}
+@media (max-width: 640px) { .home-v2 .dash-seller-reminder { font-size: 13px; } }

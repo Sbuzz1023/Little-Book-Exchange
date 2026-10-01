@@ -49,3 +49,15 @@ export function formatPickupAvailability(p: PickupAvailability): string | null {
 
   return null
 }
+
+// The seller's side of a confirmed exchange: a nudge to have the book out by
+// the earliest time the buyer may show up (the start of a window, or the
+// "after" time). Ready now — or no usable time saved — gets the general nudge.
+export function sellerPickupReminder(p: PickupAvailability): string {
+  const general = 'Make sure your book is ready for pickup.'
+  if ((p.mode !== 'window' && p.mode !== 'after') || !p.date || !p.timeStart) return general
+  const date = formatDate(p.date)
+  const start = formatTime(p.timeStart)
+  if (!date || !start) return general
+  return `Make sure your book is ready by ${date} at ${start}.`
+}

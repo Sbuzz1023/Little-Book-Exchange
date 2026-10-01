@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { formatPickupAvailability } from './formatPickupAvailability'
+import { formatPickupAvailability, sellerPickupReminder } from './formatPickupAvailability'
 
 describe('formatPickupAvailability', () => {
   it('returns a ready-now message for anytime mode, ignoring any date/time', () => {
@@ -44,5 +44,27 @@ describe('formatPickupAvailability', () => {
   it('returns null for "after" missing a date', () => {
     const msg = formatPickupAvailability({ mode: 'after', date: null, timeStart: '15:00' })
     expect(msg).toBeNull()
+  })
+})
+
+describe('sellerPickupReminder', () => {
+  it('asks the seller to have the book ready when they chose Ready now', () => {
+    expect(sellerPickupReminder({ mode: 'anytime' })).toBe('Make sure your book is ready for pickup.')
+  })
+
+  it('gives the start of a time window as the ready-by time', () => {
+    expect(sellerPickupReminder({ mode: 'window', date: '2026-10-01', timeStart: '15:00', timeEnd: '17:00' }))
+      .toBe('Make sure your book is ready by Thu, Oct 1 at 3:00 PM.')
+  })
+
+  it('gives the after-time as the ready-by time', () => {
+    expect(sellerPickupReminder({ mode: 'after', date: '2026-10-01', timeStart: '09:30' }))
+      .toBe('Make sure your book is ready by Thu, Oct 1 at 9:30 AM.')
+  })
+
+  it('falls back to the general reminder when no usable time was saved', () => {
+    expect(sellerPickupReminder({ mode: null })).toBe('Make sure your book is ready for pickup.')
+    expect(sellerPickupReminder({ mode: 'window', date: null, timeStart: '15:00' })).toBe('Make sure your book is ready for pickup.')
+    expect(sellerPickupReminder({ mode: 'after', date: '2026-10-01', timeStart: 'soon' })).toBe('Make sure your book is ready for pickup.')
   })
 })

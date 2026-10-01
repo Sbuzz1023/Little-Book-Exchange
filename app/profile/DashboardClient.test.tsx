@@ -195,6 +195,19 @@ describe('DashboardClient — dual pickup confirmation', () => {
     messages: [],
   }
 
+  it("replaces Ready for Pick Up with a ready-by reminder on the seller's row", () => {
+    const ex = { ...confirmedExchange, confirmed_pickup_mode: 'window' as const, confirmed_pickup_date: '2026-10-01', confirmed_pickup_time_start: '15:00', confirmed_pickup_time_end: '17:00' }
+    render(<DashboardClient {...baseProps} exchanges={[ex]} defaultTab="exchanges" />)
+    expect(screen.getByTestId('seller-pickup-reminder')).toHaveTextContent('Make sure your book is ready by Thu, Oct 1 at 3:00 PM.')
+    expect(screen.queryByText(/Ready for Pick Up/)).not.toBeInTheDocument()
+  })
+
+  it('reminds a Ready-now seller to have the book ready', () => {
+    const ex = { ...confirmedExchange, confirmed_pickup_mode: 'anytime' as const }
+    render(<DashboardClient {...baseProps} exchanges={[ex]} defaultTab="exchanges" />)
+    expect(screen.getByTestId('seller-pickup-reminder')).toHaveTextContent('Make sure your book is ready for pickup.')
+  })
+
   it('shows the seller their Mark Picked Up and Dispute buttons when neither party has confirmed', () => {
     render(<DashboardClient {...baseProps} exchanges={[confirmedExchange]} defaultTab="exchanges" />)
     expect(screen.getByText('📦 Mark Picked Up')).toBeInTheDocument()
@@ -573,6 +586,12 @@ describe('DashboardClient — buyer pickup availability display', () => {
     const ex = { ...confirmedExchange, confirmed_pickup_mode: 'anytime' as const }
     render(<DashboardClient {...baseProps} exchanges={[ex]} defaultTab="exchanges" />)
     expect(screen.getByText(/Ready for pickup now/)).toBeInTheDocument()
+  })
+
+  it("keeps Ready for Pick Up on the buyer's row, with no seller reminder", () => {
+    render(<DashboardClient {...baseProps} exchanges={[confirmedExchange]} defaultTab="exchanges" />)
+    expect(screen.getAllByText(/Ready for Pick Up/).length).toBeGreaterThan(0)
+    expect(screen.queryByTestId('seller-pickup-reminder')).not.toBeInTheDocument()
   })
 
   it('omits the availability line when the seller did not set one', () => {

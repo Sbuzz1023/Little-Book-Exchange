@@ -13,7 +13,7 @@ import StateSelect from '@/components/StateSelect'
 import { createClient } from '@/lib/supabase/client'
 import { pickupState, formatDeadline } from '@/lib/pickupStatus'
 import { buildDirectionsUrl } from '@/lib/mapsLink'
-import { formatPickupAvailability } from '@/lib/formatPickupAvailability'
+import { formatPickupAvailability, sellerPickupReminder } from '@/lib/formatPickupAvailability'
 import { thumbnailUrl } from '@/lib/listingPhotos'
 import '../home.css'
 import './dashboard.css'
@@ -504,10 +504,13 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-0.5 flex-wrap">
                       <p className="font-black text-[13px] truncate">{ex.listings?.title ?? 'Unknown'}</p>
+                      {/* The seller gets a ready-by reminder below instead of "Ready for Pick Up". */}
+                      {!(role === 'seller' && status === 'confirmed') && (
                       <span className="font-extrabold text-[10px] whitespace-nowrap shrink-0"
                         style={{ padding: '2px 8px', borderRadius: 999, background: statusBadge.bg, border: `1.5px solid ${statusBadge.border}`, color: statusBadge.color }}>
                         {statusBadge.label}
                       </span>
+                      )}
                     </div>
                     <p className="font-semibold text-[11px]" style={{ color: '#8A8178' }}>{ex.listings?.author ?? ''}</p>
 
@@ -515,11 +518,6 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
                     {role === 'seller' && status === 'requested' && (
                       <p className="font-bold text-[12px] mt-1" style={{ color: '#B5462F' }}>
                         🔔 <strong>{otherName}</strong> wants to purchase this book!
-                      </p>
-                    )}
-                    {role === 'seller' && status === 'confirmed' && (
-                      <p className="font-bold text-[12px] mt-1" style={{ color: '#234A40' }}>
-                        Your contact info was sent to <strong>{otherName}</strong>.
                       </p>
                     )}
                     {role === 'seller' && status === 'none' && (
@@ -559,6 +557,24 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
                     )}
                   </div>
                 </div>
+
+                {/* Seller's side once confirmed: a ready-by reminder in place of the
+                    buyer-facing "Ready for Pick Up", same full-width spot on phones. */}
+                {role === 'seller' && status === 'confirmed' && (
+                  <div className="dash-pickup-wrap">
+                    <p data-testid="seller-pickup-reminder" className="dash-seller-reminder">
+                      <span aria-hidden="true">⏰</span>
+                      <span>{sellerPickupReminder({
+                        mode: ex.confirmed_pickup_mode,
+                        date: ex.confirmed_pickup_date,
+                        timeStart: ex.confirmed_pickup_time_start,
+                      })}</span>
+                    </p>
+                    <p className="font-bold text-[12px] mt-1.5" style={{ color: '#234A40' }}>
+                      Your contact info was sent to <strong>{otherName}</strong>{otherName.endsWith('.') ? '' : '.'}
+                    </p>
+                  </div>
+                )}
 
                 {/* Buyer's pickup details: full card width below the header (not squeezed
                     into the title column between the cover and Dispute), one detail per line. */}
