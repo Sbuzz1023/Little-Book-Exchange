@@ -445,15 +445,16 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
               ? `${ex.listings.city}${ex.listings.state ? ', ' + ex.listings.state : ''}`
               : null
 
-            // Status badge — role-aware
-            const statusBadge =
+            // Status label — role-aware. Plain coloured text (no pill), since on this
+            // page a filled/outlined pill means a button.
+            const statusLabel =
               status === 'requested' && role === 'buyer'
-                ? { bg: '#FBF3DA', border: '#EBD9A0', color: '#8A5A12', label: '⏳ Pending Seller' }
+                ? { tone: 'waiting', label: 'Waiting on seller' }
               : status === 'requested' && role === 'seller'
-                ? { bg: '#F4E3D5', border: '#E9C8AC', color: '#B5462F', label: '🔔 Needs Your OK' }
+                ? { tone: 'attention', label: 'Needs your OK' }
               : status === 'confirmed'
-                ? { bg: '#EAF1EA', border: '#BFDBC7', color: '#234A40', label: '✅ Ready for Pick Up' }
-              : { bg: '#F1EDE6', border: '#E7DCCB', color: '#8A8178', label: '💬 Chatting' }
+                ? { tone: 'ready', label: 'Ready for pickup' }
+              : { tone: 'quiet', label: 'Chatting' }
 
             const isPendingSellerAction = role === 'seller' && status === 'requested'
             const isUnreadDecisionOrPickup = unreadEntityIds.decisionOrPickup.includes(ex.id)
@@ -501,16 +502,13 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
 
                   {/* Info */}
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-                      <p className="font-black text-[13px] truncate">{ex.listings?.title ?? 'Unknown'}</p>
-                      {/* The seller gets a ready-by reminder below instead of "Ready for Pick Up". */}
-                      {!(role === 'seller' && status === 'confirmed') && (
-                      <span className="font-extrabold text-[10px] whitespace-nowrap shrink-0"
-                        style={{ padding: '2px 8px', borderRadius: 999, background: statusBadge.bg, border: `1.5px solid ${statusBadge.border}`, color: statusBadge.color }}>
-                        {statusBadge.label}
-                      </span>
-                      )}
-                    </div>
+                    {/* The seller gets a ready-by reminder below instead of "Ready for pickup". */}
+                    {!(role === 'seller' && status === 'confirmed') && (
+                      <p data-testid="exchange-status" className={`dash-xstatus is-${statusLabel.tone}`}>
+                        {statusLabel.label}
+                      </p>
+                    )}
+                    <p className="font-black text-[13px] truncate mb-0.5">{ex.listings?.title ?? 'Unknown'}</p>
                     <p className="font-semibold text-[11px]" style={{ color: '#8A8178' }}>{ex.listings?.author ?? ''}</p>
 
                     {/* Status-specific context line */}
@@ -557,62 +555,54 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
                   </div>
                 </div>
 
-                {/* Seller's side once confirmed: a ready-by reminder in place of the
-                    buyer-facing "Ready for Pick Up", same full-width spot on phones. */}
+                {/* Seller's side once confirmed: the ready-by reminder, set off by an amber
+                    rule rather than a filled box (filled shapes on this page are buttons). */}
                 {role === 'seller' && status === 'confirmed' && (
                   <div className="dash-pickup-wrap">
-                    <p data-testid="seller-pickup-reminder" className="dash-seller-reminder">
-                      <span aria-hidden="true">⏰</span>
-                      <span>{sellerPickupReminder({
-                        mode: ex.confirmed_pickup_mode,
-                        date: ex.confirmed_pickup_date,
-                        timeStart: ex.confirmed_pickup_time_start,
-                      })}</span>
-                    </p>
-                    <p className="font-bold text-[12px] mt-1.5" style={{ color: '#234A40' }}>
-                      Your contact info was sent to <strong>{otherName}</strong>{otherName.endsWith('.') ? '' : '.'}
-                    </p>
-                  </div>
-                )}
-
-                {/* Buyer's pickup details: full card width below the header (not squeezed
-                    into the title column between the cover and Dispute), one detail per line. */}
-                {role === 'buyer' && status === 'confirmed' && (
-                  <div className="dash-pickup-wrap">
-                    <div className="dash-pickup">
-                      <p className="dash-pickup-title">📍 Ready for Pick Up!</p>
-                      {location && <p className="dash-pickup-line"><span aria-hidden="true">📌</span><span>{location}</span></p>}
-                      {(ex.confirmed_address || ex.confirmed_address_unit) && (
-                        <p className="dash-pickup-line">
-                          <span aria-hidden="true">🏠</span>
-                          <span>
-                            {[ex.confirmed_address, ex.confirmed_address_unit].filter(Boolean).join(' ')}
-                            {directionsUrl && (
-                              <a href={directionsUrl} target="_blank" rel="noopener noreferrer" className="dash-pickup-directions">
-                                🧭 Directions
-                              </a>
-                            )}
-                          </span>
-                        </p>
-                      )}
-                      {ex.confirmed_pickup && (
-                        <p className="dash-pickup-line"><span aria-hidden="true">📦</span><span>Pickup: {ex.confirmed_pickup}</span></p>
-                      )}
-                      {(() => {
-                        const availability = formatPickupAvailability({
+                    <div className="dash-xdetails is-amber">
+                      <p data-testid="seller-pickup-reminder" className="dash-xdetails-lead">
+                        <span aria-hidden="true">⏰</span>{' '}
+                        {sellerPickupReminder({
                           mode: ex.confirmed_pickup_mode,
                           date: ex.confirmed_pickup_date,
                           timeStart: ex.confirmed_pickup_time_start,
-                          timeEnd: ex.confirmed_pickup_time_end,
-                        })
-                        return availability && (
-                          <p className="dash-pickup-line"><span aria-hidden="true">🕐</span><span>{availability}</span></p>
-                        )
-                      })()}
-                      <p className="dash-pickup-line"><span aria-hidden="true">👤</span><span>Contact: <strong>{otherName}</strong></span></p>
+                        })}
+                      </p>
+                      <p className="dash-xdetails-note"><strong>{otherName}</strong> has your contact info.</p>
                     </div>
                   </div>
                 )}
+
+                {/* Buyer's pickup details: labelled lines (time first) behind a green rule.
+                    "Ready for pickup" is already the status label above the title. */}
+                {role === 'buyer' && status === 'confirmed' && (() => {
+                  const when = formatPickupAvailability({
+                    mode: ex.confirmed_pickup_mode,
+                    date: ex.confirmed_pickup_date,
+                    timeStart: ex.confirmed_pickup_time_start,
+                    timeEnd: ex.confirmed_pickup_time_end,
+                  })?.replace(/^✅\s*/, '')
+                  const street = [ex.confirmed_address, ex.confirmed_address_unit].filter(Boolean).join(' ')
+                  const where = [street, location].filter(Boolean).join(', ')
+                  const rows: [string, React.ReactNode][] = [
+                    ...(when ? [['When', when] as [string, React.ReactNode]] : []),
+                    ...(where ? [['Where', where] as [string, React.ReactNode]] : []),
+                    ...(ex.confirmed_pickup ? [['Spot', ex.confirmed_pickup] as [string, React.ReactNode]] : []),
+                    ['Contact', <strong key="c">{otherName}</strong>],
+                  ]
+                  return (
+                    <div className="dash-pickup-wrap">
+                      <dl data-testid="pickup-details" className="dash-xdetails is-green">
+                        {rows.map(([label, value]) => (
+                          <div key={label} className="dash-xdetails-row">
+                            <dt data-testid="pickup-label">{label}</dt>
+                            <dd>{value}</dd>
+                          </div>
+                        ))}
+                      </dl>
+                    </div>
+                  )
+                })()}
 
                 {/* Action row below — status-driven */}
                 <div data-testid="exchange-action-row" className="dash-action-row flex gap-2 mt-3 flex-wrap items-center">
@@ -665,21 +655,21 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
                     </span>
                   )}
 
+                  {/* Buyer's reminder gets its own line above the buttons, so the buttons
+                      sit together in one row. */}
+                  {status === 'confirmed' && pickup.kind === 'can_confirm' && role === 'buyer' && (
+                    <p className="basis-full font-semibold text-[11px]" style={{ color: '#8A8178' }}>
+                      🔍 Check the book's condition before confirming
+                    </p>
+                  )}
                   {status === 'confirmed' && pickup.kind === 'can_confirm' && (
-                    <div className="flex flex-col items-start gap-1">
-                      {role === 'buyer' && (
-                        <p className="font-semibold text-[11px]" style={{ color: '#8A8178' }}>
-                          🔍 Check the book's condition before confirming
-                        </p>
-                      )}
-                      <form action={markPickedUp}>
-                        <input type="hidden" name="conversation_id" value={ex.id} />
-                        <button className="font-extrabold text-[12px] hover:opacity-80"
-                          style={{ background: '#F4E3D5', border: '1.5px solid #E9C8AC', color: '#B5462F', padding: '7px 18px', borderRadius: 999, cursor: 'pointer', fontFamily: 'inherit' }}>
-                          {role === 'seller' ? '📦 Mark Picked Up' : '📚 I Got It!'}
-                        </button>
-                      </form>
-                    </div>
+                    <form action={markPickedUp}>
+                      <input type="hidden" name="conversation_id" value={ex.id} />
+                      <button className="font-extrabold text-[12px] hover:opacity-80"
+                        style={{ background: '#F4E3D5', border: '1.5px solid #E9C8AC', color: '#B5462F', padding: '7px 18px', borderRadius: 999, cursor: 'pointer', fontFamily: 'inherit' }}>
+                        {role === 'seller' ? '📦 Mark Picked Up' : '📚 I Got It!'}
+                      </button>
+                    </form>
                   )}
 
                   {/* Buyer: cancel before seller confirms */}
@@ -691,6 +681,14 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
                         ✕ Cancel Request
                       </button>
                     </form>
+                  )}
+
+                  {/* Buyer: directions to the confirmed address — an action, so a button here */}
+                  {role === 'buyer' && status === 'confirmed' && directionsUrl && (
+                    <a href={directionsUrl} target="_blank" rel="noopener noreferrer"
+                      className="dash-btn-outline font-extrabold text-[12px] whitespace-nowrap">
+                      🧭 Directions
+                    </a>
                   )}
 
                   {/* Message — always available, every status, now living here instead of the header */}

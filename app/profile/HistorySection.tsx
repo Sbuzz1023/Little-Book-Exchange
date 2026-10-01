@@ -138,24 +138,15 @@ export default function HistorySection({
                       : <>{role === 'seller' ? 'Sold to' : 'Bought from'} <strong style={{ color: '#555' }}>{otherName}</strong></>}
                   </p>
                   {!isDeclined && role === 'buyer' && <StarRatingBadge rating={ex.sellerRating} sellerId={ex.seller_id} />}
+                  {/* Plain text, not a tag: on this page pills are buttons. "Bought from" /
+                      "Sold to" / "Declined by" already say what happened. */}
+                  {!isDeclined && ex.completion_type === 'auto_timeout' && (
+                    <span className="dash-xstatus-inline is-waiting">· Auto-completed</span>
+                  )}
                 </div>
                 <p className="font-semibold text-[11px]" style={{ color: '#ccc' }}>{formatDate(ex.completed_at)}</p>
               </div>
 
-              <span className="font-extrabold text-[10px] whitespace-nowrap shrink-0"
-                style={{
-                  padding: '3px 10px', borderRadius: 999,
-                  background: isDeclined ? '#fef2f2' : (role === 'seller' ? '#fff7ed' : '#f0fdfa'),
-                  color: isDeclined ? '#dc2626' : (role === 'seller' ? '#f97316' : '#0d9488'),
-                }}>
-                {isDeclined ? 'Declined' : (role === 'seller' ? 'Sold' : 'Bought')}
-              </span>
-              {!isDeclined && ex.completion_type === 'auto_timeout' && (
-                <span className="font-extrabold text-[10px] whitespace-nowrap shrink-0"
-                  style={{ padding: '3px 10px', borderRadius: 999, background: '#fffbeb', color: '#b45309' }}>
-                  ⏱️ Auto-completed
-                </span>
-              )}
 
               {!isDeclined && role === 'buyer' && (
                 reviewed ? (

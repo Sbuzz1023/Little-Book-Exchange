@@ -115,6 +115,28 @@ describe('DashboardClient — notification badges and highlighting', () => {
     expect(screen.getByRole('region', { name: 'Bought · 0' })).toBeInTheDocument()
   })
 
+  it('shows the exchange status as a plain text label above the title, not a pill or button', () => {
+    render(<DashboardClient {...baseProps} exchanges={[pendingExchange]} defaultTab="exchanges" />)
+    const card = screen.getByRole('article', { name: 'Dune' })
+    const status = within(card).getByTestId('exchange-status')
+    expect(status).toHaveTextContent('Needs your OK')
+    expect(status.tagName).toBe('P')
+    expect(status.compareDocumentPosition(within(card).getByText('Dune')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  it('labels each status in plain words for buyer and seller', () => {
+    const cases: [string, 'seller' | 'buyer', string][] = [
+      ['requested', 'buyer', 'Waiting on seller'],
+      ['confirmed', 'buyer', 'Ready for pickup'],
+    ]
+    for (const [status, role, label] of cases) {
+      const ex = { ...pendingExchange, exchange_status: status as any, ...(role === 'buyer' ? { buyer_id: 'me', seller_id: 'them' } : {}) }
+      const { unmount } = render(<DashboardClient {...baseProps} exchanges={[ex]} defaultTab="exchanges" />)
+      expect(screen.getByTestId('exchange-status')).toHaveTextContent(label)
+      unmount()
+    }
+  })
+
   it('does not highlight a confirmed exchange row', () => {
     const confirmed = { ...pendingExchange, exchange_status: 'confirmed' as const }
     const { container } = render(<DashboardClient {...baseProps} exchanges={[confirmed]} defaultTab="exchanges" />)
@@ -214,6 +236,7 @@ describe('DashboardClient — dual pickup confirmation', () => {
     const ex = { ...confirmedExchange, confirmed_pickup_mode: 'anytime' as const }
     render(<DashboardClient {...baseProps} exchanges={[ex]} defaultTab="exchanges" />)
     expect(screen.getByTestId('seller-pickup-reminder')).toHaveTextContent('Make sure your book is ready for pickup.')
+    expect(screen.getByText(/has your contact info\./)).toHaveTextContent('Neighbor has your contact info.')
   })
 
   it('shows the seller their Mark Picked Up and Dispute buttons when neither party has confirmed', () => {
@@ -298,6 +321,24 @@ describe('DashboardClient — dual pickup confirmation', () => {
     render(<DashboardClient {...baseProps} exchanges={[asBuyer]} defaultTab="exchanges" />)
     const link = screen.getByRole('link', { name: /Directions/ })
     expect(link).toHaveAttribute('href', 'https://www.google.com/maps/dir/?api=1&destination=555%20Oak%20Ave%20Unit%203%2C%20Oak%20Park%2C%20IL')
+    // An action, so it lives with the other buttons, not inside the address line.
+    expect(screen.getByTestId('exchange-action-row')).toContainElement(link)
+  })
+
+  it('lists the pickup details as labelled lines, time first, without repeating "Ready for Pick Up"', () => {
+    const asBuyer = {
+      ...confirmedExchange, id: 'convo-6', buyer_id: 'me', seller_id: 'them',
+      confirmed_address: '555 Oak Ave', confirmed_address_unit: 'Unit 3', confirmed_pickup: 'back porch',
+      confirmed_pickup_mode: 'anytime' as const,
+      listings: { title: 'Dune', author: 'Frank Herbert', city: 'Oak Park', state: 'IL' },
+    }
+    render(<DashboardClient {...baseProps} exchanges={[asBuyer]} defaultTab="exchanges" />)
+    const details = screen.getByTestId('pickup-details')
+    const labels = within(details).getAllByTestId('pickup-label').map(l => l.textContent)
+    expect(labels).toEqual(['When', 'Where', 'Spot', 'Contact'])
+    expect(details).toHaveTextContent('555 Oak Ave Unit 3, Oak Park, IL')
+    expect(details).toHaveTextContent('back porch')
+    expect(screen.queryByText(/Ready for Pick Up!/)).not.toBeInTheDocument()
   })
 
   it('omits the Directions link when the seller did not confirm a street address', () => {
@@ -596,9 +637,9 @@ describe('DashboardClient — buyer pickup availability display', () => {
     expect(screen.getByText(/Ready for pickup now/)).toBeInTheDocument()
   })
 
-  it("keeps Ready for Pick Up on the buyer's row, with no seller reminder", () => {
+  it("keeps Ready for pickup on the buyer's row, with no seller reminder", () => {
     render(<DashboardClient {...baseProps} exchanges={[confirmedExchange]} defaultTab="exchanges" />)
-    expect(screen.getAllByText(/Ready for Pick Up/).length).toBeGreaterThan(0)
+    expect(screen.getByTestId('exchange-status')).toHaveTextContent('Ready for pickup')
     expect(screen.queryByTestId('seller-pickup-reminder')).not.toBeInTheDocument()
   })
 

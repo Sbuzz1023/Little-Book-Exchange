@@ -182,4 +182,13 @@ describe('HistorySection — auto-completed tag and unread highlight', () => {
     const cards = within(section).getAllByRole('article')
     expect(cards.map(c => c.getAttribute('aria-label'))).toEqual(['The Hobbit', 'Dune'])
   })
+
+  it('drops the Bought/Sold tag, since "Bought from" / "Sold to" already says it', () => {
+    render(
+      <HistorySection exchanges={[baseExchange]} userId="me" hideExchangeHistory={hideExchangeHistory} submitReview={submitReview} />
+    )
+    const card = screen.getByRole('article', { name: 'The Hobbit' })
+    expect(within(card).getByText(/Bought from/)).toBeInTheDocument()
+    expect(within(card).queryByText(/^Bought$/)).toBeNull()
+  })
 })

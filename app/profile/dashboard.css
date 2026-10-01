@@ -168,40 +168,15 @@
   font-size: 13px; font-weight: 600; color: var(--ink); background: var(--ground); outline: none;
 }
 
-/* Buyer's "Ready for Pick Up" details on an Exchanges row. Lined up under the
-   title on wider screens (thumbnail 46px + 12px gap); full card width on phones,
-   where the title column is too narrow and every line wrapped mid-phrase. */
+/* Pickup details / seller reminder sit full card width on phones, lined up under
+   the title on wider screens (46px cover + 12px gap). Buttons row likewise. */
 .home-v2 .dash-pickup-wrap { padding-left: 58px; margin-top: 10px; }
 .home-v2 .dash-action-row { padding-left: 58px; }
-.home-v2 .dash-pickup {
-  background: #EAF1EA; border: 1.5px solid #BFDBC7; border-radius: 10px;
-  padding: 10px 12px; color: #234A40; font-size: 11.5px; font-weight: 600; line-height: 1.45;
-}
-.home-v2 .dash-pickup-title { font-size: 12.5px; font-weight: 800; margin-bottom: 4px; }
-.home-v2 .dash-pickup-line { display: grid; grid-template-columns: 20px 1fr; align-items: start; margin-top: 3px; }
-.home-v2 .dash-pickup-line strong { font-weight: 800; }
-.home-v2 .dash-pickup-directions {
-  display: inline-block; margin-left: 8px; font-weight: 800; color: #234A40;
-  text-decoration: underline; white-space: nowrap;
-}
-.home-v2 .dash-pickup-directions:hover { opacity: .8; }
 @media (max-width: 640px) {
   .home-v2 .dash-pickup-wrap { padding-left: 0; margin-top: 12px; }
-  .home-v2 .dash-pickup { font-size: 13px; padding: 12px 14px; }
-  .home-v2 .dash-pickup-title { font-size: 14px; }
-  .home-v2 .dash-pickup-line { grid-template-columns: 22px 1fr; margin-top: 5px; }
-  .home-v2 .dash-pickup-directions { display: table; margin: 3px 0 0; }
   .home-v2 .dash-action-row { padding-left: 0; }
 }
 
-/* Seller's ready-by reminder on a confirmed Exchanges row (in place of the
-   "Ready for Pick Up" pill, which is the buyer's message). */
-.home-v2 .dash-seller-reminder {
-  display: grid; grid-template-columns: 20px 1fr; align-items: start;
-  padding: 7px 10px; border-radius: 10px; background: #FBF3DA; border: 1.5px solid #EBD9A0;
-  color: #8A5A12; font-size: 12px; font-weight: 800; line-height: 1.4;
-}
-@media (max-width: 640px) { .home-v2 .dash-seller-reminder { font-size: 13px; } }
 
 /* Exchanges section headings (Sold / Bought / History): plain serif type and a
    thin rule — no fill, so they don't read as tappable like the boxed buttons. */
@@ -236,10 +211,48 @@
 @media (max-width: 640px) {
   .home-v2 .dash-xsection { padding: 16px; }
   .home-v2 .dash-xcard { padding: 14px; }
-  /* History card: title + who/when keep the full width; the Bought/Sold tag,
-     Rate Seller and ✕ wrap to a second line under the text (42px cover + 12px gap). */
-  .home-v2 .dash-hcard { flex-wrap: wrap; row-gap: 8px; }
-  .home-v2 .dash-hcard > .flex-1 { flex-basis: calc(100% - 54px); }
-  .home-v2 .dash-hcard > .flex-1 + * { margin-left: 54px; }
-  .home-v2 .dash-hcard-dismiss { margin-left: auto; }
+  /* History card: title + who/when keep the full width; Rate Seller wraps to a
+     second line under the text (42px cover + 12px gap); ✕ pins to the top-right. */
+  .home-v2 .dash-hcard { position: relative; flex-wrap: wrap; row-gap: 8px; }
+  .home-v2 .dash-hcard > .flex-1 { flex-basis: calc(100% - 54px); padding-right: 22px; }
+  .home-v2 .dash-hcard > .flex-1 + button { margin-left: 54px; }
+  .home-v2 .dash-hcard-dismiss { position: absolute; top: 12px; right: 14px; }
 }
+
+/* Exchange status: a small coloured label above the book title — plain text with
+   a dot, no fill or border, so it doesn't read as a button. */
+.home-v2 .dash-xstatus {
+  display: flex; align-items: center; gap: 6px; margin-bottom: 3px;
+  font-size: 10.5px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase;
+}
+.home-v2 .dash-xstatus::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+.home-v2 .dash-xstatus.is-attention, .home-v2 .dash-xstatus-inline.is-attention { color: #B5462F; }
+.home-v2 .dash-xstatus.is-waiting,   .home-v2 .dash-xstatus-inline.is-waiting   { color: #A0670F; }
+.home-v2 .dash-xstatus.is-ready,     .home-v2 .dash-xstatus-inline.is-ready     { color: #2F6B4F; }
+.home-v2 .dash-xstatus.is-quiet,     .home-v2 .dash-xstatus-inline.is-quiet     { color: #8A8178; }
+.home-v2 .dash-xstatus-inline { font-size: 12px; font-weight: 700; }
+
+/* Pickup details (buyer) and ready-by reminder (seller): labelled lines set off by
+   a coloured rule on the left — no fill, so they don't read as boxes/buttons. */
+.home-v2 .dash-xdetails { margin: 0; padding: 2px 0 2px 14px; border-left: 3px solid; font-size: 12.5px; line-height: 1.45; }
+.home-v2 .dash-xdetails.is-green { border-color: #7FB596; }
+.home-v2 .dash-xdetails.is-amber { border-color: #E3B65A; }
+.home-v2 .dash-xdetails-row { display: grid; grid-template-columns: 64px 1fr; gap: 8px; padding: 2px 0; }
+.home-v2 .dash-xdetails dt {
+  font-size: 10px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase;
+  color: #8A8178; padding-top: 2px;
+}
+.home-v2 .dash-xdetails dd { margin: 0; font-weight: 600; color: var(--ink); }
+.home-v2 .dash-xdetails dd strong { font-weight: 800; }
+.home-v2 .dash-xdetails-lead { font-weight: 800; color: #8A5A12; }
+.home-v2 .dash-xdetails-note { margin-top: 2px; font-weight: 600; color: #4A4038; }
+@media (max-width: 640px) {
+  .home-v2 .dash-xdetails { font-size: 13.5px; }
+  .home-v2 .dash-xdetails-row { grid-template-columns: 70px 1fr; }
+}
+/* Outlined pill button (e.g. Directions) — same shape as the other action buttons. */
+.home-v2 .dash-btn-outline {
+  display: inline-flex; align-items: center; gap: 4px; padding: 6px 16px; border-radius: 999px;
+  border: 1.5px solid var(--pine); color: var(--pine); background: transparent; text-decoration: none;
+}
+.home-v2 .dash-btn-outline:hover { background: rgba(35, 74, 64, .07); color: var(--pine); }
