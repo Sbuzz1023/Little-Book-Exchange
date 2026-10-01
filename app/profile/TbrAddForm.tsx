@@ -27,20 +27,25 @@ export default function TbrAddForm({ addTbrEntry, search }: Props) {
     <form action={addTbrEntry} className="flex gap-2 mb-4 flex-wrap items-start">
       <input type="hidden" name="ol_work_key" value={olWorkKey} />
       <input type="hidden" name="cover_url" value={coverUrl ?? ''} />
-      <div className="flex-1" style={{ minWidth: 120, display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+      {/* Title gets twice the share of the row. The search box must be able to
+          shrink (minWidth 0) to make room for the cover thumbnail that appears after
+          a book is picked; with its own 120px minimum it overflowed onto Author. */}
+      <div style={{ flex: '2 1 0%', minWidth: 160, display: 'flex', gap: 8, alignItems: 'flex-start' }}>
         {coverUrl && (
           <img src={coverUrl} alt="Cover preview" style={{ width: 28, height: 40, objectFit: 'cover', borderRadius: 4, flexShrink: 0 }} />
         )}
-        <BookSearchInput
-          name="title"
-          value={title}
-          onChange={v => { setTitle(v); setOlWorkKey(''); setCoverUrl(null) }}
-          onSelect={handleSelect}
-          placeholder="Book title..."
-          className="flex-1 border-2 border-[#ddd6fe] rounded-[12px] font-bold text-[13px] bg-[#f5f3ff]"
-          style={{ padding: '9px 12px', minWidth: 120, width: '100%' }}
-          search={search}
-        />
+        <div style={{ flex: '1 1 0%', minWidth: 0 }}>
+          <BookSearchInput
+            name="title"
+            value={title}
+            onChange={v => { setTitle(v); setOlWorkKey(''); setCoverUrl(null) }}
+            onSelect={handleSelect}
+            placeholder="Book title..."
+            className="border-2 border-[#ddd6fe] rounded-[12px] font-bold text-[13px] bg-[#f5f3ff]"
+            style={{ padding: '9px 12px', minWidth: 0, width: '100%' }}
+            search={search}
+          />
+        </div>
       </div>
       <input
         name="author"
