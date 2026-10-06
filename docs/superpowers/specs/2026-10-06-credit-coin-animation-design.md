@@ -89,7 +89,8 @@ Its RLS stays read-only for users; we never mark ledger rows.
   - Earn, bonus only: `+1 credit · Welcome bonus`
   - Earn, several rows: `+N credits · K books picked up`, appending ` + welcome bonus` if the bonus is among them
   - Spend, single purchase: `−1 credit · you got Dune`
-  - Spend, several rows: `−N credits · K books picked up`
+  - Spend, several rows: `−N credits · you got K books`
+  - Example — sold *Dune* and *Emma*, bought *Matilda*, ending on 5: earn burst `+2 credits · 2 books picked up` (pill 4 → 5 → 6), pause, spend burst `−1 credit · you got Matilda` (pill 6 → 5).
   - A row whose listing was deleted (`listings` null) uses "a book" for the title.
 - **Screen-reader text** per burst, e.g. "You earned 1 credit for Dune." / "You spent 1 credit on Dune."
 
