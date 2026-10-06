@@ -39,7 +39,7 @@ function DashboardBadge({ count }: { count?: number }) {
   )
 }
 
-export default function Nav({ userName: serverUserName, isAdmin, unreadCount }: { userName?: string | null; isAdmin?: boolean; unreadCount?: number }) {
+export default function Nav({ userName: serverUserName, isAdmin, unreadCount, credits }: { userName?: string | null; isAdmin?: boolean; unreadCount?: number; credits?: number | null }) {
   const pathname = usePathname()
   const isHome = pathname === '/'
   // Browse, a listing's detail page, Post a Book (+ its edit-listing reuse),
@@ -66,7 +66,7 @@ export default function Nav({ userName: serverUserName, isAdmin, unreadCount }: 
 
   // The redesigned homepage (and now Browse) uses the folk-styled nav.
   if (useFolkNav) {
-    return <HomeNav userName={userName} isAdmin={isAdmin} unreadCount={unreadCount} />
+    return <HomeNav userName={userName} isAdmin={isAdmin} unreadCount={unreadCount} credits={credits} />
   }
 
   return (

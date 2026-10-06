@@ -93,6 +93,17 @@
   letter-spacing: .5px; text-decoration: none;
 }
 .hnav-avatar:hover { color: #fff !important; }
+.hnav-credits {
+  display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px 0 10px;
+  border-radius: 999px; background: #F5EEE2; border: 1px solid var(--line);
+  color: var(--pine) !important; font-weight: 800; font-size: 14px;
+  font-variant-numeric: tabular-nums; margin-right: -12px;
+}
+/* A mustard coin, so the number reads as currency. */
+.hnav-coin { width: 18px; height: 18px; flex: none; }
+.hnav-coin circle:first-child { fill: var(--mustard, #E4B04A); stroke: #B9862A; stroke-width: 1.6; }
+.hnav-coin circle:last-child { fill: none; stroke: #B9862A; stroke-width: 1.4; opacity: .75; }
+.hnav-credits:hover { background: var(--sage, #EAF1EA); border-color: #CFE0D3; }
 .hnav-avatar-menu { position: relative; list-style: none; }
 .hnav-avatar-menu summary { list-style: none; cursor: pointer; }
 .hnav-avatar-menu summary::-webkit-details-marker { display: none; }
@@ -250,7 +261,7 @@
 /* ---------- RESPONSIVE ---------- */
 @media (max-width: 900px) {
   /* Page links move to the bottom tab bar; the avatar / Sign Up stay up top. */
-  .hnav-links > a:not(.hnav-cta) { display: none; }
+  .hnav-links > a:not(.hnav-cta):not(.hnav-credits) { display: none; }
   .hnav-cta { padding: 7px 16px; font-size: 13px; }
   .hnav-tabs { display: grid; }
   body:has(.hnav-tabs) { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
@@ -262,6 +273,15 @@
   .home-v2 .stats-card { grid-template-columns: repeat(2, 1fr); gap: 20px 8px; }
   .home-v2 .features { grid-template-columns: repeat(2, 1fr); gap: 30px 20px; }
   .home-v2 .foot-grid { grid-template-columns: 1fr 1fr; gap: 28px; }
+}
+/* Smallest phones: keep the title on one line beside the credits pill + avatar. */
+@media (max-width: 380px) {
+  .hnav-brand { gap: 8px; }
+  .hnav-brand .mark { width: 28px; height: 28px; }
+  .hnav-inner { gap: 10px; }
+  .hnav-brand .name { font-size: 16px; white-space: nowrap; }
+  .hnav-links { gap: 20px; }
+  .hnav-credits { padding: 0 10px 0 8px; gap: 5px; }
 }
 @media (max-width: 640px) {
   /* 3 across: books 1-2 + the "great reads" note on row one, books 3-5 below */

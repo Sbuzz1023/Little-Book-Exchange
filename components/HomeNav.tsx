@@ -32,10 +32,12 @@ export default function HomeNav({
   userName,
   isAdmin,
   unreadCount = 0,
+  credits,
 }: {
   userName?: string | null
   isAdmin?: boolean
   unreadCount?: number
+  credits?: number | null
 }) {
   const pathname = usePathname()
   const avatarRef = useRef<HTMLDetailsElement>(null)
@@ -87,6 +89,20 @@ export default function HomeNav({
               here; the page links move to the bottom tab bar. */}
           <nav className="hnav-links">
             {links}
+            {signedIn && credits != null && (
+              <Link
+                href="/profile"
+                className="hnav-credits"
+                aria-label={`${credits} ${credits === 1 ? 'credit' : 'credits'}`}
+                title="Your credits"
+              >
+                <svg className="hnav-coin" viewBox="0 0 24 24" aria-hidden="true">
+                  <circle cx="12" cy="12" r="10" />
+                  <circle cx="12" cy="12" r="6.2" />
+                </svg>
+                {credits}
+              </Link>
+            )}
             {signedIn ? (
               <details ref={avatarRef} className="hnav-avatar-menu">
                 <summary className="hnav-avatar" aria-label="Account menu">

@@ -56,3 +56,36 @@ describe('HomeNav mobile tab bar', () => {
     expect(screen.queryByRole('button', { name: /menu/i })).toBeNull()
   })
 })
+
+describe('HomeNav credit balance', () => {
+  beforeEach(() => { pathname = '/' })
+
+  it('shows the signed-in balance next to the avatar, linking to the Dashboard', () => {
+    render(<HomeNav userName="SeanB" credits={12} />)
+    const pill = screen.getByRole('link', { name: '12 credits' })
+    expect(pill).toHaveAttribute('href', '/profile')
+    expect(pill).toHaveTextContent('12')
+    // sits immediately before the avatar menu
+    expect(pill.nextElementSibling).toHaveClass('hnav-avatar-menu')
+  })
+
+  it('says "1 credit" for a single credit', () => {
+    render(<HomeNav userName="SeanB" credits={1} />)
+    expect(screen.getByRole('link', { name: '1 credit' })).toBeInTheDocument()
+  })
+
+  it('shows 0 credits rather than hiding the balance', () => {
+    render(<HomeNav userName="SeanB" credits={0} />)
+    expect(screen.getByRole('link', { name: '0 credits' })).toBeInTheDocument()
+  })
+
+  it('is hidden when signed out', () => {
+    render(<HomeNav userName={null} credits={5} />)
+    expect(screen.queryByRole('link', { name: /credits?$/ })).toBeNull()
+  })
+
+  it('is hidden when the balance is unknown', () => {
+    render(<HomeNav userName="SeanB" />)
+    expect(screen.queryByRole('link', { name: /credits?$/ })).toBeNull()
+  })
+})
