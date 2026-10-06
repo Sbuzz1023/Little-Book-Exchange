@@ -1,8 +1,10 @@
 'use client'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { avatarInitials } from '@/lib/avatarInitials'
+import CreditCoinShow from './CreditCoinShow'
+import { planCreditShow, demoUnseenCredits, type UnseenCredit } from '@/lib/creditShow'
 
 function clearDemoUser() {
   try { localStorage.removeItem('lbe_demo_user') } catch {}
@@ -33,11 +35,13 @@ export default function HomeNav({
   isAdmin,
   unreadCount = 0,
   credits,
+  unseenCredits,
 }: {
   userName?: string | null
   isAdmin?: boolean
   unreadCount?: number
   credits?: number | null
+  unseenCredits?: UnseenCredit[]
 }) {
   const pathname = usePathname()
   const avatarRef = useRef<HTMLDetailsElement>(null)
@@ -46,6 +50,27 @@ export default function HomeNav({
   }, [pathname])
 
   const signedIn = !!userName
+
+  // Demo mode has no ledger; ?coin_demo=earn|spend|both|bundle previews the show.
+  const [demoCredits, setDemoCredits] = useState<UnseenCredit[]>([])
+  useEffect(() => {
+    if (process.env.NEXT_PUBLIC_SUPABASE_URL?.startsWith('http')) return
+    setDemoCredits(demoUnseenCredits(new URLSearchParams(window.location.search).get('coin_demo')))
+  }, [pathname])
+  const isDemo = demoCredits.length > 0
+  const rows = isDemo ? demoCredits : unseenCredits
+
+  // The coin show for credits the user hasn't seen yet. Keyed by seenUpTo so
+  // the same rows arriving again (another render, router.refresh) don't
+  // restart a show that already played or was skipped.
+  const plan = useMemo(
+    () => (signedIn && credits != null && rows?.length ? planCreditShow(rows, credits) : null),
+    [signedIn, credits, rows],
+  )
+  const [doneKey, setDoneKey] = useState<string | null>(null)
+  const [shownBalance, setShownBalance] = useState<number | null>(null)
+  const showing = !!plan && doneKey !== plan.seenUpTo
+  const pillBalance = showing ? (shownBalance ?? plan!.startBalance) : credits
   const badge = unreadCount > 0 && <span className="hnav-badge">{unreadCount > 99 ? '99+' : unreadCount}</span>
 
   const links = signedIn ? (
@@ -93,14 +118,14 @@ export default function HomeNav({
               <Link
                 href="/profile?tab=wallet"
                 className="hnav-credits"
-                aria-label={`${credits} ${credits === 1 ? 'credit' : 'credits'}`}
+                aria-label={`${pillBalance} ${pillBalance === 1 ? 'credit' : 'credits'}`}
                 title="Your credits"
               >
                 <svg className="hnav-coin" viewBox="0 0 24 24" aria-hidden="true">
                   <circle cx="12" cy="12" r="10" />
                   <circle cx="12" cy="12" r="6.2" />
                 </svg>
-                {credits}
+                {pillBalance}
               </Link>
             )}
             {signedIn ? (
@@ -135,6 +160,16 @@ export default function HomeNav({
           </Link>
         ))}
       </nav>
+
+      {showing && (
+        <CreditCoinShow
+          key={plan!.seenUpTo}
+          plan={plan!}
+          persist={!isDemo}
+          onBalance={setShownBalance}
+          onDone={() => { setDoneKey(plan!.seenUpTo); setShownBalance(null) }}
+        />
+      )}
     </>
   )
 }

@@ -4,6 +4,7 @@ import { usePathname } from 'next/navigation'
 import { useState, useEffect, useRef } from 'react'
 import { avatarInitials } from '@/lib/avatarInitials'
 import HomeNav from './HomeNav'
+import type { UnseenCredit } from '@/lib/creditShow'
 
 function readDemoUser(): string | null {
   if (typeof document === 'undefined') return null
@@ -39,7 +40,7 @@ function DashboardBadge({ count }: { count?: number }) {
   )
 }
 
-export default function Nav({ userName: serverUserName, isAdmin, unreadCount, credits }: { userName?: string | null; isAdmin?: boolean; unreadCount?: number; credits?: number | null }) {
+export default function Nav({ userName: serverUserName, isAdmin, unreadCount, credits, unseenCredits }: { userName?: string | null; isAdmin?: boolean; unreadCount?: number; credits?: number | null; unseenCredits?: UnseenCredit[] }) {
   const pathname = usePathname()
   const isHome = pathname === '/'
   // Browse, a listing's detail page, Post a Book (+ its edit-listing reuse),
@@ -66,7 +67,7 @@ export default function Nav({ userName: serverUserName, isAdmin, unreadCount, cr
 
   // The redesigned homepage (and now Browse) uses the folk-styled nav.
   if (useFolkNav) {
-    return <HomeNav userName={userName} isAdmin={isAdmin} unreadCount={unreadCount} credits={credits} />
+    return <HomeNav userName={userName} isAdmin={isAdmin} unreadCount={unreadCount} credits={credits} unseenCredits={unseenCredits} />
   }
 
   return (

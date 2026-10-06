@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, within, fireEvent } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import HomeNav from './HomeNav'
 
@@ -87,5 +87,64 @@ describe('HomeNav credit balance', () => {
   it('is hidden when the balance is unknown', () => {
     render(<HomeNav userName="SeanB" />)
     expect(screen.queryByRole('link', { name: /credits?$/ })).toBeNull()
+  })
+})
+
+import type { UnseenCredit } from '@/lib/creditShow'
+
+vi.mock('@/lib/actions/creditsSeen', () => ({ markCreditsSeen: vi.fn(() => Promise.resolve()) }))
+
+describe('HomeNav credit coin show', () => {
+  beforeEach(() => {
+    pathname = '/'
+    // Motion path (jsdom has no Web Animations, so coins run on timers): the
+    // pill only changes when a coin lands ~1.5s in, so a synchronous
+    // assertion sees the starting balance. (With reduced motion the first
+    // burst's balance step is immediate.)
+    window.matchMedia = vi.fn().mockImplementation((q: string) => ({
+      matches: false, media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
+    })) as unknown as typeof window.matchMedia
+  })
+
+  const sale: UnseenCredit = { id: 's', amount: 1, reason: 'sale_earned', created_at: '2026-10-06T10:00:00Z', title: 'Dune' }
+
+  it('shows the starting balance on first render while a show is pending', () => {
+    render(<HomeNav userName="SeanB" credits={4} unseenCredits={[sale]} />)
+    expect(screen.getByRole('link', { name: '3 credits' })).toBeInTheDocument()
+  })
+
+  it('mounts the show only when there are unseen credits', () => {
+    const { container, rerender } = render(<HomeNav userName="SeanB" credits={4} />)
+    expect(container.ownerDocument.querySelector('.ccs')).toBeNull()
+    rerender(<HomeNav userName="SeanB" credits={4} unseenCredits={[sale]} />)
+    expect(container.ownerDocument.querySelector('.ccs')).not.toBeNull()
+  })
+
+  it('no balance means no pill and no show, without crashing', () => {
+    const { container } = render(<HomeNav userName="SeanB" credits={null} unseenCredits={[sale]} />)
+    expect(container.ownerDocument.querySelector('.ccs')).toBeNull()
+    expect(screen.queryByRole('link', { name: /credits?$/ })).toBeNull()
+  })
+
+  it('signed out never shows it', () => {
+    const { container } = render(<HomeNav userName={null} credits={4} unseenCredits={[sale]} />)
+    expect(container.ownerDocument.querySelector('.ccs')).toBeNull()
+  })
+
+  it('a re-render with an identical (new) rows array mid-show does not restart or remount it', () => {
+    const { container, rerender } = render(<HomeNav userName="SeanB" credits={4} unseenCredits={[sale]} />)
+    const overlay = container.ownerDocument.querySelector('.ccs')
+    rerender(<HomeNav userName="SeanB" credits={4} unseenCredits={[{ ...sale }]} />)
+    expect(container.ownerDocument.querySelector('.ccs')).toBe(overlay)
+    expect(screen.getByRole('link', { name: '3 credits' })).toBeInTheDocument()
+  })
+
+  it('after the show is skipped the pill shows the real balance and the overlay is gone, and the same rows do not restart it', () => {
+    const { container, rerender } = render(<HomeNav userName="SeanB" credits={4} unseenCredits={[sale]} />)
+    fireEvent.click(container.ownerDocument.querySelector('.ccs')!)
+    expect(screen.getByRole('link', { name: '4 credits' })).toBeInTheDocument()
+    expect(container.ownerDocument.querySelector('.ccs')).toBeNull()
+    rerender(<HomeNav userName="SeanB" credits={4} unseenCredits={[{ ...sale }]} />)
+    expect(container.ownerDocument.querySelector('.ccs')).toBeNull()
   })
 })
