@@ -1900,3 +1900,18 @@ $$;
 revoke all on function home_top_readers() from public;
 grant execute on function home_top_readers() to anon, authenticated;
 -- ──────────────────────────────────────────────────────────────────────────────
+
+-- ============================================================
+-- Credit coin animation (2026-10-06)
+-- ============================================================
+-- The nav plays a coin animation for credit changes the user hasn't seen
+-- yet (sales, purchases, welcome bonus). credits_seen_at is the newest
+-- credit_transactions.created_at already played. No RLS change: "Users can
+-- update own profile" already covers it, and prevent_credit_self_grant()
+-- still guards credits itself — writing this column only replays or skips
+-- the user's own animation.
+alter table profiles
+  add column if not exists credits_seen_at timestamptz not null default now();
+
+-- Existing users start caught up, so their history doesn't replay.
+update profiles set credits_seen_at = now();
