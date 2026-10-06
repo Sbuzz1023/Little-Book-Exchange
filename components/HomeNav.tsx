@@ -91,7 +91,7 @@ export default function HomeNav({
             {links}
             {signedIn && credits != null && (
               <Link
-                href="/profile"
+                href="/profile?tab=wallet"
                 className="hnav-credits"
                 aria-label={`${credits} ${credits === 1 ? 'credit' : 'credits'}`}
                 title="Your credits"

@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { isDashboardTab } from '@/lib/dashboardTab'
 import Link from 'next/link'
 import Image from 'next/image'
 import ProfileCard from './ProfileCard'
@@ -209,6 +210,15 @@ function LeafGlyph() {
 
 export default function DashboardClient({ profile, listings, exchanges, savedListings, tbrEntries, transactions, updateAction, updateListingStatus, markPickedUp, fileDispute, hideExchangeHistory, submitReview, confirmExchange, denyPurchase, cancelPurchase, removeSavedListing, moveSavedListingToTbr, addTbrEntry, removeTbrEntry, success, defaultTab, queryError, tbrError, error, isDemo, initialConversationId, unreadCounts, unreadEntityIds, resendEmailConfirmation, sendPhoneOtp, verifyPhoneOtp }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>(defaultTab ?? 'listings')
+  // A link to /profile?tab=… while already on the Dashboard (e.g. the nav's
+  // credits pill → Wallet) keeps this component mounted, so follow the URL's
+  // tab. Read it from useSearchParams rather than the server's defaultTab:
+  // openTab's replaceState updates the URL without re-rendering the server,
+  // so defaultTab can be stale and a link back to it would look like no change.
+  const urlTab = useSearchParams()?.get('tab')
+  useEffect(() => {
+    if (isDashboardTab(urlTab)) setActiveTab(urlTab)
+  }, [urlTab])
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(initialConversationId ?? null)
   const booksPosted = listings.reduce((sum, l: any) => sum + (l.book_count ?? 1), 0)
   const router = useRouter()
@@ -255,6 +265,14 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
 
   function openTab(tabId: Tab) {
     setActiveTab(tabId)
+    // Mirror the open tab in the URL, so a link to another ?tab= is always a
+    // real change (see the urlTab effect above) and refresh keeps the tab.
+    const url = new URL(window.location.href)
+    url.searchParams.set('tab', tabId)
+    url.searchParams.delete('conversation')
+    // State must be null: Next treats a state carrying its own router data as
+    // internal and skips syncing useSearchParams.
+    window.history.replaceState(null, '', url)
     if (tabId === 'messages') setSelectedConversationId(null)
     markTabRead(tabId)
   }

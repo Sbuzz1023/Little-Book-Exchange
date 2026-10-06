@@ -12,7 +12,16 @@ vi.mock('@/lib/supabase/client', () => ({
 const refreshMock = vi.fn()
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ refresh: refreshMock }),
+  // Next keeps useSearchParams in sync with history.replaceState; read the
+  // live URL so tests see the same.
+  useSearchParams: () => new URLSearchParams(window.location.search),
 }))
+
+// openTab records the open tab in the URL, and jsdom's URL persists between
+// tests — start every test from a clean /profile.
+beforeEach(() => {
+  window.history.replaceState(null, '', '/profile')
+})
 
 const baseProps = {
   profile: { id: 'me', username: 'me', city: 'Chicago', state: 'IL' },
@@ -652,5 +661,46 @@ describe('DashboardClient — buyer pickup availability display', () => {
   it('omits the availability line when the seller did not set one', () => {
     render(<DashboardClient {...baseProps} exchanges={[confirmedExchange]} defaultTab="exchanges" />)
     expect(screen.queryByText(/Ready for pickup now/)).not.toBeInTheDocument()
+  })
+})
+
+// The nav's credits pill links to /profile?tab=wallet. When the user is
+// already on the Dashboard, that navigation keeps the component mounted and
+// only changes the URL, so the open tab has to follow the URL's ?tab=.
+describe('DashboardClient — following the ?tab= in the URL', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    window.history.replaceState(null, '', '/profile')
+  })
+
+  const tabButton = (name: string) => screen.getByRole('button', { name: new RegExp(name) })
+
+  it('switches to the Wallet when a link changes ?tab= while mounted, even if defaultTab is stale', () => {
+    // Arrived on the Wallet, then clicked My Listings…
+    window.history.replaceState(null, '', '/profile?tab=wallet')
+    const { rerender } = render(<DashboardClient {...baseProps} exchanges={[]} defaultTab="wallet" />)
+    fireEvent.click(tabButton('My Listings'))
+    expect(tabButton('My Listings')).toHaveClass('is-active')
+    // …then the credits pill navigates to ?tab=wallet. The server's defaultTab
+    // was already "wallet", so only the URL changes.
+    window.history.pushState(null, '', '/profile?tab=wallet')
+    rerender(<DashboardClient {...baseProps} exchanges={[]} defaultTab="wallet" />)
+    expect(tabButton('Wallet')).toHaveClass('is-active')
+    expect(tabButton('My Listings')).not.toHaveClass('is-active')
+  })
+
+  it('ignores an unrecognised ?tab= value', () => {
+    window.history.replaceState(null, '', '/profile?tab=bogus')
+    render(<DashboardClient {...baseProps} exchanges={[]} defaultTab="listings" />)
+    expect(tabButton('My Listings')).toHaveClass('is-active')
+  })
+
+  it('records the clicked tab in the URL, keeping other params', () => {
+    window.history.replaceState(null, '', '/profile?tab=wallet&success=1')
+    render(<DashboardClient {...baseProps} exchanges={[]} defaultTab="wallet" />)
+    fireEvent.click(tabButton('My Listings'))
+    expect(window.location.pathname).toBe('/profile')
+    expect(new URLSearchParams(window.location.search).get('tab')).toBe('listings')
+    expect(new URLSearchParams(window.location.search).get('success')).toBe('1')
   })
 })

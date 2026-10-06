@@ -60,10 +60,10 @@ describe('HomeNav mobile tab bar', () => {
 describe('HomeNav credit balance', () => {
   beforeEach(() => { pathname = '/' })
 
-  it('shows the signed-in balance next to the avatar, linking to the Dashboard', () => {
+  it('shows the signed-in balance next to the avatar, linking to the Wallet', () => {
     render(<HomeNav userName="SeanB" credits={12} />)
     const pill = screen.getByRole('link', { name: '12 credits' })
-    expect(pill).toHaveAttribute('href', '/profile')
+    expect(pill).toHaveAttribute('href', '/profile?tab=wallet')
     expect(pill).toHaveTextContent('12')
     // sits immediately before the avatar menu
     expect(pill.nextElementSibling).toHaveClass('hnav-avatar-menu')

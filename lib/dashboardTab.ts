@@ -14,3 +14,7 @@ export function resolveDefaultTab(tabParam: string | undefined, demoPending: str
   if (tabParam && (VALID_TABS as readonly string[]).includes(tabParam)) return tabParam as DashboardTab
   return demoPending ? 'exchanges' : 'listings'
 }
+
+export function isDashboardTab(value: string | null | undefined): value is DashboardTab {
+  return !!value && (VALID_TABS as readonly string[]).includes(value)
+}
