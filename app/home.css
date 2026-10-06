@@ -103,6 +103,43 @@
 .hnav-coin { width: 18px; height: 18px; flex: none; }
 .hnav-coin circle:first-child { fill: var(--mustard, #E4B04A); stroke: #B9862A; stroke-width: 1.6; }
 .hnav-coin circle:last-child { fill: none; stroke: #B9862A; stroke-width: 1.4; opacity: .75; }
+/* Credit coin show (components/CreditCoinShow.tsx). Rendered outside the
+   header (its backdrop-filter would contain position:fixed). */
+.hnav-credits.is-pop { animation: hnav-pop .3s ease-out; }
+@keyframes hnav-pop { 0% { transform: scale(1); } 40% { transform: scale(1.15); } 100% { transform: scale(1); } }
+.ccs { position: fixed; inset: 0; z-index: 200; cursor: pointer; }
+.ccs-backdrop { position: absolute; inset: 0; background: rgba(43, 38, 34, .18); animation: ccs-fade .25s ease-out; }
+.ccs-layer { position: absolute; inset: 0; }
+.ccs-coin {
+  position: fixed; left: 50%; top: 50%; width: 96px; height: 96px; margin: -48px 0 0 -48px;
+  will-change: transform, opacity;
+}
+.ccs-coin svg { display: block; width: 100%; height: 100%; filter: drop-shadow(0 6px 10px rgba(43, 38, 34, .25)); }
+.ccs-coin svg circle:first-child { fill: #E4B04A; stroke: #B9862A; stroke-width: 1.6; }
+.ccs-coin svg circle:last-child { fill: none; stroke: #B9862A; stroke-width: 1.4; opacity: .75; }
+.ccs-coin-label {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  font: 800 26px 'Nunito', system-ui, sans-serif; color: #6B4A12;
+}
+.ccs-still { animation: ccs-fade-inout 1.5s ease both; }
+.ccs-speck {
+  position: fixed; left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px 0 0 -3px;
+  border-radius: 50%; background: #E4B04A;
+}
+.ccs-caption {
+  position: fixed; left: 50%; top: calc(50% + 66px); transform: translateX(-50%); margin: 0;
+  padding: 8px 16px; border-radius: 999px; background: #FFFFFF; border: 1px solid #E7DCCB;
+  box-shadow: 0 18px 40px -24px rgba(43, 38, 34, .38);
+  font: 700 15px 'Nunito', system-ui, sans-serif; color: #234A40;
+  white-space: nowrap; max-width: calc(100vw - 32px); overflow: hidden; text-overflow: ellipsis;
+  animation: ccs-fade .3s ease-out both;
+}
+.ccs-caption.ccs-spend { color: #B5462F; }
+@keyframes ccs-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes ccs-fade-inout { 0% { opacity: 0; } 20%, 80% { opacity: 1; } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .hnav-credits.is-pop { animation: none; }
+}
 .hnav-credits:hover { background: var(--sage, #EAF1EA); border-color: #CFE0D3; }
 .hnav-avatar-menu { position: relative; list-style: none; }
 .hnav-avatar-menu summary { list-style: none; cursor: pointer; }
