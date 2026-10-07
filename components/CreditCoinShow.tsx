@@ -9,9 +9,18 @@ import { markCreditsSeen } from '@/lib/actions/creditsSeen'
 // animated with the Web Animations API (falling back to timers where it's
 // missing, e.g. jsdom); React only renders the overlay and caption.
 
-const STAGGER_MS = 350
-const BURST_PAUSE_MS = 600
-const STILL_MS = 1500
+// Timings (ms). Earn coin: spin, then fly to the pill. Spend coin: fly from
+// the pill, spin, crumble. Coins in a burst start STAGGER_MS apart.
+const STAGGER_MS = 700
+const BURST_PAUSE_MS = 1000
+const STILL_MS = 3000
+const EARN_SPIN_MS = 2000
+const FLIGHT_MS = 1300
+const SPEND_SPIN_MS = 1100
+const DUST_MS = 1600
+// The pill's coin is 18px; shrink the (200px, or 50vw on phones) show coin to it.
+const PILL_COIN_PX = 18
+const ARC_LIFT_PX = 140
 const COIN_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6.2"/></svg>'
 
 const wait = (ms: number) => new Promise<void>(r => setTimeout(r, ms))
@@ -55,36 +64,37 @@ function makeCoin(layer: HTMLElement, coin: ShowCoin): HTMLElement {
   return el
 }
 
-const arc = (dx: number, dy: number) => `translate(${dx * 0.5}px, ${dy * 0.5 - 80}px) scale(.6)`
+const arc = (dx: number, dy: number) => `translate(${dx * 0.5}px, ${dy * 0.5 - ARC_LIFT_PX}px) scale(.55)`
+const pillScale = (el: HTMLElement) => PILL_COIN_PX / (el.getBoundingClientRect().width || 200)
 
 async function earnCoin(layer: HTMLElement, coin: ShowCoin, land: () => void) {
   const el = makeCoin(layer, coin)
   await play(el, [
-    { transform: 'perspective(600px) scale(.3) rotateY(0deg)', opacity: 0 },
-    { transform: 'perspective(600px) scale(1) rotateY(360deg)', opacity: 1, offset: 0.35 },
-    { transform: 'perspective(600px) scale(1) rotateY(720deg)', opacity: 1 },
-  ], { duration: 900, easing: 'ease-out' })
+    { transform: 'perspective(900px) scale(.3) rotateY(0deg)', opacity: 0 },
+    { transform: 'perspective(900px) scale(1) rotateY(360deg)', opacity: 1, offset: 0.3 },
+    { transform: 'perspective(900px) scale(1) rotateY(1080deg)', opacity: 1 },
+  ], { duration: EARN_SPIN_MS, easing: 'ease-out' })
   const { dx, dy } = pillOffset()
   await play(el, [
     { transform: 'translate(0px, 0px) scale(1)' },
     { transform: arc(dx, dy), offset: 0.5 },
-    { transform: `translate(${dx}px, ${dy}px) scale(.19)` },
-  ], { duration: 600, easing: 'cubic-bezier(.5,0,.75,1)' })
+    { transform: `translate(${dx}px, ${dy}px) scale(${pillScale(el)})` },
+  ], { duration: FLIGHT_MS, easing: 'cubic-bezier(.45,0,.7,1)' })
   el.remove()
   land()
 }
 
 function dust(layer: HTMLElement): Promise<void> {
-  return Promise.all(Array.from({ length: 20 }, (_, i) => {
+  return Promise.all(Array.from({ length: 32 }, (_, i) => {
     const s = document.createElement('span')
     s.className = 'ccs-speck'
     layer.appendChild(s)
-    const angle = (i / 20) * Math.PI * 2 + Math.random() * 0.3
-    const dist = 40 + Math.random() * 50
+    const angle = (i / 32) * Math.PI * 2 + Math.random() * 0.3
+    const dist = 80 + Math.random() * 100
     return play(s, [
       { transform: 'translate(0px, 0px) scale(1)', opacity: 1 },
-      { transform: `translate(${Math.cos(angle) * dist}px, ${Math.sin(angle) * dist + 40}px) scale(.4)`, opacity: 0 },
-    ], { duration: 800, delay: Math.random() * 120, easing: 'cubic-bezier(.2,.6,.4,1)' }).then(() => s.remove())
+      { transform: `translate(${Math.cos(angle) * dist}px, ${Math.sin(angle) * dist + 90}px) scale(.4)`, opacity: 0 },
+    ], { duration: DUST_MS, delay: Math.random() * 250, easing: 'cubic-bezier(.2,.6,.4,1)' }).then(() => s.remove())
   })).then(() => {})
 }
 
@@ -93,14 +103,14 @@ async function spendCoin(layer: HTMLElement, coin: ShowCoin, leave: () => void) 
   const el = makeCoin(layer, coin)
   leave()
   await play(el, [
-    { transform: `translate(${dx}px, ${dy}px) scale(.19)` },
+    { transform: `translate(${dx}px, ${dy}px) scale(${pillScale(el)})` },
     { transform: arc(dx, dy), offset: 0.5 },
     { transform: 'translate(0px, 0px) scale(1)' },
-  ], { duration: 600, easing: 'cubic-bezier(.25,0,.5,1)' })
+  ], { duration: FLIGHT_MS, easing: 'cubic-bezier(.3,0,.55,1)' })
   await play(el, [
-    { transform: 'perspective(600px) rotateY(0deg)' },
-    { transform: 'perspective(600px) rotateY(360deg)' },
-  ], { duration: 500, easing: 'ease-in-out' })
+    { transform: 'perspective(900px) rotateY(0deg)' },
+    { transform: 'perspective(900px) rotateY(720deg)' },
+  ], { duration: SPEND_SPIN_MS, easing: 'ease-in-out' })
   el.remove()
   await dust(layer)
 }

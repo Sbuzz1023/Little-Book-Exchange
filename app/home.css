@@ -111,26 +111,28 @@
 .ccs-backdrop { position: absolute; inset: 0; background: rgba(43, 38, 34, .18); animation: ccs-fade .25s ease-out; }
 .ccs-layer { position: absolute; inset: 0; }
 .ccs-coin {
-  position: fixed; left: 50%; top: 50%; width: 96px; height: 96px; margin: -48px 0 0 -48px;
+  --ccs-size: min(200px, 50vw);
+  position: fixed; left: 50%; top: 50%; width: var(--ccs-size); height: var(--ccs-size);
+  margin: calc(var(--ccs-size) / -2) 0 0 calc(var(--ccs-size) / -2);
   will-change: transform, opacity;
 }
-.ccs-coin svg { display: block; width: 100%; height: 100%; filter: drop-shadow(0 6px 10px rgba(43, 38, 34, .25)); }
+.ccs-coin svg { display: block; width: 100%; height: 100%; filter: drop-shadow(0 10px 18px rgba(43, 38, 34, .28)); }
 .ccs-coin svg circle:first-child { fill: #E4B04A; stroke: #B9862A; stroke-width: 1.6; }
 .ccs-coin svg circle:last-child { fill: none; stroke: #B9862A; stroke-width: 1.4; opacity: .75; }
 .ccs-coin-label {
   position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
-  font: 800 26px 'Nunito', system-ui, sans-serif; color: #6B4A12;
+  font: 800 clamp(30px, 11vw, 52px) 'Nunito', system-ui, sans-serif; color: #6B4A12;
 }
-.ccs-still { animation: ccs-fade-inout 1.5s ease both; }
+.ccs-still { animation: ccs-fade-inout 3s ease both; }
 .ccs-speck {
-  position: fixed; left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px 0 0 -3px;
+  position: fixed; left: 50%; top: 50%; width: 10px; height: 10px; margin: -5px 0 0 -5px;
   border-radius: 50%; background: #E4B04A;
 }
 .ccs-caption {
-  position: fixed; left: 50%; top: calc(50% + 66px); transform: translateX(-50%); margin: 0;
+  position: fixed; left: 50%; top: calc(50% + min(100px, 25vw) + 24px); transform: translateX(-50%); margin: 0;
   padding: 8px 16px; border-radius: 999px; background: #FFFFFF; border: 1px solid #E7DCCB;
   box-shadow: 0 18px 40px -24px rgba(43, 38, 34, .38);
-  font: 700 15px 'Nunito', system-ui, sans-serif; color: #234A40;
+  font: 700 17px 'Nunito', system-ui, sans-serif; color: #234A40;
   white-space: nowrap; max-width: calc(100vw - 32px); overflow: hidden; text-overflow: ellipsis;
   animation: ccs-fade .3s ease-out both;
 }

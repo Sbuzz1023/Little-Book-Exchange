@@ -1,7 +1,7 @@
 # Credit Coin Animation
 
 **Date:** 2026-10-06
-**Status:** Draft — awaiting review
+**Status:** Approved (sizes/timings enlarged 2026-10-06 at the user's request)
 
 ## Overview
 
@@ -97,18 +97,18 @@ Its RLS stays read-only for users; we never mark ledger rows.
 ### Animation (`components/CreditCoinShow.tsx` + styles in `app/home.css`)
 
 **Earn (coin in), per coin:**
-1. Coin (same mustard design as `.hnav-coin`, ~96px) appears at screen centre and spins edge-on about twice (~0.9s). Caption fades in beneath it.
-2. It shrinks and flies on an arc into the nav pill's coin (~0.6s). On landing the pill does a small "pop" and its number goes up.
-3. ≈1.8s per coin; burst coins start ~0.35s apart (3 coins ≈ 2.5s).
+1. Coin (same mustard design as `.hnav-coin`, 200px — capped at 50vw on phones) appears at screen centre and spins edge-on three times (~2s). Caption fades in beneath it.
+2. It shrinks and flies on a high arc into the nav pill's coin (~1.3s). On landing the pill does a small "pop" and its number goes up.
+3. ≈3.3s per coin; burst coins start ~0.7s apart (3 coins ≈ 4.7s).
 
 **Spend (coin out → dust), per coin:**
-1. A coin lifts out of the pill as its number drops, and flies to centre (~0.6s).
-2. It spins once; caption appears.
-3. It crumbles into ~20 small mustard specks that drift outward/down and fade (~0.8s).
+1. A coin lifts out of the pill as its number drops, and flies to centre (~1.3s).
+2. It spins twice (~1.1s); caption appears.
+3. It crumbles into ~32 mustard specks that drift outward/down and fade (~1.6s).
 
-**Pacing:** earn burst first, short pause, then spend burst. A light dim backdrop sits behind the coins. **Any click/tap skips to the end** (pill shows the final balance, overlay removed). The overlay never blocks the page for more than a few seconds and does not trap focus.
+**Pacing:** earn burst first, ~1s pause, then spend burst. A light dim backdrop sits behind the coins. **Any click/tap skips to the end** (pill shows the final balance, overlay removed). The overlay never blocks the page for more than a few seconds and does not trap focus.
 
-**Reduced motion** (`prefers-reduced-motion: reduce`): no spin or flight — a still coin and the caption fade in and out at centre (~1.5s per burst) and the number updates directly.
+**Reduced motion** (`prefers-reduced-motion: reduce`): no spin or flight — a still coin and the caption fade in and out at centre (~3s per burst) and the number updates directly.
 
 **Accessibility:** the caption lives in an `aria-live="polite"` region with the screen-reader text; the coin graphics are `aria-hidden`.
 
