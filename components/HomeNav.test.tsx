@@ -1,10 +1,12 @@
 import { render, screen, within, fireEvent } from '@testing-library/react'
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import HomeNav from './HomeNav'
 
 let pathname = '/'
+let search = ''
 vi.mock('next/navigation', () => ({
   usePathname: () => pathname,
+  useSearchParams: () => new URLSearchParams(search),
 }))
 
 function tabBar() {
@@ -169,5 +171,42 @@ describe('HomeNav credit coin show', () => {
     first.unmount()
     const again = render(<HomeNav userName="SeanB" credits={4} unseenCredits={[sale]} />)
     expect(again.container.ownerDocument.querySelector('.ccs')).toBeNull()
+  })
+})
+
+// Demo server: ?coin_demo=earn|spend|both|bundle previews the show, and a demo
+// pickup adds coin_demo_at so every press is a new show.
+describe('HomeNav coin show — demo previews', () => {
+  beforeEach(() => {
+    pathname = '/profile'
+    vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'off')
+    window.matchMedia = vi.fn().mockImplementation((q: string) => ({
+      matches: false, media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
+    })) as unknown as typeof window.matchMedia
+  })
+  afterEach(() => { vi.unstubAllEnvs(); search = '' })
+
+  it('starts the show from the URL on the first render, pill at the starting balance', () => {
+    search = 'tab=exchanges&coin_demo=spend&coin_demo_at=1700000000000'
+    const { container } = render(<HomeNav userName="SeanB" credits={3} />)
+    expect(container.ownerDocument.querySelector('.ccs')).not.toBeNull()
+    expect(screen.getByRole('link', { name: '4 credits' })).toBeInTheDocument()
+  })
+
+  it('a second demo pickup (new coin_demo_at) plays again', () => {
+    search = 'coin_demo=spend&coin_demo_at=1700000001000'
+    const { container, rerender } = render(<HomeNav userName="SeanB" credits={3} />)
+    fireEvent.click(container.ownerDocument.querySelector('.ccs')!)
+    expect(container.ownerDocument.querySelector('.ccs')).toBeNull()
+    search = 'coin_demo=spend&coin_demo_at=1700000002000'
+    rerender(<HomeNav userName="SeanB" credits={3} />)
+    expect(container.ownerDocument.querySelector('.ccs')).not.toBeNull()
+  })
+
+  it('ignores coin_demo on a real (non-demo) server', () => {
+    vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'https://example.supabase.co')
+    search = 'coin_demo=earn&coin_demo_at=1700000003000'
+    const { container } = render(<HomeNav userName="SeanB" credits={3} />)
+    expect(container.ownerDocument.querySelector('.ccs')).toBeNull()
   })
 })

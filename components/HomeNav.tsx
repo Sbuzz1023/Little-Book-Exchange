@@ -1,6 +1,6 @@
 'use client'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useSearchParams } from 'next/navigation'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { avatarInitials } from '@/lib/avatarInitials'
 import CreditCoinShow from './CreditCoinShow'
@@ -57,12 +57,17 @@ export default function HomeNav({
 
   const signedIn = !!userName
 
-  // Demo mode has no ledger; ?coin_demo=earn|spend|both|bundle previews the show.
-  const [demoCredits, setDemoCredits] = useState<UnseenCredit[]>([])
-  useEffect(() => {
-    if (process.env.NEXT_PUBLIC_SUPABASE_URL?.startsWith('http')) return
-    setDemoCredits(demoUnseenCredits(new URLSearchParams(window.location.search).get('coin_demo')))
-  }, [pathname])
+  // Demo mode has no ledger; ?coin_demo=earn|spend|both|bundle previews the
+  // show, and a demo pickup adds coin_demo_at so each press is a new show.
+  // Read during render (not in an effect) so the pill starts on the show's
+  // starting balance with no flash of the final one.
+  const searchParams = useSearchParams()
+  const coinDemo = searchParams?.get('coin_demo') ?? null
+  const coinDemoAt = Number(searchParams?.get('coin_demo_at')) || undefined
+  const demoCredits = useMemo(
+    () => (process.env.NEXT_PUBLIC_SUPABASE_URL?.startsWith('http') ? [] : demoUnseenCredits(coinDemo, coinDemoAt)),
+    [coinDemo, coinDemoAt],
+  )
   const isDemo = demoCredits.length > 0
   const rows = isDemo ? demoCredits : unseenCredits
 

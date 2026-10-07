@@ -136,4 +136,11 @@ describe('demoUnseenCredits', () => {
     expect(demoUnseenCredits('nope')).toEqual([])
     expect(demoUnseenCredits(null)).toEqual([])
   })
+
+  it('stamps rows from the given time, so each demo pickup is a new show', () => {
+    const a = demoUnseenCredits('spend', 1_700_000_000_000)
+    const b = demoUnseenCredits('spend', 1_700_000_005_000)
+    expect(a[0].created_at).not.toBe(b[0].created_at)
+    expect(demoUnseenCredits('spend')[0].created_at).toBe(demoUnseenCredits('spend')[0].created_at)
+  })
 })

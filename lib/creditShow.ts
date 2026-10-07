@@ -92,8 +92,10 @@ export function toUnseenCredits(rows: unknown[]): UnseenCredit[] {
 
 // Demo mode has no ledger: ?coin_demo=… previews the show on the demo server.
 export type CoinDemoMode = 'earn' | 'spend' | 'both' | 'bundle'
-export function demoUnseenCredits(mode: string | null): UnseenCredit[] {
-  const at = (s: number) => new Date(Date.UTC(2026, 0, 1, 0, 0, s)).toISOString()
+// `stamp` (ms) dates the rows: a demo pickup passes a fresh one each press so
+// it counts as a new show; the bare preview links use a fixed date.
+export function demoUnseenCredits(mode: string | null, stamp = Date.UTC(2026, 0, 1)): UnseenCredit[] {
+  const at = (s: number) => new Date(stamp + s * 1000).toISOString()
   const sale = (id: string, title: string, amount = 1, s = 1): UnseenCredit => ({ id, amount, reason: 'sale_earned', created_at: at(s), title })
   const buy = (id: string, title: string): UnseenCredit => ({ id, amount: -1, reason: 'purchase_spent', created_at: at(3), title })
   switch (mode) {

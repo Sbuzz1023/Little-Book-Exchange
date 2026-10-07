@@ -6,6 +6,7 @@ import Nav from './Nav'
 // these tests keep exercising the classic Nav — not HomeNav.
 vi.mock('next/navigation', () => ({
   usePathname: () => '/admin',
+  useSearchParams: () => new URLSearchParams(),
 }))
 
 function openMobileMenu() {

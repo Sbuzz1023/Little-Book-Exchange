@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
+import { MOCK_CONVERSATIONS, MOCK_USER_ID } from '@/lib/mock-data'
 import { buildConfirmationMessage } from '@/lib/buildConfirmationMessage'
 import { formatPickupAvailability } from '@/lib/formatPickupAvailability'
 import { isValidStateCode } from '@/lib/usStates'
@@ -81,6 +82,15 @@ export async function updateListingStatus(formData: FormData) {
 }
 
 export async function markPickedUp(formData: FormData) {
+  // Demo server: there's no database, so instead of crashing play the coin
+  // show the real pickup would trigger — coin in for the seller, out for the
+  // buyer. coin_demo_at makes each press a new show (see HomeNav).
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL?.startsWith('http')) {
+    const id = formData.get('conversation_id') as string
+    const isSeller = MOCK_CONVERSATIONS.some(c => c.id === id && c.seller_id === MOCK_USER_ID)
+    redirect(`/profile?tab=exchanges&coin_demo=${isSeller ? 'earn' : 'spend'}&coin_demo_at=${Date.now()}`)
+  }
+
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/auth/signin')

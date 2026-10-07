@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { markPickedUp } from './actions'
 
 // The nav's coin show reads unseen credits in the root layout. A redirect
@@ -20,8 +20,9 @@ for (const m of ['select', 'eq', 'is', 'update']) convoChain[m] = () => convoCha
 convoChain.single = () => Promise.resolve({ data: { buyer_id: 'user-1', seller_id: 'seller-1' } })
 convoChain.maybeSingle = () => Promise.resolve({ data: updated })
 
+const createClientMock = vi.fn()
 vi.mock('@/lib/supabase/server', () => ({
-  createClient: () => ({
+  createClient: () => (createClientMock(), {
     auth: { getUser: () => Promise.resolve({ data: { user: { id: 'user-1' } } }) },
     from: (table: string) => {
       if (table === 'conversations') return convoChain
@@ -45,7 +46,9 @@ describe('markPickedUp — refreshing the nav for the coin show', () => {
     vi.clearAllMocks()
     updated = { id: 'convo-1' }
     rpcResult = 'completed_manual'
+    vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'https://example.supabase.co')
   })
+  afterEach(() => { vi.unstubAllEnvs() })
 
   it('revalidates the root layout before redirecting when the pickup completes the exchange', async () => {
     await expect(markPickedUp(form())).rejects.toThrow('REDIRECT:/profile?tab=exchanges')
@@ -56,5 +59,38 @@ describe('markPickedUp — refreshing the nav for the coin show', () => {
     rpcResult = 'waiting'
     await expect(markPickedUp(form())).rejects.toThrow('REDIRECT:/profile?tab=exchanges')
     expect(revalidatePathMock).not.toHaveBeenCalled()
+  })
+})
+
+// The demo server has no database. Pressing pickup there plays the coin
+// show instead: coin in for the seller, coin out for the buyer.
+describe('markPickedUp — demo mode', () => {
+  beforeEach(() => {
+    calls.length = 0
+    vi.clearAllMocks()
+    vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'off')
+    vi.spyOn(Date, 'now').mockReturnValue(1_700_000_000_000)
+  })
+  afterEach(() => { vi.unstubAllEnvs(); vi.restoreAllMocks() })
+
+  function demoForm(id: string) {
+    const fd = new FormData()
+    fd.set('conversation_id', id)
+    return fd
+  }
+
+  it("plays the spend coin when the demo user is the buyer, without touching Supabase", async () => {
+    await expect(markPickedUp(demoForm('mock-convo-3'))).rejects.toThrow(
+      'REDIRECT:/profile?tab=exchanges&coin_demo=spend&coin_demo_at=1700000000000')
+    expect(createClientMock).not.toHaveBeenCalled()
+  })
+
+  it('plays the earn coin when the demo user is the seller', async () => {
+    await expect(markPickedUp(demoForm('mock-convo-1'))).rejects.toThrow(
+      'REDIRECT:/profile?tab=exchanges&coin_demo=earn&coin_demo_at=1700000000000')
+  })
+
+  it('treats an unknown demo conversation (e.g. a demo purchase request) as the buyer', async () => {
+    await expect(markPickedUp(demoForm('demo-pending-xyz'))).rejects.toThrow('coin_demo=spend')
   })
 })

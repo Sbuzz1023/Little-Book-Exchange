@@ -5,6 +5,7 @@ import Nav from './Nav'
 let pathname = '/'
 vi.mock('next/navigation', () => ({
   usePathname: () => pathname,
+  useSearchParams: () => new URLSearchParams(),
 }))
 
 // HomeNav (the folk-editorial nav) renders a <header class="hnav">; the
