@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { isDashboardTab } from '@/lib/dashboardTab'
 import Link from 'next/link'
@@ -238,6 +238,10 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
     pickupTimeStart: string
     pickupTimeEnd: string
   } | null>(null)
+  // Pickup-time problem shown inside the Confirm popup (instead of the
+  // browser's own small validation bubble), and the section to scroll to.
+  const [confirmError, setConfirmError] = useState<string | null>(null)
+  const pickupTimeRef = useRef<HTMLFieldSetElement>(null)
   const [disputeModal, setDisputeModal] = useState<{ conversationId: string; title: string } | null>(null)
   const [disputeMessage, setDisputeMessage] = useState('')
   const [disputeSubmitting, setDisputeSubmitting] = useState(false)
@@ -628,7 +632,7 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
                   {role === 'seller' && status === 'requested' && (
                     <button
                       type="button"
-                      onClick={() => setConfirmModal({
+                      onClick={() => { setConfirmError(null); setConfirmModal({
                         conversationId: ex.id,
                         title: ex.listings?.title ?? 'this book',
                         address: profile?.address ?? '',
@@ -640,7 +644,7 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
                         pickupDate: '',
                         pickupTimeStart: '',
                         pickupTimeEnd: '',
-                      })}
+                      }) }}
                       className="font-extrabold text-[12px] text-white hover:opacity-90"
                       style={{ background: '#234A40', border: 'none', padding: '7px 18px', borderRadius: 999, cursor: 'pointer', fontFamily: 'inherit' }}>
                       ✅ Confirm — Send My Contact Info
@@ -764,7 +768,22 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
                 <div className="dash-modal-overlay">
                   <form
                     action={confirmExchange}
-                    onSubmit={() => setConfirmModal(null)}
+                    noValidate
+                    onSubmit={e => {
+                      const m = confirmModal
+                      const problem = !m.pickupMode
+                        ? 'Choose when the buyer can pick it up.'
+                        : m.pickupMode !== 'anytime' && (!m.pickupDate || !m.pickupTimeStart || (m.pickupMode === 'window' && !m.pickupTimeEnd))
+                          ? 'Add the date and times for the pickup.'
+                          : null
+                      if (problem) {
+                        e.preventDefault()
+                        setConfirmError(problem)
+                        pickupTimeRef.current?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' })
+                        return
+                      }
+                      setConfirmModal(null)
+                    }}
                     className="dash-modal"
                   >
                     <button
@@ -780,6 +799,86 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
                       Review the pickup info for <strong style={{ color: '#4A4038' }}>{confirmModal.title}</strong> before it's sent to the buyer.
                     </p>
                     <input type="hidden" name="conversation_id" value={confirmModal.conversationId} />
+
+                    <fieldset
+                      ref={pickupTimeRef}
+                      className={`dash-pickup-time${confirmError ? ' has-error' : ''}`}
+                      aria-describedby={confirmError ? 'pickup-time-error' : undefined}
+                      onChange={() => setConfirmError(null)}
+                    >
+                      <h4 className="dash-pickup-time-title">
+                        When can they pick it up? <span className="dash-required">Required</span>
+                      </h4>
+                      <div className="dash-pickup-options">
+                        {([
+                          ['window', '🕐', 'Time window', 'Between two times on one day'],
+                          ['after', '⏰', 'After a time', 'Any time after a set time on one day'],
+                          ['anytime', '✅', 'Ready now', 'They can come whenever'],
+                        ] as const).map(([mode, icon, title, hint]) => (
+                          <div key={mode}>
+                            <label className={`dash-pickup-option${confirmModal.pickupMode === mode ? ' is-selected' : ''}`}>
+                              <input
+                                type="radio"
+                                name="pickup_mode"
+                                value={mode}
+                                required
+                                checked={confirmModal.pickupMode === mode}
+                                onChange={() => setConfirmModal({ ...confirmModal, pickupMode: mode })}
+                              />
+                              <span>
+                                <span className="dash-pickup-option-title">{icon} {title}</span>
+                                <span className="dash-pickup-option-hint">{hint}</span>
+                              </span>
+                            </label>
+                            {confirmModal.pickupMode === mode && mode !== 'anytime' && (
+                              <div className="dash-pickup-fields">
+                                <div className="flex-1">
+                                  <label htmlFor="pickup_date">Date</label>
+                                  <input
+                                    id="pickup_date"
+                                    name="pickup_date"
+                                    type="date"
+                                    required
+                                    value={confirmModal.pickupDate}
+                                    onChange={e => setConfirmModal({ ...confirmModal, pickupDate: e.target.value })}
+                                    className="mt-1"
+                                  />
+                                </div>
+                                <div style={{ width: 110 }}>
+                                  <label htmlFor="pickup_time_start">Start time</label>
+                                  <input
+                                    id="pickup_time_start"
+                                    name="pickup_time_start"
+                                    type="time"
+                                    required
+                                    value={confirmModal.pickupTimeStart}
+                                    onChange={e => setConfirmModal({ ...confirmModal, pickupTimeStart: e.target.value })}
+                                    className="mt-1"
+                                  />
+                                </div>
+                                {confirmModal.pickupMode === 'window' && (
+                                  <div style={{ width: 110 }}>
+                                    <label htmlFor="pickup_time_end">End time</label>
+                                    <input
+                                      id="pickup_time_end"
+                                      name="pickup_time_end"
+                                      type="time"
+                                      required
+                                      value={confirmModal.pickupTimeEnd}
+                                      onChange={e => setConfirmModal({ ...confirmModal, pickupTimeEnd: e.target.value })}
+                                      className="mt-1"
+                                    />
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                      {confirmError && <p id="pickup-time-error" role="alert" className="dash-pickup-error">{confirmError}</p>}
+                    </fieldset>
+
+                    <h4 className="dash-where-title">Where</h4>
 
                     <label>Address</label>
                     <input
@@ -830,80 +929,6 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
                       className="mt-1 mb-3"
                       style={{ minHeight: 60 }}
                     />
-
-                    <label>When are you available?</label>
-                    <div className="flex gap-2 mt-1 mb-3 flex-wrap">
-                      {([
-                        ['window', '🕐 Time window'],
-                        ['after', '⏰ After a time'],
-                        ['anytime', '✅ Ready now'],
-                      ] as const).map(([mode, label]) => (
-                        <label
-                          key={mode}
-                          className="font-extrabold text-[12px]"
-                          style={{
-                            padding: '7px 12px', borderRadius: 999, cursor: 'pointer',
-                            border: `1.5px solid ${confirmModal.pickupMode === mode ? '#234A40' : '#E7DCCB'}`,
-                            background: confirmModal.pickupMode === mode ? '#EAF1EA' : '#fff',
-                            color: confirmModal.pickupMode === mode ? '#234A40' : '#4A4038',
-                          }}
-                        >
-                          <input
-                            type="radio"
-                            name="pickup_mode"
-                            value={mode}
-                            required
-                            checked={confirmModal.pickupMode === mode}
-                            onChange={() => setConfirmModal({ ...confirmModal, pickupMode: mode })}
-                            style={{ position: 'absolute', opacity: 0, width: 0, height: 0 }}
-                          />
-                          {label}
-                        </label>
-                      ))}
-                    </div>
-
-                    {(confirmModal.pickupMode === 'window' || confirmModal.pickupMode === 'after') && (
-                      <div className="flex gap-2 mb-3">
-                        <div className="flex-1">
-                          <label htmlFor="pickup_date">Date</label>
-                          <input
-                            id="pickup_date"
-                            name="pickup_date"
-                            type="date"
-                            required
-                            value={confirmModal.pickupDate}
-                            onChange={e => setConfirmModal({ ...confirmModal, pickupDate: e.target.value })}
-                            className="mt-1"
-                          />
-                        </div>
-                        <div style={{ width: 110 }}>
-                          <label htmlFor="pickup_time_start">Start time</label>
-                          <input
-                            id="pickup_time_start"
-                            name="pickup_time_start"
-                            type="time"
-                            required
-                            value={confirmModal.pickupTimeStart}
-                            onChange={e => setConfirmModal({ ...confirmModal, pickupTimeStart: e.target.value })}
-                            className="mt-1"
-                          />
-                        </div>
-                        {confirmModal.pickupMode === 'window' && (
-                          <div style={{ width: 110 }}>
-                            <label htmlFor="pickup_time_end">End time</label>
-                            <input
-                              id="pickup_time_end"
-                              name="pickup_time_end"
-                              type="time"
-                              required
-                              value={confirmModal.pickupTimeEnd}
-                              onChange={e => setConfirmModal({ ...confirmModal, pickupTimeEnd: e.target.value })}
-                              className="mt-1"
-                            />
-                          </div>
-                        )}
-                      </div>
-                    )}
 
                     <div className="flex justify-end gap-2 mt-4">
                       <button type="button" onClick={() => setConfirmModal(null)} className="font-extrabold text-[13px]"

@@ -601,7 +601,7 @@ describe('DashboardClient — seller pickup availability', () => {
 
   it('shows the three availability options after clicking Confirm, none selected by default', () => {
     openConfirmPopup()
-    expect(screen.getByText('When are you available?')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /When can they pick it up\?/ })).toBeInTheDocument()
     const windowOption = screen.getByRole('radio', { name: /Time window/ })
     const afterOption = screen.getByRole('radio', { name: /After a time/ })
     const anytimeOption = screen.getByRole('radio', { name: /Ready now/ })
@@ -632,6 +632,51 @@ describe('DashboardClient — seller pickup availability', () => {
     fireEvent.click(screen.getByRole('radio', { name: /Ready now/ }))
     expect(screen.queryByLabelText('Date')).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Start time')).not.toBeInTheDocument()
+  })
+
+  it('puts the pickup time first, marked required, above the address', () => {
+    openConfirmPopup()
+    const heading = screen.getByRole('heading', { name: /When can they pick it up\?/ })
+    expect(heading).toHaveTextContent(/Required/i)
+    const address = document.querySelector('.dash-modal input[name="address"]')!
+    expect(heading.compareDocumentPosition(address) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  it('explains each pickup option in a line of its own', () => {
+    openConfirmPopup()
+    expect(screen.getByText('Between two times on one day')).toBeInTheDocument()
+    expect(screen.getByText('Any time after a set time on one day')).toBeInTheDocument()
+    expect(screen.getByText('They can come whenever')).toBeInTheDocument()
+  })
+
+  it('shows the date and time fields inside the pickup-time section', () => {
+    openConfirmPopup()
+    fireEvent.click(screen.getByRole('radio', { name: /Time window/ }))
+    const section = screen.getByRole('heading', { name: /When can they pick it up\?/ }).closest('fieldset')!
+    expect(section).toContainElement(screen.getByLabelText('Date'))
+  })
+
+  it('submitting without a pickup time shows a clear message and keeps the popup open', () => {
+    openConfirmPopup()
+    fireEvent.click(screen.getByText('✅ Submit Confirmation'))
+    expect(screen.getByRole('alert')).toHaveTextContent('Choose when the buyer can pick it up.')
+    expect(document.querySelector('.dash-modal')).toBeInTheDocument()
+    expect(baseProps.confirmExchange).not.toHaveBeenCalled()
+  })
+
+  it('choosing a pickup time clears that message', () => {
+    openConfirmPopup()
+    fireEvent.click(screen.getByText('✅ Submit Confirmation'))
+    fireEvent.click(screen.getByRole('radio', { name: /Ready now/ }))
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('a time window with no date or times asks for them instead of submitting', () => {
+    openConfirmPopup()
+    fireEvent.click(screen.getByRole('radio', { name: /Time window/ }))
+    fireEvent.click(screen.getByText('✅ Submit Confirmation'))
+    expect(screen.getByRole('alert')).toHaveTextContent('Add the date and times for the pickup.')
+    expect(document.querySelector('.dash-modal')).toBeInTheDocument()
   })
 })
 

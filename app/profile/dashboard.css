@@ -168,6 +168,51 @@
   font-size: 13px; font-weight: 600; color: var(--ink); background: var(--ground); outline: none;
 }
 
+/* Confirm popup: the pickup time is the one thing the seller decides fresh
+   each time, so it leads the form in its own panel. */
+.home-v2 .dash-pickup-time {
+  margin: 0 0 18px; padding: 14px 14px 12px; border: 1.5px solid var(--pine); border-radius: 16px;
+  background: var(--sage); min-width: 0;
+}
+.home-v2 .dash-pickup-time.has-error { border-color: var(--brick); background: #FBEDEA; }
+.home-v2 .dash-pickup-time-title {
+  margin: 0 0 10px; line-height: 1.3;
+  font-family: var(--serif); font-size: 17px; font-weight: 600; color: var(--ink);
+}
+/* Inline after the heading text, so on narrow screens it wraps as a unit. */
+.home-v2 .dash-required {
+  display: inline-block; vertical-align: 2px; margin-left: 6px; line-height: 1.4;
+  font-family: var(--sans); font-size: 9.5px; font-weight: 800; letter-spacing: .8px; text-transform: uppercase;
+  color: var(--pine); background: #fff; border: 1px solid var(--pine); border-radius: 999px; padding: 2px 7px;
+}
+.home-v2 .dash-pickup-time.has-error .dash-required { color: var(--brick); border-color: var(--brick); }
+.home-v2 .dash-pickup-options { display: flex; flex-direction: column; gap: 8px; }
+.home-v2 .dash-modal label.dash-pickup-option {
+  display: flex; align-items: center; gap: 12px; padding: 11px 12px; cursor: pointer;
+  background: #fff; border: 1.5px solid var(--line); border-radius: 12px;
+  font-size: 14px; font-weight: 800; color: var(--ink);
+}
+.home-v2 .dash-modal label.dash-pickup-option:hover { border-color: #B9CDBF; }
+.home-v2 .dash-modal label.dash-pickup-option.is-selected { border-color: var(--pine); background: #F4F8F4; }
+.home-v2 .dash-pickup-option input[type="radio"] {
+  appearance: none; -webkit-appearance: none; flex: none; margin: 0;
+  width: 20px; height: 20px; border-radius: 50%; border: 2px solid #B9AFA3; background: #fff; cursor: pointer;
+}
+.home-v2 .dash-pickup-option input[type="radio"]:checked { border-color: var(--pine); box-shadow: inset 0 0 0 4px #fff; background: var(--pine); }
+.home-v2 .dash-pickup-option input[type="radio"]:focus-visible { outline: 2px solid var(--pine); outline-offset: 2px; }
+.home-v2 .dash-pickup-option-title { display: block; }
+.home-v2 .dash-pickup-option-hint { display: block; margin-top: 1px; font-size: 12px; font-weight: 600; color: var(--ink-faint); }
+.home-v2 .dash-pickup-fields {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 10px 2px 2px;
+}
+/* Date gets its own full row; start/end times share the next one. */
+.home-v2 .dash-pickup-fields > div { min-width: 0; width: auto !important; }
+.home-v2 .dash-pickup-fields > div:first-child { grid-column: 1 / -1; }
+.home-v2 .dash-pickup-error { margin: 10px 2px 0; font-size: 13px; font-weight: 800; color: var(--brick); }
+.home-v2 .dash-where-title {
+  margin: 0 0 8px; font-family: var(--serif); font-size: 15px; font-weight: 600; color: var(--ink-soft);
+}
+
 /* Pickup details / seller reminder sit full card width on phones, lined up under
    the title on wider screens (46px cover + 12px gap). Buttons row likewise. */
 .home-v2 .dash-pickup-wrap { padding-left: 58px; margin-top: 10px; }
