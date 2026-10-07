@@ -100,9 +100,7 @@
   font-variant-numeric: tabular-nums; margin-right: -12px;
 }
 /* A mustard coin, so the number reads as currency. */
-.hnav-coin { width: 18px; height: 18px; flex: none; }
-.hnav-coin circle:first-child { fill: var(--mustard, #E4B04A); stroke: #B9862A; stroke-width: 1.6; }
-.hnav-coin circle:last-child { fill: none; stroke: #B9862A; stroke-width: 1.4; opacity: .75; }
+.hnav-coin { width: 18px; height: 18px; flex: none; display: block; }
 /* Credit coin show (components/CreditCoinShow.tsx). Rendered outside the
    header (its backdrop-filter would contain position:fixed). */
 .hnav-credits.is-pop { animation: hnav-pop .3s ease-out; }
@@ -116,12 +114,14 @@
   margin: calc(var(--ccs-size) / -2) 0 0 calc(var(--ccs-size) / -2);
   will-change: transform, opacity;
 }
-.ccs-coin svg { display: block; width: 100%; height: 100%; filter: drop-shadow(0 10px 18px rgba(43, 38, 34, .28)); }
-.ccs-coin svg circle:first-child { fill: #E4B04A; stroke: #B9862A; stroke-width: 1.6; }
-.ccs-coin svg circle:last-child { fill: none; stroke: #B9862A; stroke-width: 1.4; opacity: .75; }
+.ccs-coin img {
+  display: block; width: 100%; height: 100%; user-select: none; pointer-events: none;
+  filter: drop-shadow(0 10px 18px rgba(43, 38, 34, .28));
+}
 .ccs-coin-label {
   position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
-  font: 800 clamp(30px, 11vw, 52px) 'Nunito', system-ui, sans-serif; color: #6B4A12;
+  font: 800 clamp(30px, 11vw, 52px) 'Nunito', system-ui, sans-serif; color: #4A3006;
+  text-shadow: 0 0 10px #FFF4D6, 0 0 3px #FFF4D6; /* readable over the coin's relief */
 }
 .ccs-still { animation: ccs-fade-inout 3s ease both; }
 .ccs-speck {

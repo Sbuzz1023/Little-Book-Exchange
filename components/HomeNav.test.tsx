@@ -71,6 +71,13 @@ describe('HomeNav credit balance', () => {
     expect(pill.nextElementSibling).toHaveClass('hnav-avatar-menu')
   })
 
+  it('uses the gold coin image in the pill', () => {
+    render(<HomeNav userName="SeanB" credits={12} />)
+    const coin = screen.getByRole('link', { name: '12 credits' }).querySelector('img.hnav-coin')
+    expect(coin).toHaveAttribute('src', '/home/credit-coin-small.png')
+    expect(coin).toHaveAttribute('alt', '')
+  })
+
   it('says "1 credit" for a single credit', () => {
     render(<HomeNav userName="SeanB" credits={1} />)
     expect(screen.getByRole('link', { name: '1 credit' })).toBeInTheDocument()

@@ -140,10 +140,7 @@ export default function HomeNav({
                 aria-label={`${pillBalance} ${pillBalance === 1 ? 'credit' : 'credits'}`}
                 title="Your credits"
               >
-                <svg className="hnav-coin" viewBox="0 0 24 24" aria-hidden="true">
-                  <circle cx="12" cy="12" r="10" />
-                  <circle cx="12" cy="12" r="6.2" />
-                </svg>
+                <img className="hnav-coin" src="/home/credit-coin-small.png" alt="" width={18} height={18} />
                 {pillBalance}
               </Link>
             )}

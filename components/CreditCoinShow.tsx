@@ -21,7 +21,8 @@ const DUST_MS = 1600
 // The pill's coin is 18px; shrink the (200px, or 50vw on phones) show coin to it.
 const PILL_COIN_PX = 18
 const ARC_LIFT_PX = 140
-const COIN_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6.2"/></svg>'
+const COIN_SRC = '/home/credit-coin.webp'
+const COIN_IMG = `<img src="${COIN_SRC}" alt="" draggable="false">`
 
 const wait = (ms: number) => new Promise<void>(r => setTimeout(r, ms))
 
@@ -53,7 +54,7 @@ function popPill() {
 function makeCoin(layer: HTMLElement, coin: ShowCoin): HTMLElement {
   const el = document.createElement('div')
   el.className = 'ccs-coin'
-  el.innerHTML = COIN_SVG
+  el.innerHTML = COIN_IMG
   if (coin.label) {
     const label = document.createElement('span')
     label.className = 'ccs-coin-label'
@@ -199,7 +200,9 @@ export default function CreditCoinShow({ plan, onBalance, onDone, persist }: {
     <div className="ccs" onClick={() => skipRef.current()} role="presentation">
       <div className="ccs-backdrop" />
       <div ref={layerRef} className="ccs-layer" aria-hidden="true" />
-      {still && <div className="ccs-coin ccs-still" aria-hidden="true" dangerouslySetInnerHTML={{ __html: COIN_SVG }} />}
+      {/* Starts loading the coin with the page, before the first coin is made. */}
+      <img src={COIN_SRC} alt="" hidden />
+      {still && <div className="ccs-coin ccs-still" aria-hidden="true" dangerouslySetInnerHTML={{ __html: COIN_IMG }} />}
       {burst && <p className={`ccs-caption ccs-${burst.kind}`} aria-hidden="true">{burst.caption}</p>}
       <p className="sr-only" aria-live="polite">{burst?.srText ?? ''}</p>
     </div>

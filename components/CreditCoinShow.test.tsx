@@ -51,6 +51,12 @@ describe('CreditCoinShow', () => {
     expect(onDone).toHaveBeenCalledTimes(1)
   })
 
+  it('the still (reduced-motion) coin is the gold coin image', async () => {
+    const { container } = render(<CreditCoinShow plan={planCreditShow([sale], 4)!} onBalance={vi.fn()} onDone={vi.fn()} persist />)
+    await act(async () => { await vi.advanceTimersByTimeAsync(50) })
+    expect(container.querySelector('.ccs-still img')).toHaveAttribute('src', '/home/credit-coin.webp')
+  })
+
   it('announces each burst in a polite live region', async () => {
     render(<CreditCoinShow plan={planCreditShow([sale], 4)!} onBalance={vi.fn()} onDone={vi.fn()} persist />)
     await act(async () => { await vi.advanceTimersByTimeAsync(50) })
