@@ -3,7 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
-import { MOCK_CONVERSATIONS, MOCK_USER_ID } from '@/lib/mock-data'
+import { MOCK_CONVERSATIONS, MOCK_LISTINGS, MOCK_USER_ID } from '@/lib/mock-data'
 import { buildConfirmationMessage } from '@/lib/buildConfirmationMessage'
 import { formatPickupAvailability } from '@/lib/formatPickupAvailability'
 import { isValidStateCode } from '@/lib/usStates'
@@ -87,8 +87,16 @@ export async function markPickedUp(formData: FormData) {
   // buyer. coin_demo_at makes each press a new show (see HomeNav).
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL?.startsWith('http')) {
     const id = formData.get('conversation_id') as string
-    const isSeller = MOCK_CONVERSATIONS.some(c => c.id === id && c.seller_id === MOCK_USER_ID)
-    redirect(`/profile?tab=exchanges&coin_demo=${isSeller ? 'earn' : 'spend'}&coin_demo_at=${Date.now()}`)
+    const convo = MOCK_CONVERSATIONS.find(c => c.id === id)
+    const listingId = convo?.listing_id ?? id.replace(/^demo-pending-/, '')
+    const params = new URLSearchParams({
+      tab: 'exchanges',
+      coin_demo: convo?.seller_id === MOCK_USER_ID ? 'earn' : 'spend',
+      coin_demo_at: String(Date.now()),
+    })
+    const title = MOCK_LISTINGS.find(l => l.id === listingId)?.title
+    if (title) params.set('coin_demo_title', title)
+    redirect(`/profile?${params}`)
   }
 
   const supabase = createClient()

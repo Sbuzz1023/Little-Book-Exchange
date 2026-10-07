@@ -193,6 +193,12 @@ describe('HomeNav coin show — demo previews', () => {
     expect(screen.getByRole('link', { name: '4 credits' })).toBeInTheDocument()
   })
 
+  it("captions the demo pickup with the book's title", () => {
+    search = 'coin_demo=spend&coin_demo_at=1700000004000&coin_demo_title=Atomic+Habits'
+    render(<HomeNav userName="SeanB" credits={3} />)
+    expect(screen.getByText('−1 credit · you got Atomic Habits')).toBeInTheDocument()
+  })
+
   it('a second demo pickup (new coin_demo_at) plays again', () => {
     search = 'coin_demo=spend&coin_demo_at=1700000001000'
     const { container, rerender } = render(<HomeNav userName="SeanB" credits={3} />)

@@ -81,13 +81,14 @@ describe('markPickedUp — demo mode', () => {
 
   it("plays the spend coin when the demo user is the buyer, without touching Supabase", async () => {
     await expect(markPickedUp(demoForm('mock-convo-3'))).rejects.toThrow(
-      'REDIRECT:/profile?tab=exchanges&coin_demo=spend&coin_demo_at=1700000000000')
+      'REDIRECT:/profile?tab=exchanges&coin_demo=spend&coin_demo_at=1700000000000&coin_demo_title=Atomic+Habits')
     expect(createClientMock).not.toHaveBeenCalled()
   })
 
   it('plays the earn coin when the demo user is the seller', async () => {
     await expect(markPickedUp(demoForm('mock-convo-1'))).rejects.toThrow(
       'REDIRECT:/profile?tab=exchanges&coin_demo=earn&coin_demo_at=1700000000000')
+    expect(redirectMock.mock.calls[0][0]).toContain('coin_demo_title=')
   })
 
   it('treats an unknown demo conversation (e.g. a demo purchase request) as the buyer', async () => {

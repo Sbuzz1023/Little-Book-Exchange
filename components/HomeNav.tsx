@@ -64,9 +64,10 @@ export default function HomeNav({
   const searchParams = useSearchParams()
   const coinDemo = searchParams?.get('coin_demo') ?? null
   const coinDemoAt = Number(searchParams?.get('coin_demo_at')) || undefined
+  const coinDemoTitle = searchParams?.get('coin_demo_title') ?? undefined
   const demoCredits = useMemo(
-    () => (process.env.NEXT_PUBLIC_SUPABASE_URL?.startsWith('http') ? [] : demoUnseenCredits(coinDemo, coinDemoAt)),
-    [coinDemo, coinDemoAt],
+    () => (process.env.NEXT_PUBLIC_SUPABASE_URL?.startsWith('http') ? [] : demoUnseenCredits(coinDemo, coinDemoAt, coinDemoTitle)),
+    [coinDemo, coinDemoAt, coinDemoTitle],
   )
   const isDemo = demoCredits.length > 0
   const rows = isDemo ? demoCredits : unseenCredits

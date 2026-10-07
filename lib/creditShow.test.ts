@@ -143,4 +143,10 @@ describe('demoUnseenCredits', () => {
     expect(a[0].created_at).not.toBe(b[0].created_at)
     expect(demoUnseenCredits('spend')[0].created_at).toBe(demoUnseenCredits('spend')[0].created_at)
   })
+
+  it("uses the picked-up book's title when one is given", () => {
+    expect(demoUnseenCredits('spend', undefined, 'Atomic Habits')[0].title).toBe('Atomic Habits')
+    expect(demoUnseenCredits('earn', undefined, 'Atomic Habits')[0].title).toBe('Atomic Habits')
+    expect(demoUnseenCredits('spend')[0].title).toBe('Matilda')
+  })
 })
