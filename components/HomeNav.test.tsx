@@ -106,7 +106,14 @@ describe('HomeNav credit coin show', () => {
     })) as unknown as typeof window.matchMedia
   })
 
-  const sale: UnseenCredit = { id: 's', amount: 1, reason: 'sale_earned', created_at: '2026-10-06T10:00:00Z', title: 'Dune' }
+  // Started shows are remembered (per seenUpTo) for the whole page session,
+  // so every test gets its own timestamp.
+  let tick = 0
+  let sale: UnseenCredit
+  beforeEach(() => {
+    tick++
+    sale = { id: 's', amount: 1, reason: 'sale_earned', created_at: `2026-10-06T10:00:${String(tick).padStart(2, '0')}Z`, title: 'Dune' }
+  })
 
   it('shows the starting balance on first render while a show is pending', () => {
     render(<HomeNav userName="SeanB" credits={4} unseenCredits={[sale]} />)
@@ -146,5 +153,21 @@ describe('HomeNav credit coin show', () => {
     expect(container.ownerDocument.querySelector('.ccs')).toBeNull()
     rerender(<HomeNav userName="SeanB" credits={4} unseenCredits={[{ ...sale }]} />)
     expect(container.ownerDocument.querySelector('.ccs')).toBeNull()
+  })
+
+  it('does not replay after the nav is swapped out and back (a classic-nav page in between)', () => {
+    const first = render(<HomeNav userName="SeanB" credits={4} unseenCredits={[sale]} />)
+    fireEvent.click(first.container.ownerDocument.querySelector('.ccs')!)
+    first.unmount()
+    const again = render(<HomeNav userName="SeanB" credits={4} unseenCredits={[sale]} />)
+    expect(again.container.ownerDocument.querySelector('.ccs')).toBeNull()
+    expect(screen.getByRole('link', { name: '4 credits' })).toBeInTheDocument()
+  })
+
+  it('does not replay a show that was left mid-way (it was already marked seen when it started)', () => {
+    const first = render(<HomeNav userName="SeanB" credits={4} unseenCredits={[sale]} />)
+    first.unmount()
+    const again = render(<HomeNav userName="SeanB" credits={4} unseenCredits={[sale]} />)
+    expect(again.container.ownerDocument.querySelector('.ccs')).toBeNull()
   })
 })

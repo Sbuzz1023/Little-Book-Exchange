@@ -30,6 +30,12 @@ const TAB_ICONS = {
   signin: <><path d="M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4" /><path d="M10 16l4-4-4-4M14 12H4" /></>,
 }
 
+// Shows that have started this page session, by plan.seenUpTo. Module-level
+// because HomeNav unmounts on classic-nav pages (admin, seller reviews) while
+// the root layout — and so unseenCredits — isn't re-rendered on client-side
+// navigation; without this, coming back would replay the show.
+const startedCreditShows = new Set<string>()
+
 export default function HomeNav({
   userName,
   isAdmin,
@@ -68,8 +74,15 @@ export default function HomeNav({
     [signedIn, credits, rows],
   )
   const [doneKey, setDoneKey] = useState<string | null>(null)
+  const [activeKey, setActiveKey] = useState<string | null>(null)
   const [shownBalance, setShownBalance] = useState<number | null>(null)
   const showing = !!plan && doneKey !== plan.seenUpTo
+    && (activeKey === plan.seenUpTo || !startedCreditShows.has(plan.seenUpTo))
+  useEffect(() => {
+    if (!showing || activeKey === plan!.seenUpTo) return
+    startedCreditShows.add(plan!.seenUpTo)
+    setActiveKey(plan!.seenUpTo)
+  }, [showing, activeKey, plan])
   const pillBalance = showing ? (shownBalance ?? plan!.startBalance) : credits
   const badge = unreadCount > 0 && <span className="hnav-badge">{unreadCount > 99 ? '99+' : unreadCount}</span>
 
