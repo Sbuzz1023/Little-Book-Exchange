@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import { revalidatePath } from 'next/cache'
 import { buildConfirmationMessage } from '@/lib/buildConfirmationMessage'
 import { formatPickupAvailability } from '@/lib/formatPickupAvailability'
 import { isValidStateCode } from '@/lib/usStates'
@@ -113,6 +114,11 @@ export async function markPickedUp(formData: FormData) {
       p_conversation_id: conversationId,
       p_actor_id: user.id,
     })
+
+    // Completing moves credits; the root layout reads them (and the unseen
+    // ones the nav's coin show plays), and a redirect alone doesn't
+    // re-render that layout.
+    if (typeof result === 'string' && result.startsWith('completed_')) revalidatePath('/', 'layout')
 
     if (result === 'waiting') {
       const { data: profile } = await supabase.from('profiles').select('username').eq('id', user.id).single()
