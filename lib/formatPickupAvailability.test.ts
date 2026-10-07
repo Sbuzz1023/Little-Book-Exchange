@@ -68,3 +68,28 @@ describe('sellerPickupReminder', () => {
     expect(sellerPickupReminder({ mode: 'after', date: '2026-10-01', timeStart: 'soon' })).toBe('Make sure your book is ready for pickup.')
   })
 })
+
+// Supabase returns Postgres `time` columns (confirmed_pickup_time_*) as
+// 'HH:MM:SS'; the popup's <input type="time"> sends 'HH:MM'. Both must work,
+// or the buyer's card silently loses its "When" line.
+describe('times as stored in the database (HH:MM:SS)', () => {
+  it('formats a time window read back from the database', () => {
+    expect(formatPickupAvailability({ mode: 'window', date: '2026-10-10', timeStart: '15:00:00', timeEnd: '17:30:00' }))
+      .toBe('Sat, Oct 10 · 3:00 PM–5:30 PM')
+  })
+
+  it('formats an "after" time read back from the database', () => {
+    expect(formatPickupAvailability({ mode: 'after', date: '2026-10-10', timeStart: '09:15:00' }))
+      .toBe('Sat, Oct 10 · after 9:15 AM')
+  })
+
+  it("gives the seller the time-specific reminder from the database's format", () => {
+    expect(sellerPickupReminder({ mode: 'window', date: '2026-10-10', timeStart: '15:00:00', timeEnd: '17:00:00' }))
+      .toBe('Make sure your book is ready by Sat, Oct 10 at 3:00 PM.')
+  })
+
+  it('still rejects malformed times', () => {
+    expect(formatPickupAvailability({ mode: 'after', date: '2026-10-10', timeStart: '15:00:0' })).toBeNull()
+    expect(formatPickupAvailability({ mode: 'after', date: '2026-10-10', timeStart: '25:00:00' })).toBeNull()
+  })
+})

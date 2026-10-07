@@ -18,9 +18,11 @@ function formatDate(dateStr: string): string | null {
 }
 
 // Pure string/number math — no Date object involved, so there's no wall-clock
-// vs. UTC ambiguity to get wrong for a plain time-of-day value.
+// vs. UTC ambiguity to get wrong for a plain time-of-day value. Accepts the
+// popup's 'HH:MM' and the 'HH:MM:SS' Supabase returns for Postgres `time`
+// columns (seconds ignored).
 function formatTime(timeStr: string): string | null {
-  const match = /^(\d{1,2}):(\d{2})$/.exec(timeStr)
+  const match = /^(\d{1,2}):(\d{2})(?::\d{2}(?:\.\d+)?)?$/.exec(timeStr)
   if (!match) return null
   const hour24 = Number(match[1])
   const minute = match[2]
