@@ -1967,7 +1967,7 @@ grant execute on function admin_list_users(uuid[]) to authenticated;
 create or replace function lbe_photo_ok(p_url text)
 returns boolean as $$
   select p_url is null
-      or position('/storage/v1/object/public/book-photos/' || auth.uid()::text || '/' in p_url) > 0;
+      or p_url ~ ('^https://[^/?#]+/storage/v1/object/public/book-photos/' || auth.uid()::text || '/[^/?#]+$');
 $$ language sql stable set search_path = public, pg_temp;
 
 -- Same pattern as COVER_URL_PATTERN in lib/openLibrary.ts.
@@ -1994,6 +1994,7 @@ $$ language sql immutable;
 
 create or replace function lbe_check_listing(p_listing jsonb, p_books jsonb)
 returns text as $$
+declare v_price text;
 begin
   if btrim(coalesce(p_listing->>'title', '')) = '' or btrim(coalesce(p_listing->>'author', '')) = '' then
     return 'invalid_listing';
@@ -2010,6 +2011,11 @@ begin
           and lbe_photo_ok(nullif(p_listing->>'photo_url_3', ''))) then
     return 'invalid_photo';
   end if;
+  -- Validate price format: must be null/empty or match pattern for valid numeric(8,2)
+  v_price := nullif(p_listing->>'price', '');
+  if v_price is not null and not (v_price ~ '^\d{1,6}(\.\d{1,2})?$') then
+    return 'invalid_listing';
+  end if;
   return 'ok';
 end;
 $$ language plpgsql stable set search_path = public, pg_temp;
@@ -2017,11 +2023,19 @@ $$ language plpgsql stable set search_path = public, pg_temp;
 create or replace function create_listing(p_listing jsonb, p_books jsonb default '[]'::jsonb)
 returns jsonb as $$
 declare
-  v_books jsonb := case when (p_listing->>'is_bundle')::boolean is true then lbe_clean_books(p_books) else '[]'::jsonb end;
+  v_books jsonb;
   v_check text;
   v_id uuid;
 begin
   if auth.uid() is null then return jsonb_build_object('status', 'not_allowed'); end if;
+  -- Guard against malformed input: p_listing must be object, p_books must be array (or null)
+  if jsonb_typeof(p_listing) is distinct from 'object' then
+    return jsonb_build_object('status', 'invalid_listing');
+  end if;
+  if p_books is not null and jsonb_typeof(p_books) <> 'array' then
+    return jsonb_build_object('status', 'invalid_listing');
+  end if;
+  v_books := case when coalesce(p_listing->>'is_bundle', '') = 'true' then lbe_clean_books(p_books) else '[]'::jsonb end;
   v_check := lbe_check_listing(p_listing, v_books);
   if v_check <> 'ok' then return jsonb_build_object('status', v_check); end if;
 
@@ -2055,13 +2069,21 @@ create or replace function update_listing(p_listing_id uuid, p_listing jsonb, p_
 returns text as $$
 declare
   v_existing listings%rowtype;
-  v_books jsonb := case when (p_listing->>'is_bundle')::boolean is true then lbe_clean_books(p_books) else '[]'::jsonb end;
+  v_books jsonb;
   v_check text;
 begin
   select * into v_existing from listings where id = p_listing_id for update;
   if not found or v_existing.user_id is distinct from auth.uid() then return 'not_allowed'; end if;
   -- A buyer already requested it at its current book count (= price).
   if v_existing.status = 'pending' then return 'pending_request'; end if;
+  -- Guard against malformed input: p_listing must be object, p_books must be array (or null)
+  if jsonb_typeof(p_listing) is distinct from 'object' then
+    return 'invalid_listing';
+  end if;
+  if p_books is not null and jsonb_typeof(p_books) <> 'array' then
+    return 'invalid_listing';
+  end if;
+  v_books := case when coalesce(p_listing->>'is_bundle', '') = 'true' then lbe_clean_books(p_books) else '[]'::jsonb end;
   v_check := lbe_check_listing(p_listing, v_books);
   if v_check <> 'ok' then return v_check; end if;
 

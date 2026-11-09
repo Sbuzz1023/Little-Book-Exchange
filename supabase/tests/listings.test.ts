@@ -55,6 +55,44 @@ describe('create_listing', () => {
   it('refuses a signed-out caller', async () => {
     expect(await call<Created>(db, null, 'create_listing($1::jsonb)', [JSON.stringify(base)])).toEqual({ status: 'not_allowed' })
   })
+
+  it('rejects a crafted URL that looks like it contains the user folder but is not', async () => {
+    const seller = await createUser(db)
+    // Vulnerable: https://evil.example/x?/storage/v1/object/public/book-photos/<seller>/
+    const evilUrl = `https://evil.example/x?/storage/v1/object/public/book-photos/${seller}/`
+    expect(await call<Created>(db, seller, 'create_listing($1::jsonb)', [JSON.stringify({ ...base, photo_url: evilUrl })])).toEqual({ status: 'invalid_photo' })
+  })
+
+  it('accepts a legitimate photo URL in own folder', async () => {
+    const seller = await createUser(db)
+    const legit = `https://proj.supabase.co/storage/v1/object/public/book-photos/${seller}/photo.jpg`
+    const r = await call<Created>(db, seller, 'create_listing($1::jsonb)', [JSON.stringify({ ...base, photo_url: legit })])
+    expect(r.status).toBe('ok')
+  })
+
+  it('rejects invalid price formats', async () => {
+    const seller = await createUser(db)
+    expect(await call<Created>(db, seller, 'create_listing($1::jsonb)', [JSON.stringify({ ...base, price: 'abc' })])).toEqual({ status: 'invalid_listing' })
+    expect(await call<Created>(db, seller, 'create_listing($1::jsonb)', [JSON.stringify({ ...base, price: '99999999' })])).toEqual({ status: 'invalid_listing' })
+  })
+
+  it('does not raise on is_bundle "yes", treats as not a bundle', async () => {
+    const seller = await createUser(db)
+    const r = await call<Created>(db, seller, 'create_listing($1::jsonb)', [JSON.stringify({ ...base, is_bundle: 'yes' })])
+    expect(r.status).toBe('ok')
+    expect((await row(r.id!)).is_bundle).toBe(false)
+  })
+
+  it('rejects p_books as object instead of array', async () => {
+    const seller = await createUser(db)
+    expect(await call<Created>(db, seller, 'create_listing($1::jsonb, $2::jsonb)',
+      [JSON.stringify({ ...base, is_bundle: true }), JSON.stringify({})])).toEqual({ status: 'invalid_listing' })
+  })
+
+  it('rejects non-object p_listing', async () => {
+    const seller = await createUser(db)
+    expect(await call<Created>(db, seller, 'create_listing($1::jsonb)', [JSON.stringify('not an object')])).toEqual({ status: 'invalid_listing' })
+  })
 })
 
 describe('update_listing', () => {
@@ -80,6 +118,12 @@ describe('update_listing', () => {
     const books = [{ title: 'Only one', author: 'A', ol_work_key: '/works/OL5W' }]
     expect(await call(db, seller, 'update_listing($1, $2::jsonb, $3::jsonb)', [listing, JSON.stringify({ ...base, is_bundle: true }), JSON.stringify(books)])).toBe('ok')
     expect((await row(listing)).book_count).toBe(2)
+  })
+
+  it('rejects invalid price in update', async () => {
+    const seller = await createUser(db)
+    const listing = await seedListing(db, seller)
+    expect(await call(db, seller, 'update_listing($1, $2::jsonb)', [listing, JSON.stringify({ ...base, price: 'abc' })])).toBe('invalid_listing')
   })
 })
 
