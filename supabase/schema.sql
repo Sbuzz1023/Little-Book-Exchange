@@ -2246,9 +2246,10 @@ create or replace function format_pickup_availability(p_mode text, p_date date, 
 returns text as $$
   select case
     when p_mode = 'anytime' then '✅ Ready for pickup now'
-    when p_mode = 'after' and p_date is not null and p_start is not null
+    when p_mode = 'after' and p_date is not null and p_start is not null and p_start < '24:00'::time
       then to_char(p_date, 'Dy, Mon FMDD') || ' · after ' || to_char(p_start, 'FMHH12:MI AM')
     when p_mode = 'window' and p_date is not null and p_start is not null and p_end is not null
+      and p_start < '24:00'::time and p_end < '24:00'::time
       then to_char(p_date, 'Dy, Mon FMDD') || ' · ' || to_char(p_start, 'FMHH12:MI AM')
            || '–' || to_char(p_end, 'FMHH12:MI AM')
   end;
@@ -2272,15 +2273,35 @@ declare
   v_username text;
   v_lines text[];
   v_avail text;
+  v_date_str text;
+  v_start_str text;
+  v_end_str text;
 begin
   select * into v_conv from conversations where id = p_conversation_id for update;
   if not found or v_conv.seller_id is distinct from auth.uid() then return 'not_allowed'; end if;
   if v_conv.exchange_status <> 'requested' then return 'wrong_status'; end if;
 
+  if jsonb_typeof(p_pickup) is distinct from 'object' then return 'invalid_pickup'; end if;
+  if v_mode is null or v_mode not in ('window', 'after', 'anytime') then return 'invalid_pickup'; end if;
+
+  v_date_str := nullif(p_pickup->>'pickup_date', '');
+  v_start_str := nullif(p_pickup->>'pickup_time_start', '');
+  v_end_str := nullif(p_pickup->>'pickup_time_end', '');
+
+  if v_date_str is not null and v_date_str !~ '^\d{4}-\d{2}-\d{2}$' then
+    return 'invalid_pickup';
+  end if;
+  if v_start_str is not null and v_start_str !~ '^([01]?\d|2[0-3]):[0-5]\d(:[0-5]\d)?$' then
+    return 'invalid_pickup';
+  end if;
+  if v_end_str is not null and v_end_str !~ '^([01]?\d|2[0-3]):[0-5]\d(:[0-5]\d)?$' then
+    return 'invalid_pickup';
+  end if;
+
   begin
-    v_date  := nullif(p_pickup->>'pickup_date', '')::date;
-    v_start := nullif(p_pickup->>'pickup_time_start', '')::time;
-    v_end   := nullif(p_pickup->>'pickup_time_end', '')::time;
+    v_date  := v_date_str::date;
+    v_start := v_start_str::time;
+    v_end   := v_end_str::time;
   exception when others then
     return 'invalid_pickup';
   end;

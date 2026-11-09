@@ -24,6 +24,7 @@ describe('format_pickup_availability', () => {
     ['after', '2026-01-04', '00:30', null],
     ['window', '2026-11-12', '12:00', '13:15'],
     ['window', '2026-11-12', '09:00', null],
+    ['window', '2026-11-12', '15:00', '24:00'],
   ]
   it.each(cases)('matches the website formatter for %s %s %s %s', async (mode, date, start, end) => {
     const { rows } = await db.query<{ r: string | null }>('select format_pickup_availability($1, $2::date, $3::time, $4::time) as r', [mode, date, start, end])
@@ -61,6 +62,17 @@ describe('confirm_exchange', () => {
     expect(await call(db, seller, 'confirm_exchange($1, $2::jsonb)', [convo, JSON.stringify({ ...window, pickup_time_end: '' })])).toBe('invalid_pickup')
     expect(await call(db, seller, 'confirm_exchange($1, $2::jsonb)', [convo, JSON.stringify({ ...window, pickup_date: 'soon' })])).toBe('invalid_pickup')
     expect(await call(db, seller, 'confirm_exchange($1, $2::jsonb)', [convo, JSON.stringify({ pickup_mode: 'whenever' })])).toBe('invalid_pickup')
+    expect((await convoRow(convo)).exchange_status).toBe('requested')
+  })
+
+  it('rejects non-object JSON, null mode, and invalid time/date formats', async () => {
+    const { seller, convo } = await requested()
+    expect(await call(db, seller, 'confirm_exchange($1, $2::jsonb)', [convo, JSON.stringify({})])).toBe('invalid_pickup')
+    expect(await convoRow(convo)).toMatchObject({ exchange_status: 'requested' })
+    expect(await call(db, seller, 'confirm_exchange($1, $2::jsonb)', [convo, '[1,2]'])).toBe('invalid_pickup')
+    expect(await call(db, seller, 'confirm_exchange($1, $2::jsonb)', [convo, JSON.stringify({ ...window, pickup_mode: null })])).toBe('invalid_pickup')
+    expect(await call(db, seller, 'confirm_exchange($1, $2::jsonb)', [convo, JSON.stringify({ ...window, pickup_time_end: '24:00' })])).toBe('invalid_pickup')
+    expect(await call(db, seller, 'confirm_exchange($1, $2::jsonb)', [convo, JSON.stringify({ ...window, pickup_date: 'infinity' })])).toBe('invalid_pickup')
     expect((await convoRow(convo)).exchange_status).toBe('requested')
   })
 
