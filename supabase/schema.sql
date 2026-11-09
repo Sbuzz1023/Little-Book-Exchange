@@ -1955,3 +1955,163 @@ end;
 $$ language plpgsql stable security definer set search_path = public, pg_temp;
 grant execute on function admin_list_users(uuid[]) to authenticated;
 -- ──────────────────────────────────────────────────────────────────────────────
+
+-- ── Migration: shared backend 2/6 — listing functions ────────────────────────
+-- Run this block in Supabase SQL Editor:
+-- Posting, editing, pausing and deleting go through these functions so the
+-- website and the iPhone app follow the same rules. Mirrors lib/parseListingForm
+-- (500-char description, max 20 bundle books, Open Library cover URLs only,
+-- every book must have an Open Library match).
+
+-- A photo must be in the caller's own folder of the book-photos bucket.
+create or replace function lbe_photo_ok(p_url text)
+returns boolean as $$
+  select p_url is null
+      or position('/storage/v1/object/public/book-photos/' || auth.uid()::text || '/' in p_url) > 0;
+$$ language sql stable set search_path = public, pg_temp;
+
+-- Same pattern as COVER_URL_PATTERN in lib/openLibrary.ts.
+create or replace function lbe_cover_or_null(p_url text)
+returns text as $$
+  select case when p_url ~ '^https://covers\.openlibrary\.org/b/id/\d+-[SML]\.jpg$' then p_url end;
+$$ language sql immutable;
+
+-- Trims bundle rows, drops blank ones, caps at 20, keeps order.
+create or replace function lbe_clean_books(p_books jsonb)
+returns jsonb as $$
+  select coalesce(jsonb_agg(b order by ord), '[]'::jsonb) from (
+    select jsonb_build_object(
+             'title', btrim(coalesce(e->>'title', '')),
+             'author', btrim(coalesce(e->>'author', '')),
+             'ol_work_key', nullif(e->>'ol_work_key', ''),
+             'cover_url', lbe_cover_or_null(e->>'cover_url')) as b, ord
+    from jsonb_array_elements(coalesce(p_books, '[]'::jsonb)) with ordinality as t(e, ord)
+    where btrim(coalesce(e->>'title', '')) <> '' or btrim(coalesce(e->>'author', '')) <> ''
+    order by ord
+    limit 20
+  ) s;
+$$ language sql immutable;
+
+create or replace function lbe_check_listing(p_listing jsonb, p_books jsonb)
+returns text as $$
+begin
+  if btrim(coalesce(p_listing->>'title', '')) = '' or btrim(coalesce(p_listing->>'author', '')) = '' then
+    return 'invalid_listing';
+  end if;
+  if coalesce(p_listing->>'condition', '') not in ('Good', 'Fair', 'Well-Loved', 'good', 'fair', 'well-loved') then
+    return 'invalid_listing';
+  end if;
+  if nullif(p_listing->>'ol_work_key', '') is null
+     or exists (select 1 from jsonb_array_elements(p_books) b where nullif(b->>'ol_work_key', '') is null) then
+    return 'needs_match';
+  end if;
+  if not (lbe_photo_ok(nullif(p_listing->>'photo_url', ''))
+          and lbe_photo_ok(nullif(p_listing->>'photo_url_2', ''))
+          and lbe_photo_ok(nullif(p_listing->>'photo_url_3', ''))) then
+    return 'invalid_photo';
+  end if;
+  return 'ok';
+end;
+$$ language plpgsql stable set search_path = public, pg_temp;
+
+create or replace function create_listing(p_listing jsonb, p_books jsonb default '[]'::jsonb)
+returns jsonb as $$
+declare
+  v_books jsonb := case when (p_listing->>'is_bundle')::boolean is true then lbe_clean_books(p_books) else '[]'::jsonb end;
+  v_check text;
+  v_id uuid;
+begin
+  if auth.uid() is null then return jsonb_build_object('status', 'not_allowed'); end if;
+  v_check := lbe_check_listing(p_listing, v_books);
+  if v_check <> 'ok' then return jsonb_build_object('status', v_check); end if;
+
+  insert into listings (user_id, title, author, condition, price, description, genre, format,
+                        pickup_description, ol_work_key, cover_url, isbn,
+                        photo_url, photo_url_2, photo_url_3, city, is_bundle, bundle_name)
+  values (
+    auth.uid(),
+    p_listing->>'title', p_listing->>'author', p_listing->>'condition',
+    nullif(p_listing->>'price', '')::numeric,
+    nullif(left(coalesce(p_listing->>'description', ''), 500), ''),
+    nullif(p_listing->>'genre', ''), nullif(p_listing->>'format', ''),
+    nullif(p_listing->>'pickup_description', ''),
+    p_listing->>'ol_work_key', lbe_cover_or_null(p_listing->>'cover_url'), nullif(p_listing->>'isbn', ''),
+    nullif(p_listing->>'photo_url', ''), nullif(p_listing->>'photo_url_2', ''), nullif(p_listing->>'photo_url_3', ''),
+    coalesce((select city from profiles where id = auth.uid()), ''),
+    jsonb_array_length(v_books) > 0,
+    case when jsonb_array_length(v_books) > 0 then nullif(btrim(coalesce(p_listing->>'bundle_name', '')), '') end
+  ) returning id into v_id;
+
+  insert into listing_books (listing_id, title, author, ol_work_key, cover_url, position)
+  select v_id, b->>'title', b->>'author', b->>'ol_work_key', b->>'cover_url', (ord - 1)::int
+  from jsonb_array_elements(v_books) with ordinality as t(b, ord);
+
+  return jsonb_build_object('status', 'ok', 'id', v_id);
+end;
+$$ language plpgsql security definer set search_path = public, pg_temp;
+grant execute on function create_listing(jsonb, jsonb) to authenticated;
+
+create or replace function update_listing(p_listing_id uuid, p_listing jsonb, p_books jsonb default '[]'::jsonb)
+returns text as $$
+declare
+  v_existing listings%rowtype;
+  v_books jsonb := case when (p_listing->>'is_bundle')::boolean is true then lbe_clean_books(p_books) else '[]'::jsonb end;
+  v_check text;
+begin
+  select * into v_existing from listings where id = p_listing_id for update;
+  if not found or v_existing.user_id is distinct from auth.uid() then return 'not_allowed'; end if;
+  -- A buyer already requested it at its current book count (= price).
+  if v_existing.status = 'pending' then return 'pending_request'; end if;
+  v_check := lbe_check_listing(p_listing, v_books);
+  if v_check <> 'ok' then return v_check; end if;
+
+  update listings set
+    title = p_listing->>'title', author = p_listing->>'author', condition = p_listing->>'condition',
+    price = nullif(p_listing->>'price', '')::numeric,
+    description = nullif(left(coalesce(p_listing->>'description', ''), 500), ''),
+    genre = nullif(p_listing->>'genre', ''), format = nullif(p_listing->>'format', ''),
+    pickup_description = nullif(p_listing->>'pickup_description', ''),
+    ol_work_key = p_listing->>'ol_work_key', cover_url = lbe_cover_or_null(p_listing->>'cover_url'),
+    isbn = nullif(p_listing->>'isbn', ''),
+    photo_url   = coalesce(nullif(p_listing->>'photo_url', ''),   v_existing.photo_url),
+    photo_url_2 = coalesce(nullif(p_listing->>'photo_url_2', ''), v_existing.photo_url_2),
+    photo_url_3 = coalesce(nullif(p_listing->>'photo_url_3', ''), v_existing.photo_url_3),
+    is_bundle = jsonb_array_length(v_books) > 0,
+    bundle_name = case when jsonb_array_length(v_books) > 0 then nullif(btrim(coalesce(p_listing->>'bundle_name', '')), '') end
+  where id = p_listing_id;
+
+  delete from listing_books where listing_id = p_listing_id;
+  insert into listing_books (listing_id, title, author, ol_work_key, cover_url, position)
+  select p_listing_id, b->>'title', b->>'author', b->>'ol_work_key', b->>'cover_url', (ord - 1)::int
+  from jsonb_array_elements(v_books) with ordinality as t(b, ord);
+  return 'ok';
+end;
+$$ language plpgsql security definer set search_path = public, pg_temp;
+grant execute on function update_listing(uuid, jsonb, jsonb) to authenticated;
+
+-- Only the two states the Dashboard offers; pending/sold belong to the exchange flow.
+create or replace function set_listing_status(p_listing_id uuid, p_status text)
+returns text as $$
+begin
+  if p_status not in ('active', 'paused') then return 'invalid_status'; end if;
+  update listings set status = p_status
+  where id = p_listing_id and user_id = auth.uid() and status in ('active', 'paused');
+  if not found then return 'not_allowed'; end if;
+  return 'ok';
+end;
+$$ language plpgsql security definer set search_path = public, pg_temp;
+grant execute on function set_listing_status(uuid, text) to authenticated;
+
+create or replace function delete_listing(p_listing_id uuid)
+returns text as $$
+declare v_status text;
+begin
+  select status into v_status from listings where id = p_listing_id and user_id = auth.uid() for update;
+  if not found then return 'not_allowed'; end if;
+  if v_status = 'pending' then return 'pending_request'; end if;
+  delete from listings where id = p_listing_id;
+  return 'ok';
+end;
+$$ language plpgsql security definer set search_path = public, pg_temp;
+grant execute on function delete_listing(uuid) to authenticated;
+-- ──────────────────────────────────────────────────────────────────────────────
