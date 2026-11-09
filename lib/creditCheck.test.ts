@@ -30,9 +30,8 @@ describe('availableCredits', () => {
     ])).toBe(2)
   })
 
-  it('ignores a stale "confirmed" exchange whose listing is no longer pending', () => {
-    // buzz's Dark Matter: confirmed, but the listing was already marked sold.
-    expect(availableCredits(2, [req('confirmed', 'sold')])).toBe(2)
+  it('counts a confirmed exchange even though confirming marked its listing sold (credits move at pickup)', () => {
+    expect(availableCredits(2, [req('confirmed', 'sold')])).toBe(1)
   })
 
   it('ignores rows whose listing is missing', () => {

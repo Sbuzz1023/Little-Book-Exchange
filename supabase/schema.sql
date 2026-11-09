@@ -2137,3 +2137,96 @@ end;
 $$ language plpgsql security definer set search_path = public, pg_temp;
 grant execute on function delete_listing(uuid) to authenticated;
 -- ──────────────────────────────────────────────────────────────────────────────
+
+-- ── Migration: shared backend 3/6 — messaging and requesting a book ──────────
+-- Run this block in Supabase SQL Editor:
+
+-- Credits are deducted only when an exchange completes, so every requested or
+-- confirmed exchange holds its book_count until then. (Earlier code only
+-- counted exchanges whose listing was still 'pending', but confirming marks
+-- the listing 'sold' — freeing the buyer's credits too early. Mirrored in
+-- lib/creditCheck.ts.)
+create or replace function lbe_held_credits(p_buyer uuid, p_exclude_listing uuid)
+returns integer as $$
+  select coalesce(sum(l.book_count), 0)::int
+  from conversations c join listings l on l.id = c.listing_id
+  where c.buyer_id = p_buyer and c.type = 'exchange'
+    and c.exchange_status in ('requested', 'confirmed')
+    and c.listing_id is distinct from p_exclude_listing;
+$$ language sql stable set search_path = public, pg_temp;
+
+create or replace function start_conversation(p_listing_id uuid)
+returns jsonb as $$
+declare
+  v_seller uuid;
+  v_id uuid;
+begin
+  if auth.uid() is null then return jsonb_build_object('status', 'not_allowed'); end if;
+  select user_id into v_seller from listings where id = p_listing_id;
+  if not found then return jsonb_build_object('status', 'not_found'); end if;
+  if v_seller = auth.uid() then return jsonb_build_object('status', 'own_listing'); end if;
+  select id into v_id from conversations where listing_id = p_listing_id and buyer_id = auth.uid();
+  if v_id is null then
+    insert into conversations (listing_id, buyer_id, seller_id) values (p_listing_id, auth.uid(), v_seller)
+    returning id into v_id;
+  end if;
+  return jsonb_build_object('status', 'ok', 'id', v_id);
+end;
+$$ language plpgsql security definer set search_path = public, pg_temp;
+grant execute on function start_conversation(uuid) to authenticated;
+
+-- Replaces lock_listing_for_request + the website's multi-step request: one
+-- transaction, so a failure can never leave a listing locked with no request.
+create or replace function request_book(p_listing_id uuid)
+returns jsonb as $$
+declare
+  v_listing listings%rowtype;
+  v_balance integer;
+  v_id uuid;
+begin
+  if auth.uid() is null then return jsonb_build_object('status', 'not_allowed'); end if;
+  select * into v_listing from listings where id = p_listing_id for update;
+  if not found then return jsonb_build_object('status', 'not_available'); end if;
+  if v_listing.user_id = auth.uid() then return jsonb_build_object('status', 'own_listing'); end if;
+  if v_listing.status <> 'active' then return jsonb_build_object('status', 'not_available'); end if;
+
+  select credits into v_balance from profiles where id = auth.uid() for update;
+  if coalesce(v_balance, 0) - lbe_held_credits(auth.uid(), p_listing_id) < v_listing.book_count then
+    return jsonb_build_object('status', 'insufficient_credits');
+  end if;
+
+  update listings set status = 'pending' where id = p_listing_id;
+
+  select id into v_id from conversations where listing_id = p_listing_id and buyer_id = auth.uid();
+  if v_id is null then
+    insert into conversations (listing_id, buyer_id, seller_id, exchange_status)
+    values (p_listing_id, auth.uid(), v_listing.user_id, 'requested')
+    returning id into v_id;
+  else
+    update conversations set exchange_status = 'requested', completed_at = null where id = v_id;
+  end if;
+
+  insert into messages (conversation_id, sender_id, body, kind)
+  values (v_id, auth.uid(), '🛒 I''d like to purchase this book! Please confirm when you''re ready.', 'purchase_request');
+
+  return jsonb_build_object('status', 'ok', 'id', v_id);
+end;
+$$ language plpgsql security definer set search_path = public, pg_temp;
+grant execute on function request_book(uuid) to authenticated;
+
+create or replace function cancel_request(p_conversation_id uuid)
+returns text as $$
+declare v_conv conversations%rowtype;
+begin
+  select * into v_conv from conversations where id = p_conversation_id for update;
+  if not found or v_conv.buyer_id is distinct from auth.uid() then return 'not_allowed'; end if;
+  if v_conv.exchange_status not in ('requested', 'none') then return 'wrong_status'; end if;
+  if v_conv.exchange_status = 'requested' then
+    update listings set status = 'active' where id = v_conv.listing_id and status = 'pending';
+  end if;
+  delete from conversations where id = p_conversation_id;
+  return 'ok';
+end;
+$$ language plpgsql security definer set search_path = public, pg_temp;
+grant execute on function cancel_request(uuid) to authenticated;
+-- ──────────────────────────────────────────────────────────────────────────────
