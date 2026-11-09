@@ -85,6 +85,15 @@ describe('request_book', () => {
     expect(await call<Res>(db, seller, 'request_book($1)', [listing])).toEqual({ status: 'own_listing' })
     expect(await call<Res>(db, null, 'request_book($1)', [listing])).toEqual({ status: 'not_allowed' })
   })
+
+  it('prevents a second buyer from requesting when another has an open request', async () => {
+    const seller = await createUser(db)
+    const buyerA = await createUser(db, { credits: 1 })
+    const buyerB = await createUser(db, { credits: 1 })
+    const listing = await seedListing(db, seller)
+    await seedConversation(db, { listingId: listing, buyerId: buyerA, sellerId: seller, status: 'requested' })
+    expect(await call<Res>(db, buyerB, 'request_book($1)', [listing])).toEqual({ status: 'not_available' })
+  })
 })
 
 describe('cancel_request', () => {
@@ -108,5 +117,16 @@ describe('cancel_request', () => {
     expect(await call(db, stranger, 'cancel_request($1)', [convo])).toBe('not_allowed')
     expect(await call(db, buyer, 'cancel_request($1)', [convo])).toBe('wrong_status')
     expect(await asUser(db, buyer, 'select id from conversations where id = $1', [convo])).toHaveLength(1)
+  })
+
+  it('keeps listing pending when another conversation is open (do not reopen for the first)', async () => {
+    const seller = await createUser(db)
+    const buyerA = await createUser(db)
+    const buyerB = await createUser(db)
+    const listing = await seedListing(db, seller, { status: 'pending' })
+    const convoA = await seedConversation(db, { listingId: listing, buyerId: buyerA, sellerId: seller, status: 'requested' })
+    await seedConversation(db, { listingId: listing, buyerId: buyerB, sellerId: seller, status: 'requested' })
+    expect(await call(db, buyerA, 'cancel_request($1)', [convoA])).toBe('ok')
+    expect(await listingStatus(listing)).toBe('pending')
   })
 })

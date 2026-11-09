@@ -2154,6 +2154,7 @@ returns integer as $$
     and c.exchange_status in ('requested', 'confirmed')
     and c.listing_id is distinct from p_exclude_listing;
 $$ language sql stable set search_path = public, pg_temp;
+revoke execute on function lbe_held_credits(uuid, uuid) from public, anon, authenticated;
 
 create or replace function start_conversation(p_listing_id uuid)
 returns jsonb as $$
@@ -2165,10 +2166,11 @@ begin
   select user_id into v_seller from listings where id = p_listing_id;
   if not found then return jsonb_build_object('status', 'not_found'); end if;
   if v_seller = auth.uid() then return jsonb_build_object('status', 'own_listing'); end if;
-  select id into v_id from conversations where listing_id = p_listing_id and buyer_id = auth.uid();
+  insert into conversations (listing_id, buyer_id, seller_id) values (p_listing_id, auth.uid(), v_seller)
+  on conflict (listing_id, buyer_id) do nothing
+  returning id into v_id;
   if v_id is null then
-    insert into conversations (listing_id, buyer_id, seller_id) values (p_listing_id, auth.uid(), v_seller)
-    returning id into v_id;
+    select id into v_id from conversations where listing_id = p_listing_id and buyer_id = auth.uid();
   end if;
   return jsonb_build_object('status', 'ok', 'id', v_id);
 end;
@@ -2190,6 +2192,11 @@ begin
   if v_listing.user_id = auth.uid() then return jsonb_build_object('status', 'own_listing'); end if;
   if v_listing.status <> 'active' then return jsonb_build_object('status', 'not_available'); end if;
 
+  if exists (select 1 from conversations where listing_id = p_listing_id and buyer_id <> auth.uid()
+             and exchange_status in ('requested', 'confirmed')) then
+    return jsonb_build_object('status', 'not_available');
+  end if;
+
   select credits into v_balance from profiles where id = auth.uid() for update;
   if coalesce(v_balance, 0) - lbe_held_credits(auth.uid(), p_listing_id) < v_listing.book_count then
     return jsonb_build_object('status', 'insufficient_credits');
@@ -2197,14 +2204,10 @@ begin
 
   update listings set status = 'pending' where id = p_listing_id;
 
-  select id into v_id from conversations where listing_id = p_listing_id and buyer_id = auth.uid();
-  if v_id is null then
-    insert into conversations (listing_id, buyer_id, seller_id, exchange_status)
-    values (p_listing_id, auth.uid(), v_listing.user_id, 'requested')
-    returning id into v_id;
-  else
-    update conversations set exchange_status = 'requested', completed_at = null where id = v_id;
-  end if;
+  insert into conversations (listing_id, buyer_id, seller_id, exchange_status)
+  values (p_listing_id, auth.uid(), v_listing.user_id, 'requested')
+  on conflict (listing_id, buyer_id) do update set exchange_status = 'requested', completed_at = null
+  returning id into v_id;
 
   insert into messages (conversation_id, sender_id, body, kind)
   values (v_id, auth.uid(), '🛒 I''d like to purchase this book! Please confirm when you''re ready.', 'purchase_request');
@@ -2222,7 +2225,10 @@ begin
   if not found or v_conv.buyer_id is distinct from auth.uid() then return 'not_allowed'; end if;
   if v_conv.exchange_status not in ('requested', 'none') then return 'wrong_status'; end if;
   if v_conv.exchange_status = 'requested' then
-    update listings set status = 'active' where id = v_conv.listing_id and status = 'pending';
+    update listings set status = 'active'
+    where id = v_conv.listing_id and status = 'pending'
+      and not exists (select 1 from conversations o where o.listing_id = v_conv.listing_id
+                      and o.id <> p_conversation_id and o.exchange_status in ('requested', 'confirmed'));
   end if;
   delete from conversations where id = p_conversation_id;
   return 'ok';
