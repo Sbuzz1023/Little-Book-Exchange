@@ -1,7 +1,7 @@
 # Shared Backend (iPhone App — Project 1 of 6)
 
 **Date:** 2026-11-09
-**Status:** Draft — awaiting user review
+**Status:** Approved 2026-11-09 (privacy + credit-hold additions approved during planning)
 
 ## Overview
 
@@ -49,6 +49,19 @@ Related, smaller gaps closed by the same work:
 
 Credits themselves are already well protected (`prevent_credit_self_grant`); the hole is the status that triggers the transfer.
 
+### Added during planning (approved 2026-11-09)
+
+**Private profile data is publicly readable.** `"Public profiles are viewable by everyone"` applies to every column, so anyone holding the public anon key (shipped in the site's JavaScript) can read every member's email, phone, street address, credits and settings. Fix: column-level grants — anon/authenticated may select only `id, username, city, state, created_at, is_admin` (`is_admin` stays readable because many RLS policies check it as the caller). Everything else is read through:
+
+- `get_my_profile() → setof profiles` — the caller's own full row only.
+- `mark_credits_seen(p_up_to timestamptz)` — replaces the direct update whose `credits_seen_at` filter would need a hidden column.
+- `admin_list_users(p_user_ids uuid[] default null)` — admin-only; id, username, email, city, state, zip, created_at, is_admin, credits, marketing_opt_out. Replaces the admin Users tab query and the broadcast/resend email lookups.
+- Website sign-in by username looks the email up server-side with the service role (shared with the `username-signin` endpoint).
+
+**Confirmed exchanges stop holding credits.** `confirmExchange` moves the listing `pending → sold`, and `lib/creditCheck.ts` only counts open requests whose listing is still `pending`, so after the seller confirms, the buyer's credits for that book are free again and they can over-request (balance goes negative at completion — reproduced in testing). Fix: credits are held by every exchange that is `requested` or `confirmed`, regardless of listing status, in both `request_book` and `lib/creditCheck.ts`.
+
+**Dispute emails can't be spammed.** New column `disputes.admin_notified_at`; the admin email is sent only while it is null, then it is set.
+
 ---
 
 ## Architecture
@@ -61,7 +74,7 @@ Credits themselves are already well protected (`prevent_credit_self_grant`); the
 
 Functions follow the existing conventions in `schema.sql`: `language plpgsql security definer set search_path = public, pg_temp`, `grant execute ... to authenticated`, and authorization checked inside the function (it is the security boundary — TypeScript checks are UX only).
 
-**Return values.** Functions return a small result the caller can act on — a `text` status code (e.g. `'ok'`, `'insufficient_credits'`, `'not_available'`, `'not_allowed'`, `'invalid_pickup'`) or the new row's id. They don't raise for expected outcomes, so the website and app can show a friendly message. Unauthorized callers get the same generic `'not_allowed'` regardless of why, matching `resolve_pickup`'s approach.
+**Return values.** Functions return a small result the caller can act on — a `text` status code (e.g. `'ok'`, `'insufficient_credits'`, `'not_available'`, `'not_allowed'`, `'invalid_pickup'`), or for functions that create something, `jsonb` `{"status": "...", "id": "<uuid>"}` (the table below abbreviates these as `→ uuid`). They don't raise for expected outcomes, so the website and app can show a friendly message. Unauthorized callers get the same generic `'not_allowed'` regardless of why, matching `resolve_pickup`'s approach.
 
 ---
 
@@ -89,7 +102,7 @@ Functions follow the existing conventions in `schema.sql`: `language plpgsql sec
 | `set_listing_status(p_listing_id, p_status) → text` | `updateListingStatus` (status) | owner only; only `active` ↔ `paused` (the two the dashboard offers); never touches `pending`/`sold` |
 | `delete_listing(p_listing_id) → text` | `updateListingStatus` (delete) | owner only; blocked while a request is open |
 | `start_conversation(p_listing_id) → uuid` | listing page `startConversation` | returns existing conversation if any; can't message yourself |
-| `request_book(p_listing_id) → text` | listing page `requestPurchase` | available credits (same rule as `lib/creditCheck.ts`) ≥ `book_count`; listing `active` → `pending`; finds/creates conversation; sets `requested`; posts the request message — all in one transaction, so no half-locked listings |
+| `request_book(p_listing_id) → uuid` | listing page `requestPurchase` | available credits (same rule as `lib/creditCheck.ts`) ≥ `book_count`; listing `active` → `pending`; finds/creates conversation; sets `requested`; posts the request message — all in one transaction, so no half-locked listings |
 | `cancel_request(p_conversation_id) → text` | `cancelPurchase` | buyer only; status `requested`; reopens listing |
 | `confirm_exchange(p_conversation_id, p_pickup jsonb) → text` | `confirmExchange` | seller only; status `requested`; pickup mode/date/times valid (same rules as today); stores pickup fields; marks the request notification read; listing `pending` → `sold` (as today); posts the confirmation message built from the same text as `buildConfirmationMessage` |
 | `deny_request(p_conversation_id) → text` | `denyPurchase` | seller only; status `requested`; reopens listing; notifies buyer |
@@ -97,7 +110,7 @@ Functions follow the existing conventions in `schema.sql`: `language plpgsql sec
 | `file_dispute(p_conversation_id, p_reason) → uuid` | `fileDispute` (record part) | participant only; one open dispute per exchange |
 | `hide_exchange(p_conversation_id) → text` | `hideExchangeHistory` | sets only the caller's own `buyer_hidden`/`seller_hidden` |
 | `start_support_conversation() → uuid` | `startSupportConversation` | returns the caller's existing support conversation or creates one |
-| `move_saved_to_tbr(p_saved_id) → text` | `moveSavedListingToTbr` | caller owns the saved row; insert TBR + delete saved together |
+| `move_saved_to_tbr(p_listing_id) → text` | `moveSavedListingToTbr` | caller owns the saved row; insert TBR + delete saved together |
 
 Message text that the website builds in TypeScript today (`buildConfirmationMessage`, `formatPickupAvailability`) moves into SQL so both clients produce identical messages. The TypeScript versions are deleted once nothing uses them.
 
