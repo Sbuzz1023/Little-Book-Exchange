@@ -2236,3 +2236,109 @@ end;
 $$ language plpgsql security definer set search_path = public, pg_temp;
 grant execute on function cancel_request(uuid) to authenticated;
 -- ──────────────────────────────────────────────────────────────────────────────
+
+-- ── Migration: shared backend 4/6 — confirming and declining ─────────────────
+-- Run this block in Supabase SQL Editor:
+
+-- Same text as formatPickupAvailability() in lib/formatPickupAvailability.ts
+-- (a test checks they agree). Used for the confirmation message.
+create or replace function format_pickup_availability(p_mode text, p_date date, p_start time, p_end time)
+returns text as $$
+  select case
+    when p_mode = 'anytime' then '✅ Ready for pickup now'
+    when p_mode = 'after' and p_date is not null and p_start is not null
+      then to_char(p_date, 'Dy, Mon FMDD') || ' · after ' || to_char(p_start, 'FMHH12:MI AM')
+    when p_mode = 'window' and p_date is not null and p_start is not null and p_end is not null
+      then to_char(p_date, 'Dy, Mon FMDD') || ' · ' || to_char(p_start, 'FMHH12:MI AM')
+           || '–' || to_char(p_end, 'FMHH12:MI AM')
+  end;
+$$ language sql immutable;
+
+-- Phone numbers are never included in the message, on purpose — they must
+-- never be shared between users.
+create or replace function confirm_exchange(p_conversation_id uuid, p_pickup jsonb)
+returns text as $$
+declare
+  v_conv conversations%rowtype;
+  v_mode text := p_pickup->>'pickup_mode';
+  v_date date;
+  v_start time;
+  v_end time;
+  v_address text := btrim(coalesce(p_pickup->>'address', ''));
+  v_unit text := btrim(coalesce(p_pickup->>'address_unit', ''));
+  v_city text := btrim(coalesce(p_pickup->>'city', ''));
+  v_state text := case when coalesce(p_pickup->>'state', '') ~ '^[A-Z]{2}$' then p_pickup->>'state' else '' end;
+  v_pickup text := btrim(coalesce(p_pickup->>'pickup', ''));
+  v_username text;
+  v_lines text[];
+  v_avail text;
+begin
+  select * into v_conv from conversations where id = p_conversation_id for update;
+  if not found or v_conv.seller_id is distinct from auth.uid() then return 'not_allowed'; end if;
+  if v_conv.exchange_status <> 'requested' then return 'wrong_status'; end if;
+
+  begin
+    v_date  := nullif(p_pickup->>'pickup_date', '')::date;
+    v_start := nullif(p_pickup->>'pickup_time_start', '')::time;
+    v_end   := nullif(p_pickup->>'pickup_time_end', '')::time;
+  exception when others then
+    return 'invalid_pickup';
+  end;
+  if not (v_mode = 'anytime'
+          or (v_mode = 'after' and v_date is not null and v_start is not null)
+          or (v_mode = 'window' and v_date is not null and v_start is not null and v_end is not null)) then
+    return 'invalid_pickup';
+  end if;
+  if v_mode = 'anytime' then v_date := null; v_start := null; end if;
+  if v_mode <> 'window' then v_end := null; end if;
+
+  update conversations set
+    exchange_status = 'confirmed',
+    confirmed_address = nullif(v_address, ''), confirmed_address_unit = nullif(v_unit, ''),
+    confirmed_pickup = nullif(v_pickup, ''), confirmed_pickup_mode = v_mode,
+    confirmed_pickup_date = v_date, confirmed_pickup_time_start = v_start, confirmed_pickup_time_end = v_end
+  where id = p_conversation_id;
+
+  update notifications set read = true
+  where user_id = auth.uid() and entity_id = p_conversation_id and type = 'purchase_request';
+
+  update listings set status = 'sold' where id = v_conv.listing_id and status = 'pending';
+
+  select username into v_username from profiles where id = auth.uid();
+  v_avail := format_pickup_availability(v_mode, v_date, v_start, v_end);
+  v_lines := array[
+    '📍 Exchange confirmed! Here''s how to connect:',
+    '👤 ' || coalesce(v_username, ''),
+    '📌 ' || v_city || case when v_state <> '' then ', ' || v_state else '' end
+  ];
+  if v_address <> '' or v_unit <> '' then
+    v_lines := v_lines || ('🏠 ' || concat_ws(' ', nullif(v_address, ''), nullif(v_unit, '')));
+  end if;
+  if v_pickup <> '' then v_lines := v_lines || ('📦 Pickup: ' || v_pickup); end if;
+  if v_avail is not null then v_lines := v_lines || ('🕐 ' || v_avail); end if;
+
+  insert into messages (conversation_id, sender_id, body, kind)
+  values (p_conversation_id, auth.uid(), array_to_string(v_lines, E'\n'), 'confirmation');
+  return 'ok';
+end;
+$$ language plpgsql security definer set search_path = public, pg_temp;
+grant execute on function confirm_exchange(uuid, jsonb) to authenticated;
+
+create or replace function deny_request(p_conversation_id uuid)
+returns text as $$
+declare v_conv conversations%rowtype;
+begin
+  select * into v_conv from conversations where id = p_conversation_id for update;
+  if not found or v_conv.seller_id is distinct from auth.uid() then return 'not_allowed'; end if;
+  if v_conv.exchange_status <> 'requested' then return 'wrong_status'; end if;
+
+  perform create_notification(v_conv.buyer_id, 'purchase_decision', p_conversation_id);
+  update conversations set exchange_status = 'declined', completed_at = now() where id = p_conversation_id;
+  update listings set status = 'active' where id = v_conv.listing_id and status = 'pending';
+  update notifications set read = true
+  where user_id = auth.uid() and entity_id = p_conversation_id and type = 'purchase_request';
+  return 'ok';
+end;
+$$ language plpgsql security definer set search_path = public, pg_temp;
+grant execute on function deny_request(uuid) to authenticated;
+-- ──────────────────────────────────────────────────────────────────────────────
