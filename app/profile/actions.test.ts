@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { updateProfile, confirmExchange } from './actions'
+import { updateProfile, confirmExchange, updateListingStatus } from './actions'
 
 const redirectMock = vi.fn((url: string) => { throw new Error(`REDIRECT:${url}`) })
 vi.mock('next/navigation', () => ({
@@ -41,15 +41,17 @@ const fromMock = vi.fn((table: string) => {
     default: throw new Error(`unexpected table in test: ${table}`)
   }
 })
+const listingRpcMock = vi.fn((_fn: string, _args?: Record<string, unknown>) => Promise.resolve({ data: 'ok', error: null }))
 const getUserMock = vi.fn(() => Promise.resolve({ data: { user: { id: 'user-1' } } }))
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: () => ({
     auth: { getUser: getUserMock },
     from: fromMock,
-    rpc: (fn: string) => {
-      if (fn !== 'get_my_profile') throw new Error(`unexpected rpc ${fn}`)
-      return { maybeSingle: () => Promise.resolve(selectResult) }
+    rpc: (fn: string, args?: Record<string, unknown>) => {
+      if (fn === 'get_my_profile') return { maybeSingle: () => Promise.resolve(selectResult) }
+      if (fn === 'delete_listing' || fn === 'set_listing_status') return listingRpcMock(fn, args)
+      throw new Error(`unexpected rpc ${fn}`)
     },
   }),
 }))
@@ -237,5 +239,19 @@ describe('confirmExchange', () => {
       .rejects.toThrow('REDIRECT:/profile?tab=exchanges')
     const payload = messagesInsertMock.mock.calls[0][0]
     expect(payload.body).toContain('🕐 ✅ Ready for pickup now')
+  })
+})
+
+describe('updateListingStatus', () => {
+  beforeEach(() => { listingRpcMock.mockClear(); redirectMock.mockClear() })
+
+  it('deletes through delete_listing', async () => {
+    await expect(updateListingStatus(buildFormData({ id: 'l-1', status: 'delete' }))).rejects.toThrow('REDIRECT:/profile')
+    expect(listingRpcMock).toHaveBeenCalledWith('delete_listing', { p_listing_id: 'l-1' })
+  })
+
+  it('pauses through set_listing_status', async () => {
+    await expect(updateListingStatus(buildFormData({ id: 'l-1', status: 'paused' }))).rejects.toThrow('REDIRECT:/profile')
+    expect(listingRpcMock).toHaveBeenCalledWith('set_listing_status', { p_listing_id: 'l-1', p_status: 'paused' })
   })
 })

@@ -72,9 +72,9 @@ export async function updateListingStatus(formData: FormData) {
   const id = formData.get('id') as string
   const status = formData.get('status') as string
   if (status === 'delete') {
-    await supabase.from('listings').delete().eq('id', id).eq('user_id', user!.id)
+    await supabase.rpc('delete_listing', { p_listing_id: id })
   } else {
-    await supabase.from('listings').update({ status }).eq('id', id).eq('user_id', user!.id)
+    await supabase.rpc('set_listing_status', { p_listing_id: id, p_status: status })
   }
   redirect('/profile')
 }
