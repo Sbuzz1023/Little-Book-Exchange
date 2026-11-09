@@ -1915,3 +1915,43 @@ alter table profiles
 
 -- Existing users start caught up, so their history doesn't replay.
 update profiles set credits_seen_at = now();
+
+-- ── Migration: shared backend 1/6 — private profile functions ────────────────
+-- Run this block in Supabase SQL Editor:
+-- Private profile columns (email, phone, address, credits, settings) are about
+-- to be hidden from direct reads (block 6). These are the only ways to read
+-- them afterwards: your own row, or — for admins — the Users list.
+create or replace function get_my_profile()
+returns setof profiles as $$
+  select * from profiles where id = auth.uid();
+$$ language sql stable security definer set search_path = public, pg_temp;
+grant execute on function get_my_profile() to authenticated;
+
+-- Replaces a direct update whose `credits_seen_at < upTo` filter would need
+-- SELECT on a hidden column.
+create or replace function mark_credits_seen(p_up_to timestamptz)
+returns void as $$
+  update profiles set credits_seen_at = p_up_to
+  where id = auth.uid() and credits_seen_at < p_up_to;
+$$ language sql security definer set search_path = public, pg_temp;
+grant execute on function mark_credits_seen(timestamptz) to authenticated;
+
+create or replace function admin_list_users(p_user_ids uuid[] default null)
+returns table (
+  id uuid, username text, email text, city text, state text, zip text,
+  created_at timestamptz, is_admin boolean, credits integer, marketing_opt_out boolean
+) as $$
+begin
+  if not exists (select 1 from profiles p where p.id = auth.uid() and p.is_admin = true) then
+    return;
+  end if;
+  return query
+    select p.id, p.username::text, p.email, p.city, p.state, p.zip,
+           p.created_at, p.is_admin, p.credits, p.marketing_opt_out
+    from profiles p
+    where p_user_ids is null or p.id = any(p_user_ids)
+    order by p.created_at desc;
+end;
+$$ language plpgsql stable security definer set search_path = public, pg_temp;
+grant execute on function admin_list_users(uuid[]) to authenticated;
+-- ──────────────────────────────────────────────────────────────────────────────
