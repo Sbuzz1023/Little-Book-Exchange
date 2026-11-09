@@ -16,6 +16,12 @@ import { buildRecentActivity, type RecentActivityEvent, type RecentActivityItem 
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
+// Row shape returned by the admin_list_users RPC.
+type AdminUserRow = {
+  id: string; username: string | null; email: string | null; city: string | null; state: string | null
+  zip: string | null; created_at: string | null; is_admin: boolean | null; credits: number | null
+}
+
 type Tab = 'dashboard' | 'users' | 'locations' | 'reviews' | 'emails' | 'disputes'
 type User = {
   id: string
@@ -658,12 +664,10 @@ export default function AdminClient() {
   useEffect(() => {
     const supabase = createClient()
     supabase
-      .from('profiles')
-      .select('id, username, email, city, state, zip, created_at, is_admin, credits')
-      .order('created_at', { ascending: false })
+      .rpc('admin_list_users')
       .then(({ data }) => {
         if (!data) return
-        setUsers(data.map(p => ({
+        setUsers((data as AdminUserRow[]).map(p => ({
           id: p.id,
           username: p.username || p.email || 'Unknown',
           email: p.email || '',

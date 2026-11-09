@@ -84,7 +84,7 @@ export default async function ListingDetailPage({ params, searchParams }: { para
     try {
       const supabase = createClient()
       const [{ data: p }, { data: rows }] = await Promise.all([
-        supabase.from('profiles').select('credits').eq('id', user.id).single(),
+        supabase.rpc('get_my_profile').maybeSingle<{ credits: number }>(),
         supabase.from('conversations')
           .select('exchange_status, listings(status, book_count)')
           .eq('buyer_id', user.id).neq('listing_id', params.id),
@@ -168,7 +168,7 @@ export default async function ListingDetailPage({ params, searchParams }: { para
       // Check against credits not already committed to the buyer's other open
       // requests — see lib/creditCheck.ts.
       const [{ data: buyerProfile }, { data: buyerExchanges }] = await Promise.all([
-        supabase.from('profiles').select('credits').eq('id', u!.id).single(),
+        supabase.rpc('get_my_profile').maybeSingle<{ credits: number }>(),
         supabase.from('conversations')
           .select('exchange_status, listings(status, book_count)')
           .eq('buyer_id', u!.id).neq('listing_id', listing.id),

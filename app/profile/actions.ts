@@ -15,10 +15,8 @@ export async function updateProfile(formData: FormData) {
   if (!user) redirect('/auth/signin')
 
   const { data: currentProfile } = await supabase
-    .from('profiles')
-    .select('phone_verified')
-    .eq('id', user!.id)
-    .single()
+    .rpc('get_my_profile')
+    .maybeSingle<{ phone_verified: boolean }>()
   const phoneVerified = !!currentProfile?.phone_verified
 
   const rawState = (formData.get('state') as string) ?? ''

@@ -47,6 +47,10 @@ vi.mock('@/lib/supabase/server', () => ({
   createClient: () => ({
     auth: { getUser: getUserMock },
     from: fromMock,
+    rpc: (fn: string) => {
+      if (fn !== 'get_my_profile') throw new Error(`unexpected rpc ${fn}`)
+      return { maybeSingle: () => Promise.resolve(selectResult) }
+    },
   }),
 }))
 

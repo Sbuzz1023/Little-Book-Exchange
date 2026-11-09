@@ -44,7 +44,7 @@ async function fetchRecipients(
   target: BroadcastTarget,
   channel: BroadcastChannel = 'email'
 ): Promise<{ recipients?: Recipient[]; error?: string }> {
-  const { data, error } = await supabase.from('profiles').select('id, email, city, state, marketing_opt_out')
+  const { data, error } = await supabase.rpc('admin_list_users')
   if (error) return { error: error.message }
   return { recipients: filterRecipients((data ?? []) as ProfileRow[], target, channel) }
 }
@@ -162,7 +162,7 @@ export async function sendBroadcastMessage(target: BroadcastTarget, body: string
 }
 
 async function lookupUserEmail(supabase: ReturnType<typeof createClient>, userId: string): Promise<string | null> {
-  const { data } = await supabase.from('profiles').select('email').eq('id', userId).single()
+  const { data } = await supabase.rpc('admin_list_users', { p_user_ids: [userId] }).maybeSingle<{ email: string | null }>()
   return data?.email ?? null
 }
 

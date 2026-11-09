@@ -39,7 +39,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
-        const { data: p } = await supabase.from('profiles').select('username, is_admin, onboarding_bonus_claimed, credits').eq('id', user.id).single()
+        const { data: p } = await supabase.rpc('get_my_profile')
+          .maybeSingle<{ username: string | null; is_admin: boolean; onboarding_bonus_claimed: boolean; credits: number }>()
         userName = p?.username ?? user.email ?? 'Me'
         isAdmin = p?.is_admin === true
         credits = p?.credits ?? null
