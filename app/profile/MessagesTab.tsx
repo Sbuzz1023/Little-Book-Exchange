@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { StarRatingBadge } from '@/components/StarRating'
+import { thumbnailUrl } from '@/lib/listingPhotos'
 
 export type MessageRow = { id: string; body: string; sender_id: string; created_at: string }
 
@@ -17,7 +18,7 @@ export type MessagesTabExchange = {
   user_id?: string | null
   repliable?: boolean
   created_at: string
-  listings?: { title: string; author: string; photo_url?: string | null } | null
+  listings?: { title: string; author: string; photo_url?: string | null; cover_url?: string | null } | null
   buyer?: { username?: string | null; name?: string | null }
   seller?: { username?: string | null; name?: string | null }
   sellerRating?: { average: number; count: number } | null
@@ -274,16 +275,30 @@ export default function MessagesTab({
                   <p className="hidden md:block" style={{ fontWeight: 900, fontSize: 16, color: '#1a1a1a', lineHeight: 1.2 }}>{otherNameFor(convo, userId)}</p>
                   {convo.type !== 'admin' && convo.seller_id !== userId && <StarRatingBadge rating={convo.sellerRating ?? null} sellerId={convo.seller_id!} />}
                 </div>
-                {convo.type !== 'admin' && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: '#aaa' }}>📚 {convo.listings?.title}</span>
-                    <Link href={`/listings/${convo.listing_id}`} style={{ fontSize: 11, fontWeight: 700, color: '#f97316', textDecoration: 'none' }}>
-                      View →
-                    </Link>
-                  </div>
-                )}
               </div>
             </div>
+
+            {convo.type !== 'admin' && (
+              <div className="home-v2 dash-msg-book" data-testid="thread-book-card">
+                <div className="dash-msg-book-cover">
+                  {thumbnailUrl(convo.listings) ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={thumbnailUrl(convo.listings)!} alt={convo.listings?.title ?? ''} />
+                  ) : (
+                    <span>📚</span>
+                  )}
+                </div>
+                <div className="dash-msg-book-info">
+                  <p className="dash-msg-book-title">{convo.listings?.title ?? 'Unknown'}</p>
+                  {convo.listings?.author && <p className="dash-msg-book-author">{convo.listings.author}</p>}
+                </div>
+                {convo.listing_id && (
+                  <Link href={`/listings/${convo.listing_id}`} className="btn btn-primary dash-msg-book-btn">
+                    ← Back to book
+                  </Link>
+                )}
+              </div>
+            )}
 
             <div style={{ flex: 1, overflowY: 'auto', padding: '20px 20px 8px', display: 'flex', flexDirection: 'column', gap: 4 }}>
               {messages.length === 0 && (

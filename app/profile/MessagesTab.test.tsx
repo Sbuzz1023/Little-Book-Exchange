@@ -345,3 +345,45 @@ describe('MessagesTab — admin conversations', () => {
     expect(listingMatches.length).toBe(1)
   })
 })
+
+describe('MessagesTab — book card', () => {
+  const bookConvo = (over: Partial<MessagesTabExchange> = {}): MessagesTabExchange => ({
+    ...exchanges[0],
+    listings: { title: 'The Hobbit', author: 'J.R.R. Tolkien', cover_url: 'https://covers.example/hobbit.jpg' },
+    ...over,
+  })
+
+  it('shows the book card with cover, title, author and a Back to book link', () => {
+    const { getByTestId, getByRole } = render(
+      <MessagesTab exchanges={[bookConvo()]} userId="me" isDemo={true} selectedId="convo-1" onSelectId={vi.fn()} />
+    )
+    const card = getByTestId('thread-book-card')
+    expect(card.textContent).toContain('The Hobbit')
+    expect(card.textContent).toContain('J.R.R. Tolkien')
+    expect(card.querySelector('img')?.getAttribute('src')).toBe('https://covers.example/hobbit.jpg')
+    expect(getByRole('link', { name: /Back to book/ }).getAttribute('href')).toBe('/listings/listing-1')
+  })
+
+  it('shows the card without a button when the listing was deleted', () => {
+    const { getByTestId, queryByRole } = render(
+      <MessagesTab
+        exchanges={[bookConvo({ listing_id: null, listings: { title: 'Unknown', author: '' } })]}
+        userId="me" isDemo={true} selectedId="convo-1" onSelectId={vi.fn()}
+      />
+    )
+    expect(getByTestId('thread-book-card').textContent).toContain('Unknown')
+    expect(queryByRole('link', { name: /Back to book/ })).toBeNull()
+  })
+
+  it('shows no book card for a support conversation', () => {
+    const admin: MessagesTabExchange = {
+      id: 'admin-x', type: 'admin', user_id: 'me', repliable: true,
+      created_at: '2026-08-02T09:00:00.000Z', messages: [],
+    }
+    const { queryByTestId, queryByText } = render(
+      <MessagesTab exchanges={[admin]} userId="me" isDemo={true} selectedId="admin-x" onSelectId={vi.fn()} />
+    )
+    expect(queryByTestId('thread-book-card')).toBeNull()
+    expect(queryByText(/Back to book/)).toBeNull()
+  })
+})

@@ -301,3 +301,24 @@
   border: 1.5px solid var(--pine); color: var(--pine); background: transparent; text-decoration: none;
 }
 .home-v2 .dash-btn-outline:hover { background: rgba(35, 74, 64, .07); color: var(--pine); }
+
+/* Book card under a Messages thread header: one row — cover, title/author, and a
+   filled pill button back to the listing. Same card look as .dash-xcard. */
+.home-v2 .dash-msg-book {
+  display: flex; align-items: center; gap: 12px; margin: 10px 16px 0; padding: 8px 12px;
+  background: var(--ground); border: 1px solid var(--line); border-radius: 14px;
+}
+.home-v2 .dash-msg-book-cover {
+  width: 34px; height: 44px; border-radius: 6px; overflow: hidden; flex-shrink: 0;
+  background: var(--line); display: flex; align-items: center; justify-content: center; font-size: 16px;
+}
+.home-v2 .dash-msg-book-cover img { width: 100%; height: 100%; object-fit: cover; }
+.home-v2 .dash-msg-book-info { flex: 1; min-width: 0; }
+.home-v2 .dash-msg-book-title { font-weight: 900; font-size: 13px; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.home-v2 .dash-msg-book-author { font-weight: 600; font-size: 11.5px; color: #8A8178; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.home-v2 .dash-msg-book .dash-msg-book-btn { flex-shrink: 0; padding: 6px 14px; font-size: 12px; border-width: 1.5px; white-space: nowrap; }
+@media (max-width: 640px) {
+  .home-v2 .dash-msg-book { margin: 8px 12px 0; gap: 10px; padding: 6px 10px; }
+  .home-v2 .dash-msg-book-cover { width: 28px; height: 40px; }
+  .home-v2 .dash-msg-book .dash-msg-book-btn { padding: 6px 12px; font-size: 11.5px; }
+}
