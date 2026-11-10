@@ -454,7 +454,9 @@
 .home-v2 .dash-tbr-title { font-weight: 900; font-size: 14px; color: var(--ink); }
 .home-v2 .dash-tbr-author { font-weight: 600; font-size: 12.5px; color: #4A4038; }
 .home-v2 .dash-tbr-place { font-weight: 600; font-size: 12px; color: #8A8178; }
-.home-v2 .dash-tbr-see { display: inline-flex; margin-top: 10px; padding: 6px 16px; font-size: 12px; white-space: nowrap; }
+.home-v2 .dash-tbr-avail { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: 10px; }
+.home-v2 .dash-tbr-avail-label { font-weight: 900; font-size: 13px; color: var(--pine); }
+.home-v2 .dash-tbr-see { display: inline-flex; padding: 6px 16px; font-size: 12px; white-space: nowrap; }
 .home-v2 .dash-tbr-remove { background: none; border: 0; padding: 2px 4px; font-size: 14px; line-height: 1; color: #B5AFA4; cursor: pointer; }
 .home-v2 .dash-tbr-remove:hover { color: #B5462F; }
 .home-v2 .dash-tbr-empty { text-align: center; padding: 32px 0; font-size: 14px; font-weight: 700; color: #8A8178; }

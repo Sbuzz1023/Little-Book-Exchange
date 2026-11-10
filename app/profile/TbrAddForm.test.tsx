@@ -58,6 +58,19 @@ describe('TbrAddForm', () => {
     expect(container.querySelector('select[name="state"]')).toHaveValue('')
   })
 
+  it('gives the inputs flex widths wide enough for their placeholders (title > author > city > state)', () => {
+    const { container } = render(<TbrAddForm addTbrEntry={vi.fn()} search={vi.fn().mockResolvedValue([])} />)
+    const basis = (el: Element) => parseInt((el as HTMLElement).style.flexBasis, 10)
+    const titleWrap = container.querySelector('form > div')!
+    const author = container.querySelector('input[name="author"]')!
+    const city = container.querySelector('input[name="city"]')!
+    const state = container.querySelector('select[name="state"]')!
+    expect(basis(titleWrap)).toBeGreaterThan(basis(author))
+    expect(basis(author)).toBeGreaterThanOrEqual(190)
+    expect(basis(city)).toBeGreaterThanOrEqual(basis(author))
+    expect(basis(state)).toBeLessThan(basis(author))
+  })
+
   it('uses the house input and pine pill styles (no purple)', () => {
     const { container } = render(<TbrAddForm addTbrEntry={vi.fn()} search={vi.fn().mockResolvedValue([])} />)
     expect(screen.getByPlaceholderText('Author (optional)...')).toHaveClass('dash-tbr-input')

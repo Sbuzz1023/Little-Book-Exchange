@@ -112,6 +112,39 @@ describe('DashboardClient — notification badges and highlighting', () => {
     expect(screen.queryByRole('link', { name: 'See listing' })).toBeNull()
   })
 
+  it("shows It's available! beside the See listing link only on entries with a match", () => {
+    const entries = [
+      { id: 'a', title: 'Alpha', author: '', city: '', state: '', match: null },
+      { id: 'b', title: 'Bravo', author: '', city: '', state: '', match: { id: 'l-b', title: 'Bravo' } },
+    ]
+    const { container } = render(
+      <DashboardClient {...baseProps} exchanges={[]} defaultTab="tbr" tbrEntries={entries as any}
+        unreadEntityIds={{ ...baseProps.unreadEntityIds, tbrMatch: [] }} />
+    )
+    expect(screen.getAllByText("It's available!")).toHaveLength(1)
+    const link = screen.getByRole('link', { name: 'See listing' })
+    expect(link.parentElement).toContainElement(screen.getByText("It's available!"))
+    const cardA = screen.getByText('Alpha').closest('.dash-tbr-card')!
+    expect(within(cardA as HTMLElement).queryByText("It's available!")).toBeNull()
+    expect(container.querySelectorAll('.dash-tbr-card')).toHaveLength(2)
+  })
+
+  it('bumps entries with a matching listing to the top, keeping relative order within each group', () => {
+    const mk = (id: string, title: string, match: any) => ({ id, title, author: '', city: '', state: '', match })
+    const entries = [
+      mk('a', 'A-nomatch', null),
+      mk('b', 'B-match', { id: 'l-b', title: 'B' }),
+      mk('c', 'C-nomatch', null),
+      mk('d', 'D-match', { id: 'l-d', title: 'D' }),
+    ]
+    const { container } = render(
+      <DashboardClient {...baseProps} exchanges={[]} defaultTab="tbr" tbrEntries={entries as any}
+        unreadEntityIds={{ ...baseProps.unreadEntityIds, tbrMatch: [] }} />
+    )
+    const titles = Array.from(container.querySelectorAll('.dash-tbr-title')).map(n => n.textContent)
+    expect(titles).toEqual(['B-match', 'D-match', 'A-nomatch', 'C-nomatch'])
+  })
+
   it('shows the exchanges unread count as a badge on the Exchanges tab', () => {
     render(<DashboardClient {...baseProps} exchanges={[pendingExchange]} defaultTab="listings" />)
     const exchangesButton = screen.getByText('Exchanges').closest('button')!

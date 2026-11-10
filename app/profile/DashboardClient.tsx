@@ -1037,7 +1037,7 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
               </div>
             ) : (
               <div className="dash-xcards dash-tbr-list">
-                {tbrEntries.map(entry => {
+                {[...tbrEntries].sort((a, b) => Number(!!b.match) - Number(!!a.match)).map(entry => {
                   const isUnread = unreadEntityIds.tbrMatch.includes(entry.id)
                   const place = [entry.city, entry.state].filter(Boolean).join(', ')
                   return (
@@ -1053,9 +1053,12 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
                         {entry.title && entry.author && <p className="dash-tbr-author">{entry.author}</p>}
                         {place && <p className="dash-tbr-place">{place}</p>}
                         {entry.match && (
-                          <Link href={`/listings/${entry.match.id}`} className="btn btn-primary dash-tbr-see">
-                            See listing
-                          </Link>
+                          <div className="dash-tbr-avail">
+                            <span className="dash-tbr-avail-label">It&apos;s available!</span>
+                            <Link href={`/listings/${entry.match.id}`} className="btn btn-primary dash-tbr-see">
+                              See listing
+                            </Link>
+                          </div>
                         )}
                       </div>
                       <form action={removeTbrEntry}>
