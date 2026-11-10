@@ -2074,8 +2074,10 @@ declare
 begin
   select * into v_existing from listings where id = p_listing_id for update;
   if not found or v_existing.user_id is distinct from auth.uid() then return 'not_allowed'; end if;
-  -- A buyer already requested it at its current book count (= price).
+  -- A buyer already requested it at its current book count (= price); once
+  -- confirmed it is 'sold' and the completion trigger still reads book_count.
   if v_existing.status = 'pending' then return 'pending_request'; end if;
+  if v_existing.status = 'sold' then return 'sold'; end if;
   -- Guard against malformed input: p_listing must be object, p_books must be array (or null)
   if jsonb_typeof(p_listing) is distinct from 'object' then
     return 'invalid_listing';
@@ -2131,6 +2133,8 @@ begin
   select status into v_status from listings where id = p_listing_id and user_id = auth.uid() for update;
   if not found then return 'not_allowed'; end if;
   if v_status = 'pending' then return 'pending_request'; end if;
+  -- conversations.listing_id cascades: deleting a sold listing would erase the exchange, messages, disputes.
+  if v_status = 'sold' then return 'sold'; end if;
   delete from listings where id = p_listing_id;
   return 'ok';
 end;
@@ -2565,4 +2569,6 @@ revoke execute on function reopen_listing(uuid) from public, anon, authenticated
 -- readable because many policies check it for the caller.
 revoke select on profiles from anon, authenticated;
 grant select (id, username, city, state, created_at, is_admin) on profiles to anon, authenticated;
+-- Any NEW profile column that should be publicly readable needs its own
+-- `grant select (col) on profiles to anon, authenticated`.
 -- ──────────────────────────────────────────────────────────────────────────────

@@ -25,11 +25,16 @@ export async function notifyAdminsOfDispute(disputeId: string): Promise<boolean>
 
   for (const a of admins ?? []) {
     if (!a.email) continue
-    await sendEmail({
-      to: a.email,
-      subject: `Dispute filed: ${listing?.title ?? 'an exchange'}`,
-      text: `A dispute was filed on an exchange.\n\nMessage:\n${claimed.message}\n\nConversation ID: ${claimed.conversation_id}`,
-    })
+    // Per-admin try/catch: the claim above means nothing retries, so one failure must not skip the rest.
+    try {
+      await sendEmail({
+        to: a.email,
+        subject: `Dispute filed: ${listing?.title ?? 'an exchange'}`,
+        text: `A dispute was filed on an exchange.\n\nMessage:\n${claimed.message}\n\nConversation ID: ${claimed.conversation_id}`,
+      })
+    } catch (err) {
+      console.error('notifyAdminsOfDispute: email failed for an admin', err)
+    }
   }
   return true
 }

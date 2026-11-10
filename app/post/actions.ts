@@ -69,6 +69,9 @@ export async function updateListing(listingId: string, formData: FormData) {
     if (existing.status === 'pending') {
       redirect(`/listings/${listingId}/edit?error=${encodeURIComponent(listingErrorMessage('pending_request'))}`)
     }
+    if (existing.status === 'sold') {
+      redirect(`/listings/${listingId}/edit?error=${encodeURIComponent(listingErrorMessage('sold'))}`)
+    }
 
     const draft = buildListingPayload(formData, { photo_url: null, photo_url_2: null, photo_url_3: null })
     const matchError = validateOpenLibraryMatch(draft.listing, draft.books)

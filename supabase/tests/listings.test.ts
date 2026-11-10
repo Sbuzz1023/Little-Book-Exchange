@@ -95,6 +95,16 @@ describe('create_listing', () => {
   })
 })
 
+
+async function confirmedSale() {
+  const seller = await createUser(db)
+  const buyer = await createUser(db, { credits: 1 })
+  const listing = await seedListing(db, seller)
+  const r = await call<{ id: string }>(db, buyer, 'request_book($1)', [listing])
+  await call(db, seller, 'confirm_exchange($1, $2::jsonb)', [r.id, JSON.stringify({ pickup_mode: 'anytime', city: 'X' })])
+  return { seller, buyer, listing, convo: r.id }
+}
+
 describe('update_listing', () => {
   it('updates the owner listing, keeping photos that were not replaced', async () => {
     const seller = await createUser(db)
@@ -110,6 +120,14 @@ describe('update_listing', () => {
     const pending = await seedListing(db, seller, { status: 'pending' })
     expect(await call(db, other, 'update_listing($1, $2::jsonb)', [active, JSON.stringify(base)])).toBe('not_allowed')
     expect(await call(db, seller, 'update_listing($1, $2::jsonb)', [pending, JSON.stringify(base)])).toBe('pending_request')
+  })
+
+  it('refuses to edit a sold listing, so the price cannot change after confirmation', async () => {
+    const { seller, listing } = await confirmedSale()
+    expect((await row(listing)).status).toBe('sold')
+    const books = Array.from({ length: 5 }, (_, i) => ({ title: `B${i}`, author: 'A', ol_work_key: `/works/OL${i}W` }))
+    expect(await call(db, seller, 'update_listing($1, $2::jsonb, $3::jsonb)', [listing, JSON.stringify({ ...base, is_bundle: 'true' }), JSON.stringify(books)])).toBe('sold')
+    expect((await row(listing)).book_count).toBe(1)
   })
 
   it('replaces bundle books as a whole', async () => {
@@ -143,6 +161,13 @@ describe('set_listing_status and delete_listing', () => {
     const pending = await seedListing(db, seller, { status: 'pending' })
     expect(await call(db, seller, 'set_listing_status($1, $2)', [pending, 'active'])).toBe('not_allowed')
     expect(await call(db, seller, 'delete_listing($1)', [pending])).toBe('pending_request')
+  })
+
+  it('refuses to delete a sold listing and keeps the exchange', async () => {
+    const { seller, listing, convo } = await confirmedSale()
+    expect(await call(db, seller, 'delete_listing($1)', [listing])).toBe('sold')
+    const { rows } = await db.query('select 1 from conversations where id = $1', [convo])
+    expect(rows).toHaveLength(1)
   })
 
   it('deletes only the owner listing', async () => {

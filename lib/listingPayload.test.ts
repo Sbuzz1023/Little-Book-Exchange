@@ -33,6 +33,7 @@ describe('listingErrorMessage', () => {
   it('explains each known code and falls back for unknown ones', () => {
     expect(listingErrorMessage('needs_match')).toMatch(/select your book/)
     expect(listingErrorMessage('pending_request')).toMatch(/pending purchase request/)
+    expect(listingErrorMessage('sold')).toMatch(/already been sold/)
     expect(listingErrorMessage('???')).toBe('Something went wrong. Please try again.')
   })
 })

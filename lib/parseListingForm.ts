@@ -18,7 +18,7 @@ export type ParsedListingForm = {
 
 export function parseListingForm(formData: FormData): ParsedListingForm {
   const priceRaw = formData.get('price') as string
-  const price = priceRaw && priceRaw.trim() !== '' ? parseFloat(priceRaw) : null
+  const price = priceRaw && priceRaw.trim() !== '' ? Math.round(parseFloat(priceRaw) * 100) / 100 : null
   const rawCoverUrl = (formData.get('cover_url') as string) || ''
   return {
     title:       formData.get('title')       as string,

@@ -58,4 +58,10 @@ describe('updateListing', () => {
     rpcResult = { data: 'pending_request', error: null }
     await expect(updateListing('listing-1', form(valid))).rejects.toThrow(/REDIRECT:\/listings\/listing-1\/edit\?error=This%20listing%20has%20a%20pending/)
   })
+
+  it('redirects with the sold message without calling the database', async () => {
+    existing = { data: { status: 'sold' } }
+    await expect(updateListing('listing-1', form(valid))).rejects.toThrow(/REDIRECT:\/listings\/listing-1\/edit\?error=This%20book%20has%20already%20been%20sold/)
+    expect(rpcMock).not.toHaveBeenCalled()
+  })
 })

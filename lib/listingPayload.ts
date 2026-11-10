@@ -24,6 +24,7 @@ const LISTING_ERRORS: Record<string, string> = {
   invalid_listing: 'Please fill in the title, author and condition.',
   invalid_photo: 'One of your photos could not be saved. Please try adding it again.',
   pending_request: 'This listing has a pending purchase request and can\'t be edited right now.',
+  sold: 'This book has already been sold and can\'t be edited.',
   not_allowed: 'You can\'t edit this listing.',
 }
 
