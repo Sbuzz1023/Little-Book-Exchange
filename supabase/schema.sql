@@ -2363,3 +2363,114 @@ end;
 $$ language plpgsql security definer set search_path = public, pg_temp;
 grant execute on function deny_request(uuid) to authenticated;
 -- ──────────────────────────────────────────────────────────────────────────────
+
+-- ── Migration: shared backend 5/6 — pickup, disputes, history, support, TBR ──
+-- Run this block in Supabase SQL Editor:
+
+-- Set (by the server, service role) once the admins have been emailed about a
+-- dispute, so the app's notify endpoint can't be used to spam them.
+alter table disputes add column if not exists admin_notified_at timestamptz;
+
+create or replace function mark_picked_up(p_conversation_id uuid)
+returns text as $$
+declare
+  v_conv conversations%rowtype;
+  v_result text;
+  v_username text;
+begin
+  select * into v_conv from conversations where id = p_conversation_id for update;
+  if not found or auth.uid() is null or auth.uid() not in (v_conv.buyer_id, v_conv.seller_id) then
+    return 'not_allowed';
+  end if;
+  if v_conv.exchange_status <> 'confirmed' then return 'wrong_status'; end if;
+
+  if auth.uid() = v_conv.seller_id then
+    if v_conv.seller_picked_up_at is not null then return 'already_marked'; end if;
+    update conversations set seller_picked_up_at = now() where id = p_conversation_id;
+  else
+    if v_conv.buyer_picked_up_at is not null then return 'already_marked'; end if;
+    update conversations set buyer_picked_up_at = now() where id = p_conversation_id;
+  end if;
+
+  -- resolve_pickup completes the exchange (and so moves credits) only when its
+  -- own rules say so: both sides marked, no open dispute.
+  v_result := resolve_pickup(p_conversation_id, auth.uid());
+  if v_result = 'waiting' then
+    select username into v_username from profiles where id = auth.uid();
+    insert into messages (conversation_id, sender_id, body, kind)
+    values (p_conversation_id, auth.uid(),
+            '📦 ' || coalesce(v_username, 'They') || ' marked this picked up! Please confirm on your end within 48 hours.',
+            'pickup');
+  end if;
+  return v_result;
+end;
+$$ language plpgsql security definer set search_path = public, pg_temp;
+grant execute on function mark_picked_up(uuid) to authenticated;
+
+create or replace function file_dispute(p_conversation_id uuid, p_message text)
+returns jsonb as $$
+declare
+  v_conv conversations%rowtype;
+  v_id uuid;
+begin
+  select * into v_conv from conversations where id = p_conversation_id;
+  if not found or auth.uid() is null or auth.uid() not in (v_conv.buyer_id, v_conv.seller_id) then
+    return jsonb_build_object('status', 'not_allowed');
+  end if;
+  if btrim(coalesce(p_message, '')) = '' then return jsonb_build_object('status', 'empty_message'); end if;
+  if exists (select 1 from disputes where conversation_id = p_conversation_id and status = 'open') then
+    return jsonb_build_object('status', 'already_open');
+  end if;
+  insert into disputes (conversation_id, reporter_id, message)
+  values (p_conversation_id, auth.uid(), btrim(p_message))
+  returning id into v_id;
+  return jsonb_build_object('status', 'ok', 'id', v_id);
+end;
+$$ language plpgsql security definer set search_path = public, pg_temp;
+grant execute on function file_dispute(uuid, text) to authenticated;
+
+create or replace function hide_exchange(p_conversation_id uuid)
+returns text as $$
+begin
+  update conversations set
+    buyer_hidden  = buyer_hidden  or buyer_id  = auth.uid(),
+    seller_hidden = seller_hidden or seller_id = auth.uid()
+  where id = p_conversation_id and auth.uid() in (buyer_id, seller_id);
+  if not found then return 'not_allowed'; end if;
+  return 'ok';
+end;
+$$ language plpgsql security definer set search_path = public, pg_temp;
+grant execute on function hide_exchange(uuid) to authenticated;
+
+create or replace function start_support_conversation()
+returns jsonb as $$
+declare v_id uuid;
+begin
+  if auth.uid() is null then return jsonb_build_object('status', 'not_allowed'); end if;
+  select id into v_id from conversations
+  where type = 'admin' and user_id = auth.uid() and repliable = true
+  order by created_at desc limit 1;
+  if v_id is null then
+    insert into conversations (type, user_id, repliable) values ('admin', auth.uid(), true)
+    returning id into v_id;
+  end if;
+  return jsonb_build_object('status', 'ok', 'id', v_id);
+end;
+$$ language plpgsql security definer set search_path = public, pg_temp;
+grant execute on function start_support_conversation() to authenticated;
+
+create or replace function move_saved_to_tbr(p_listing_id uuid)
+returns text as $$
+declare v_listing listings%rowtype;
+begin
+  if auth.uid() is null then return 'not_allowed'; end if;
+  select * into v_listing from listings where id = p_listing_id;
+  if not found then return 'not_found'; end if;
+  insert into tbr_entries (user_id, title, author, city, state)
+  values (auth.uid(), v_listing.title, v_listing.author, coalesce(v_listing.city, ''), '');
+  delete from saved_listings where user_id = auth.uid() and listing_id = p_listing_id;
+  return 'ok';
+end;
+$$ language plpgsql security definer set search_path = public, pg_temp;
+grant execute on function move_saved_to_tbr(uuid) to authenticated;
+-- ──────────────────────────────────────────────────────────────────────────────
