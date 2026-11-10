@@ -305,6 +305,25 @@ describe('DashboardClient — dual pickup confirmation', () => {
     await waitFor(() => expect(fileDispute).toHaveBeenCalled())
   })
 
+  it('shows only a short confirmation after the dispute is sent, and Done closes it', async () => {
+    const fileDispute = vi.fn(() => Promise.resolve({ ok: true }))
+    render(<DashboardClient {...baseProps} exchanges={[confirmedExchange]} defaultTab="exchanges" fileDispute={fileDispute} />)
+
+    fireEvent.click(screen.getByText('🚩 Dispute'))
+    const textarea = await screen.findByPlaceholderText(/describe the issue/i)
+    fireEvent.change(textarea, { target: { value: 'The book was damaged.' } })
+    fireEvent.click(screen.getByRole('button', { name: /Send to Admin/i }))
+
+    expect(await screen.findByText('Sent ✓')).toBeInTheDocument()
+    expect(screen.getByText('An admin will look into it. The exchange is paused until then.')).toBeInTheDocument()
+    expect(screen.queryByText('Report an issue')).not.toBeInTheDocument()
+    expect(screen.queryByText(/Tell us what's wrong/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/We've notified the admin team/)).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }))
+    expect(screen.queryByText('Sent ✓')).not.toBeInTheDocument()
+  })
+
   it('places the Dispute button in the header (top-right) area, not the action row, once both parties can act', () => {
     const { container } = render(<DashboardClient {...baseProps} exchanges={[confirmedExchange]} defaultTab="exchanges" />)
     const header = container.querySelector('[data-testid="exchange-header-actions"]')

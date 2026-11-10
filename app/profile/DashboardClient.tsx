@@ -956,17 +956,25 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
                     >
                       ✕
                     </button>
-                    <h3 className="mb-1">Report an issue</h3>
-                    <p className="font-semibold text-[12px] mb-4" style={{ color: '#8A8178' }}>
-                      Tell us what's wrong with <strong style={{ color: '#4A4038' }}>{disputeModal.title}</strong> — this pauses the exchange until an admin looks into it.
-                    </p>
-
                     {disputeSubmitted ? (
-                      <p className="font-bold text-[13px]" style={{ color: '#234A40' }}>
-                        We've notified the admin team. This exchange is paused until it's resolved.
-                      </p>
+                      <>
+                        <h3 className="mb-1">Sent ✓</h3>
+                        <p className="font-semibold text-[13px] mb-4" style={{ color: '#8A8178' }}>
+                          An admin will look into it. The exchange is paused until then.
+                        </p>
+                        <div className="flex justify-end mt-4">
+                          <button type="button" onClick={() => setDisputeModal(null)} className="font-extrabold text-[13px] text-white"
+                            style={{ background: '#B5462F', padding: '9px 20px', borderRadius: 999, border: 'none', cursor: 'pointer' }}>
+                            Done
+                          </button>
+                        </div>
+                      </>
                     ) : (
                       <>
+                        <h3 className="mb-1">Report an issue</h3>
+                        <p className="font-semibold text-[12px] mb-4" style={{ color: '#8A8178' }}>
+                          Tell us what's wrong with <strong style={{ color: '#4A4038' }}>{disputeModal.title}</strong> — this pauses the exchange until an admin looks into it.
+                        </p>
                         <textarea
                           value={disputeMessage}
                           onChange={e => setDisputeMessage(e.target.value)}
