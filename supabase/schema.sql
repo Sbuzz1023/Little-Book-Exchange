@@ -2480,3 +2480,64 @@ end;
 $$ language plpgsql security definer set search_path = public, pg_temp;
 grant execute on function move_saved_to_tbr(uuid) to authenticated;
 -- ──────────────────────────────────────────────────────────────────────────────
+
+-- ── Migration: shared backend 6/6 — lockdown ─────────────────────────────────
+-- Run this block in Supabase SQL Editor ONLY AFTER the website using blocks
+-- 1–5 is deployed. From here on members change exchanges, listings and
+-- disputes only through the functions in blocks 2–5, and private profile
+-- columns are readable only through get_my_profile() / admin_list_users().
+-- Policies are dropped under both names they have had (schema.sql and the
+-- older rls-policies.sql) since either may be live.
+
+-- Exchanges: no direct member writes (admin policies stay).
+drop policy if exists "Buyers can create conversations" on conversations;
+drop policy if exists "create conversations as buyer" on conversations;
+drop policy if exists "Participants can update conversations" on conversations;
+drop policy if exists "update own conversations" on conversations;
+drop policy if exists "buyer can cancel conversations" on conversations;
+drop policy if exists "Sellers can deny conversations" on conversations;
+
+-- Listings and bundle books: only via create/update/set_status/delete_listing.
+drop policy if exists "Users can insert own listings" on listings;
+drop policy if exists "Users can update own listings" on listings;
+drop policy if exists "Users can delete own listings" on listings;
+drop policy if exists "Owners can manage their listing's books" on listing_books;
+
+-- Disputes: only via file_dispute (admins keep update/delete).
+drop policy if exists "A participant can file a dispute on their own exchange" on disputes;
+
+-- Messages: members send plain chat only; request/confirmation/pickup
+-- messages come from the functions. Support-thread policy is unchanged.
+drop policy if exists "Participants can send messages" on messages;
+drop policy if exists "participants can send messages" on messages;
+drop policy if exists "Participants can send chat messages" on messages;
+create policy "Participants can send chat messages" on messages
+  for insert with check (
+    kind = 'chat'
+    and auth.uid() = sender_id
+    and exists (
+      select 1 from conversations c
+      where c.id = conversation_id and c.type = 'exchange'
+        and auth.uid() in (c.buyer_id, c.seller_id)
+    )
+  );
+
+-- Photos: only into your own folder (the path the site already uses).
+drop policy if exists "Authenticated users can upload photos" on storage.objects;
+drop policy if exists "Users can upload photos to their own folder" on storage.objects;
+create policy "Users can upload photos to their own folder" on storage.objects
+  for insert with check (
+    bucket_id = 'book-photos'
+    and auth.uid()::text = (storage.foldername(name))[1]
+  );
+
+-- Folded into request_book.
+revoke execute on function lock_listing_for_request(uuid) from public, anon, authenticated;
+-- cancel_request/deny_request replace it (its website callers are gone; the cron and admin use resolve_pickup).
+revoke execute on function reopen_listing(uuid) from public, anon, authenticated;
+
+-- Profiles: only public columns are directly readable. is_admin stays
+-- readable because many policies check it for the caller.
+revoke select on profiles from anon, authenticated;
+grant select (id, username, city, state, created_at, is_admin) on profiles to anon, authenticated;
+-- ──────────────────────────────────────────────────────────────────────────────
