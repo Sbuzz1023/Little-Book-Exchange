@@ -116,4 +116,43 @@ describe('AdminInboxTab', () => {
     expect(await findByText(/Could not mark this conversation as read/)).toBeInTheDocument()
     expect(row).toHaveAttribute('data-unread', 'true')
   })
+
+  it('selects the requested conversation once loaded, like a click, and reports it consumed', async () => {
+    const onOpenConsumed = vi.fn()
+    const { findByText, findByTestId } = render(
+      <AdminInboxTab onUnreadCountChange={vi.fn()} openConversationId="convo-unread" onOpenConsumed={onOpenConsumed} />
+    )
+    expect(await findByText('Repliable conversation')).toBeTruthy()
+    await waitFor(() => expect(updateEqMock).toHaveBeenCalledWith('id', 'convo-unread'))
+    expect(await findByTestId('inbox-convo-convo-unread')).toHaveAttribute('data-unread', 'false')
+    expect(onOpenConsumed).toHaveBeenCalled()
+  })
+
+  it('reloads and selects a just-created empty conversation that was not in the initial list', async () => {
+    const newConvo = { id: 'convo-new', user_id: 'user-3', repliable: true, created_at: '2026-08-09T00:00:00.000Z', admin_last_read_at: null }
+    const initial = conversationsResult
+    let calls = 0
+    fromMock.mockImplementation((table: string) => {
+      if (table === 'conversations') {
+        return {
+          select: () => {
+            calls++
+            return makeChain(calls === 1 ? initial : { data: [newConvo, ...initial.data], error: null })
+          },
+          update: updateMock,
+        }
+      }
+      if (table === 'profiles') return { select: () => makeChain({ data: [{ id: 'user-3', username: 'Robin' }, ...profilesResult.data] }) }
+      if (table === 'messages') return { select: () => makeChain(messagesResult) }
+      throw new Error(`unexpected table ${table}`)
+    })
+    const onOpenConsumed = vi.fn()
+    const { findByText, findByTestId } = render(
+      <AdminInboxTab onUnreadCountChange={vi.fn()} openConversationId="convo-new" onOpenConsumed={onOpenConsumed} />
+    )
+    expect(await findByTestId('inbox-convo-convo-new')).toBeTruthy()
+    expect(await findByText('No messages yet.')).toBeTruthy()
+    await waitFor(() => expect(onOpenConsumed).toHaveBeenCalled())
+    expect(calls).toBe(2)
+  })
 })

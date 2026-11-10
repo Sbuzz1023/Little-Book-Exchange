@@ -45,4 +45,9 @@ describe('EmailsAdminTab — Inbox unread badge', () => {
     rerender(<EmailsAdminTab users={[]} inboxUnreadCount={5} />)
     expect(getByText('3')).toBeInTheDocument()
   })
+
+  it('switches to the Inbox sub-tab when told to open a conversation', () => {
+    const { getByText } = render(<EmailsAdminTab users={[]} openConversationId="convo-1" />)
+    expect(getByText('Inbox contents')).toBeInTheDocument()
+  })
 })

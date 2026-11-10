@@ -1,17 +1,16 @@
 // app/admin/EmailComposeTab.tsx
 'use client'
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import { resolveBroadcastRecipients, sendBroadcastEmail, sendBroadcastMessage, type BroadcastTarget } from '@/lib/actions/emailAdmin'
 
 type ComposeUser = { id: string; username: string; email: string; city: string; state: string }
 type Mode = 'email' | 'message'
 
 export default function EmailComposeTab({
-  users, prefillUserId, onPrefillConsumed,
+  users, onOpenChat,
 }: {
   users: ComposeUser[]
-  prefillUserId?: string | null
-  onPrefillConsumed?: () => void
+  onOpenChat?: (userId: string) => void
 }) {
   const [mode, setMode] = useState<Mode>('email')
   const [targetKind, setTargetKind] = useState<'all' | 'user' | 'filtered'>('all')
@@ -35,17 +34,7 @@ export default function EmailComposeTab({
     [users, userSearch]
   )
 
-  useEffect(() => {
-    if (!prefillUserId) return
-    const match = users.find(u => u.id === prefillUserId)
-    setMode('message')
-    setTargetKind('user')
-    setSelectedUserId(prefillUserId)
-    setUserSearch(match ? `${match.username} (${match.email})` : '')
-    setMessageRepliable(true)
-    onPrefillConsumed?.()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [prefillUserId])
+  const chatMode = mode === 'message' && targetKind === 'user'
 
   function currentTarget(): BroadcastTarget | null {
     if (targetKind === 'all') return { kind: 'all' }
@@ -154,13 +143,15 @@ export default function EmailComposeTab({
               className="w-full border-2 border-[#e2e8f0] rounded-xl px-3 py-2.5 font-bold text-[14px] focus:outline-none focus:border-bk-orange" />
           </div>
         )}
-        <div>
-          <label className="block text-[12px] font-extrabold text-[#475569] mb-1 uppercase tracking-wide">Body</label>
-          <textarea value={body} onChange={e => setBody(e.target.value)} rows={6}
-            className="w-full border-2 border-[#e2e8f0] rounded-xl px-3 py-2.5 font-semibold text-[13px] focus:outline-none focus:border-bk-orange resize-y" />
-        </div>
+        {!chatMode && (
+          <div>
+            <label className="block text-[12px] font-extrabold text-[#475569] mb-1 uppercase tracking-wide">Body</label>
+            <textarea value={body} onChange={e => setBody(e.target.value)} rows={6}
+              className="w-full border-2 border-[#e2e8f0] rounded-xl px-3 py-2.5 font-semibold text-[13px] focus:outline-none focus:border-bk-orange resize-y" />
+          </div>
+        )}
 
-        {mode === 'message' && (
+        {mode === 'message' && !chatMode && (
           <label className="flex items-center gap-2 font-bold text-[13px] text-[#475569]">
             <input type="checkbox" checked={messageRepliable} onChange={e => setMessageRepliable(e.target.checked)} />
             Allow replies (start a conversation)
@@ -174,10 +165,17 @@ export default function EmailComposeTab({
           </div>
         )}
 
-        <button onClick={startConfirm}
-          className="bg-bk-orange text-white rounded-xl px-4 py-2.5 font-extrabold text-[13px] shadow-[0_3px_0_#c2410c]">
-          Send…
-        </button>
+        {chatMode ? (
+          <button onClick={() => selectedUserId && onOpenChat?.(selectedUserId)} disabled={!selectedUserId || !onOpenChat}
+            className="bg-bk-orange text-white rounded-xl px-4 py-2.5 font-extrabold text-[13px] shadow-[0_3px_0_#c2410c] disabled:opacity-50">
+            Open chat
+          </button>
+        ) : (
+          <button onClick={startConfirm}
+            className="bg-bk-orange text-white rounded-xl px-4 py-2.5 font-extrabold text-[13px] shadow-[0_3px_0_#c2410c]">
+            Send…
+          </button>
+        )}
       </div>
 
       {confirming && (

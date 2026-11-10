@@ -12,12 +12,12 @@ export default function DisputesAdminTab({
   disputes,
   disputesLoaded,
   onChanged,
-  onMessageReporter,
+  onOpenChat,
 }: {
   disputes: EnrichedDispute[]
   disputesLoaded: boolean
   onChanged: () => void
-  onMessageReporter: (userId: string) => void
+  onOpenChat: (userId: string) => void
 }) {
   const [filter, setFilter] = useState<Filter>('active')
   const alreadyMarked = useRef<Set<string>>(new Set())
@@ -62,7 +62,7 @@ export default function DisputesAdminTab({
       ) : (
         <div className="flex flex-col" style={{ gap: 12 }}>
           {shown.map(d => (
-            <DisputeRow key={d.id} dispute={d} context="admin-tab" onChanged={onChanged} onMessageReporter={onMessageReporter} />
+            <DisputeRow key={d.id} dispute={d} context="admin-tab" onChanged={onChanged} onOpenChat={onOpenChat} />
           ))}
         </div>
       )}

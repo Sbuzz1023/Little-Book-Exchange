@@ -8,13 +8,13 @@ export default function DisputeRow({
   context,
   cardUserId,
   onChanged,
-  onMessageReporter,
+  onOpenChat,
 }: {
   dispute: EnrichedDispute
   context: 'admin-tab' | 'user-card'
   cardUserId?: string
   onChanged: () => void
-  onMessageReporter?: (userId: string) => void
+  onOpenChat?: (userId: string) => void
 }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -77,11 +77,18 @@ export default function DisputeRow({
           style={{ background: '#dc2626', padding: '7px 18px', borderRadius: 999, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
           🗑️ Delete
         </button>
-        {onMessageReporter && (
-          <button type="button" onClick={() => onMessageReporter(dispute.reporterId)}
+        {onOpenChat && dispute.buyerId && (
+          <button type="button" onClick={() => onOpenChat(dispute.buyerId!)}
             className="font-extrabold text-[12px] text-white"
             style={{ background: '#0ea5e9', padding: '7px 18px', borderRadius: 999, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
-            💬 Message
+            💬 Message buyer
+          </button>
+        )}
+        {onOpenChat && dispute.sellerId && (
+          <button type="button" onClick={() => onOpenChat(dispute.sellerId!)}
+            className="font-extrabold text-[12px] text-white"
+            style={{ background: '#0ea5e9', padding: '7px 18px', borderRadius: 999, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
+            💬 Message seller
           </button>
         )}
       </div>

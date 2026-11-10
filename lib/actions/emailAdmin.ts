@@ -128,6 +128,20 @@ async function findOrCreateAdminConversation(
   return created.id
 }
 
+export async function openAdminChat(userId: string): Promise<{ ok: boolean; conversationId?: string; error?: string }> {
+  const supabase = createClient()
+  const admin = await requireAdmin(supabase)
+  if (!admin.ok) return { ok: false, error: admin.error }
+
+  try {
+    const conversationId = await findOrCreateAdminConversation(supabase, userId, true)
+    return { ok: true, conversationId }
+  } catch (err) {
+    console.error('openAdminChat failed', err)
+    return { ok: false, error: 'Could not open the chat.' }
+  }
+}
+
 export async function sendBroadcastMessage(target: BroadcastTarget, body: string, repliable: boolean): Promise<{ ok: boolean; sent: number; failed: number; error?: string }> {
   const supabase = createClient()
   const admin = await requireAdmin(supabase)

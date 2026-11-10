@@ -3,6 +3,7 @@ import { useState, useEffect, useMemo, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { adminUpdateReview, adminDeleteReview } from '@/lib/actions/reviews'
 import { adminUpdateUserCredits } from '@/lib/actions/admin'
+import { openAdminChat } from '@/lib/actions/emailAdmin'
 import LocationsAdminTab from './LocationsAdminTab'
 import EmailsAdminTab from './EmailsAdminTab'
 import DisputesAdminTab from './DisputesAdminTab'
@@ -653,7 +654,8 @@ export default function AdminClient() {
   const [reviews, setReviews] = useState<Review[]>([])
   const [reviewSellerIds, setReviewSellerIds] = useState<string[]>([])
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const [messagePrefillUserId, setMessagePrefillUserId] = useState<string | null>(null)
+  const [openChatConversationId, setOpenChatConversationId] = useState<string | null>(null)
+  const [chatError, setChatError] = useState<string | null>(null)
   const hasTabCount = useRef(false)
   const [enrichedDisputes, setEnrichedDisputes] = useState<EnrichedDispute[]>([])
   const [disputesLoaded, setDisputesLoaded] = useState(false)
@@ -922,8 +924,14 @@ export default function AdminClient() {
     setInboxUnreadCount(count)
   }
 
-  function handleMessageReporter(userId: string) {
-    setMessagePrefillUserId(userId)
+  async function handleOpenChat(userId: string) {
+    setChatError(null)
+    const res = await openAdminChat(userId)
+    if (!res.ok || !res.conversationId) {
+      setChatError(res.error ?? 'Could not open the chat.')
+      return
+    }
+    setOpenChatConversationId(res.conversationId)
     setTab('emails')
   }
 
@@ -1004,6 +1012,9 @@ export default function AdminClient() {
       {/* Main content */}
       <div className="flex-1 bg-[#f8fafc] overflow-auto">
         <div className="max-w-[1100px] mx-auto px-4 md:px-6 py-6 pb-24 md:pb-6">
+          {chatError && (
+            <div className="mb-4 bg-red-50 border-2 border-red-200 rounded-xl px-4 py-3 text-red-700 font-bold text-sm">{chatError}</div>
+          )}
           {tab === 'dashboard' && <Dashboard users={usersWithStats} pendingLocationReports={pendingLocationReports} reviews={reviews} activeListingsCount={activeListingsCount} rawActivity={rawActivity} recentActivity={recentActivity} />}
           {tab === 'users'     && (
             <UsersTab
@@ -1021,8 +1032,9 @@ export default function AdminClient() {
           {tab === 'emails'    && (
             <EmailsAdminTab
               users={users}
-              messagePrefillUserId={messagePrefillUserId}
-              onPrefillConsumed={() => setMessagePrefillUserId(null)}
+              openConversationId={openChatConversationId}
+              onOpenConsumed={() => setOpenChatConversationId(null)}
+              onOpenChat={handleOpenChat}
               onInboxUnreadCountChange={handleInboxUnreadCountChange}
               inboxUnreadCount={inboxUnreadCount}
             />
@@ -1032,7 +1044,7 @@ export default function AdminClient() {
               disputes={enrichedDisputes}
               disputesLoaded={disputesLoaded}
               onChanged={refetchDisputes}
-              onMessageReporter={handleMessageReporter}
+              onOpenChat={handleOpenChat}
             />
           )}
         </div>

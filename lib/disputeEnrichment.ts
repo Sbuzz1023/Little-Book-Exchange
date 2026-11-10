@@ -29,6 +29,8 @@ export type EnrichedDispute = {
   reporterId: string
   reporterName: string
   otherPartyId: string | null
+  buyerId: string | null
+  sellerId: string | null
   otherPartyName: string
   bookTitle: string
 }
@@ -59,6 +61,8 @@ export function enrichDisputes(
       reporterId: d.reporter_id,
       reporterName: userNames[d.reporter_id] ?? 'Unknown',
       otherPartyId,
+      buyerId: convo?.buyer_id ?? null,
+      sellerId: convo?.seller_id ?? null,
       otherPartyName: otherPartyId ? (userNames[otherPartyId] ?? 'Unknown') : 'Unknown',
       bookTitle: convo?.listing_id ? (listingTitles[convo.listing_id] ?? 'Unknown book') : 'Unknown book',
     }
