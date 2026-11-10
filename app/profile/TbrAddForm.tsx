@@ -28,7 +28,7 @@ export default function TbrAddForm({ addTbrEntry, search, defaultCity = '', defa
   }
 
   return (
-    <form action={addTbrEntry} className="flex gap-2 mb-4 flex-wrap items-start">
+    <form action={addTbrEntry} className="dash-tbr-form flex gap-2 flex-wrap items-start">
       <input type="hidden" name="ol_work_key" value={olWorkKey} />
       <input type="hidden" name="cover_url" value={coverUrl ?? ''} />
       {/* Title gets twice the share of the row. The search box must be able to
@@ -36,7 +36,7 @@ export default function TbrAddForm({ addTbrEntry, search, defaultCity = '', defa
           a book is picked; with its own 120px minimum it overflowed onto Author. */}
       <div style={{ flex: '2 1 0%', minWidth: 160, display: 'flex', gap: 8, alignItems: 'flex-start' }}>
         {coverUrl && (
-          <img src={coverUrl} alt="Cover preview" style={{ width: 28, height: 40, objectFit: 'cover', borderRadius: 4, flexShrink: 0 }} />
+          <img src={coverUrl} alt="Cover preview" className="dash-tbr-preview" />
         )}
         <div style={{ flex: '1 1 0%', minWidth: 0 }}>
           <BookSearchInput
@@ -45,8 +45,8 @@ export default function TbrAddForm({ addTbrEntry, search, defaultCity = '', defa
             onChange={v => { setTitle(v); setOlWorkKey(''); setCoverUrl(null) }}
             onSelect={handleSelect}
             placeholder="Book title..."
-            className="border-2 border-[#ddd6fe] rounded-[12px] font-bold text-[13px] bg-[#f5f3ff]"
-            style={{ padding: '9px 12px', minWidth: 0, width: '100%' }}
+            className="dash-tbr-input"
+            style={{ minWidth: 0, width: '100%' }}
             search={search}
           />
         </div>
@@ -56,17 +56,16 @@ export default function TbrAddForm({ addTbrEntry, search, defaultCity = '', defa
         placeholder="Author (optional)..."
         value={author}
         onChange={e => { setAuthor(e.target.value); setOlWorkKey(''); setCoverUrl(null) }}
-        className="flex-1 border-2 border-[#ddd6fe] rounded-[12px] font-bold text-[13px] bg-[#f5f3ff]"
-        style={{ padding: '9px 12px', minWidth: 120 }}
+        className="dash-tbr-input flex-1"
+        style={{ minWidth: 120 }}
       />
       <input name="city" placeholder="City (blank = anywhere)" defaultValue={defaultCity}
-        className="flex-1 border-2 border-[#ddd6fe] rounded-[12px] font-bold text-[13px] bg-[#f5f3ff]"
-        style={{ padding: '9px 12px', minWidth: 100 }} />
+        className="dash-tbr-input flex-1"
+        style={{ minWidth: 100 }} />
       <StateSelect name="state" placeholder="Any state" defaultValue={defaultState}
-        className="flex-1 border-2 border-[#ddd6fe] rounded-[12px] font-bold text-[13px] bg-[#f5f3ff]"
-        style={{ padding: '9px 12px', minWidth: 100 }} />
-      <button type="submit" className="text-white font-extrabold text-[13px]"
-        style={{ background: '#7c3aed', padding: '9px 18px', borderRadius: 12, border: 'none', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>
+        className="dash-tbr-input flex-1"
+        style={{ minWidth: 100 }} />
+      <button type="submit" className="btn btn-primary dash-tbr-add">
         + Add
       </button>
     </form>

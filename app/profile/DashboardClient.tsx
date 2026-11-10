@@ -1032,96 +1032,40 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
             <TbrAddForm addTbrEntry={addTbrEntry} defaultCity={profile?.city ?? ''} defaultState={profile?.state ?? ''} />
 
             {tbrEntries.length === 0 ? (
-              <div className="text-center py-8 font-bold text-[14px]" style={{ color: '#8A8178' }}>
+              <div className="dash-tbr-empty">
                 No books on your TBR yet.
               </div>
             ) : (
-              <>
-                {/* Desktop: table with column headers */}
-                <div className="hidden md:block">
-                  <div className="grid gap-3 px-1 pb-2" style={{ gridTemplateColumns: '46px 2fr 1.5fr 1fr 70px 150px', borderBottom: '1px solid #E7DCCB' }}>
-                    {['', 'Title', 'Author', 'City', 'State', ''].map(h => (
-                      <span key={h} className="font-black text-[11px]" style={{ textTransform: 'uppercase', letterSpacing: '0.6px', color: '#8A8178' }}>
-                        {h}
-                      </span>
-                    ))}
-                  </div>
-                  {tbrEntries.map(entry => {
-                    const isUnread = unreadEntityIds.tbrMatch.includes(entry.id)
-                    return (
-                    <div key={entry.id} className="grid gap-3 items-center px-1"
-                      style={{ gridTemplateColumns: '46px 2fr 1.5fr 1fr 70px 150px', padding: '12px 4px', borderBottom: '1px solid #E7DCCB', ...(isUnread ? { background: '#EFEAF7', borderRadius: 10 } : {}) }}>
+              <div className="dash-xcards dash-tbr-list">
+                {tbrEntries.map(entry => {
+                  const isUnread = unreadEntityIds.tbrMatch.includes(entry.id)
+                  const place = [entry.city, entry.state].filter(Boolean).join(', ')
+                  return (
+                    <div key={entry.id} className={`dash-xcard dash-tbr-card${isUnread ? ' is-attention' : ''}`}>
                       {entry.cover_url ? (
-                        <img src={entry.cover_url} alt="" style={{ width: 32, height: 46, objectFit: 'cover', borderRadius: 4 }} />
+                        <img src={entry.cover_url} alt="" className="dash-tbr-cover" />
                       ) : (
-                        <span style={{ width: 32, height: 46, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>📚</span>
+                        <span className="dash-tbr-cover is-fallback">📚</span>
                       )}
-                      <span className="font-black text-[14px] truncate">{entry.title || '—'}</span>
-                      <span className="font-semibold text-[13px] truncate" style={{ color: entry.author ? '#4A4038' : '#C7BFB2' }}>{entry.author || '—'}</span>
-                      <span className="font-semibold text-[13px] truncate" style={{ color: entry.city ? '#4A4038' : '#C7BFB2' }}>{entry.city || '—'}</span>
-                      <span className="font-semibold text-[13px]" style={{ color: entry.state ? '#4A4038' : '#C7BFB2' }}>{entry.state || '—'}</span>
-                      <div className="flex items-center justify-end gap-3">
+                      <div className="dash-tbr-info">
+                        {isUnread && <p className="dash-xstatus is-attention">NEW MATCH NEARBY</p>}
+                        <p className="dash-tbr-title">{entry.title || (entry.author ? `by ${entry.author}` : '—')}</p>
+                        {entry.title && entry.author && <p className="dash-tbr-author">{entry.author}</p>}
+                        {place && <p className="dash-tbr-place">{place}</p>}
                         {entry.match && (
-                          <Link href={`/listings/${entry.match.id}`}
-                            className="font-extrabold text-[11px] text-white whitespace-nowrap"
-                            style={{ background: '#5B4B8A', padding: '5px 10px', borderRadius: 999 }}>
-                            📖 Avail
+                          <Link href={`/listings/${entry.match.id}`} className="btn btn-primary dash-tbr-see">
+                            See listing
                           </Link>
                         )}
-                        <form action={removeTbrEntry}>
-                          <input type="hidden" name="id" value={entry.id} />
-                          <button className="font-extrabold text-[15px] hover:opacity-70" aria-label="Delete"
-                            style={{ background: 'none', border: 'none', color: '#C88', cursor: 'pointer', padding: 0 }}>
-                            ✕
-                          </button>
-                        </form>
                       </div>
+                      <form action={removeTbrEntry}>
+                        <input type="hidden" name="id" value={entry.id} />
+                        <button className="dash-tbr-remove" aria-label="Delete">✕</button>
+                      </form>
                     </div>
-                    )
-                  })}
-                </div>
-
-                {/* Mobile: stacked cards */}
-                <div className="md:hidden">
-                  {tbrEntries.map(entry => {
-                    const isUnread = unreadEntityIds.tbrMatch.includes(entry.id)
-                    return (
-                    <div key={entry.id} style={{ padding: '12px 0', borderBottom: '1px solid #E7DCCB', display: 'flex', gap: 10, ...(isUnread ? { background: '#EFEAF7', borderRadius: 10 } : {}) }}>
-                      {entry.cover_url ? (
-                        <img src={entry.cover_url} alt="" style={{ width: 32, height: 46, objectFit: 'cover', borderRadius: 4, flexShrink: 0 }} />
-                      ) : (
-                        <span style={{ width: 32, height: 46, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>📚</span>
-                      )}
-                      <div style={{ flex: 1 }}>
-                      <p className="font-black text-[14px] truncate">
-                        {entry.title || `by ${entry.author}`}
-                      </p>
-                      <p className="font-semibold text-[12px] mb-2" style={{ color: '#8A8178' }}>
-                        {[entry.title && entry.author ? `by ${entry.author}` : null, entry.city, entry.state]
-                          .filter(Boolean).join(' · ')}
-                      </p>
-                      <div className="flex items-center gap-3 flex-wrap">
-                        {entry.match && (
-                          <Link href={`/listings/${entry.match.id}`}
-                            className="font-extrabold text-[12px] text-white whitespace-nowrap"
-                            style={{ background: '#5B4B8A', padding: '6px 14px', borderRadius: 999 }}>
-                            📖 Available!
-                          </Link>
-                        )}
-                        <form action={removeTbrEntry}>
-                          <input type="hidden" name="id" value={entry.id} />
-                          <button className="font-extrabold text-[11px] hover:opacity-80"
-                            style={{ background: 'none', border: 'none', color: '#8A8178', cursor: 'pointer', padding: 0 }}>
-                            ✕ Delete
-                          </button>
-                        </form>
-                      </div>
-                      </div>
-                    </div>
-                    )
-                  })}
-                </div>
-              </>
+                  )
+                })}
+              </div>
             )}
           </div>
         )}

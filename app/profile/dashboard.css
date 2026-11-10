@@ -434,3 +434,27 @@
   .home-v2 .dash-msg-head-name { font-size: 18px; }
   .home-v2 .dash-msg-scroll { padding: 16px 12px 8px; }
 }
+
+/* ---------- To Be Read tab — add form + one card per book ---------- */
+.home-v2 .dash-tbr-form { margin-bottom: 18px; }
+.home-v2 .dash-tbr-input {
+  border: 1.5px solid var(--line); border-radius: 12px; padding: 10px 14px;
+  font-family: var(--sans); font-size: 13.5px; font-weight: 700;
+  background: var(--ground); color: var(--ink); outline: none;
+}
+.home-v2 .dash-tbr-input:focus { border-color: var(--pine); box-shadow: 0 0 0 3px rgba(35, 74, 64, .14); }
+.home-v2 select.dash-tbr-input { cursor: pointer; }
+.home-v2 .dash-tbr-preview { width: 28px; height: 40px; object-fit: cover; border-radius: 4px; flex-shrink: 0; }
+.home-v2 .dash-tbr-add { padding: 10px 20px; font-size: 13px; white-space: nowrap; cursor: pointer; }
+.home-v2 .dash-tbr-list { gap: 10px; }
+.home-v2 .dash-tbr-card { display: flex; align-items: flex-start; gap: 12px; }
+.home-v2 .dash-tbr-cover { width: 40px; height: 58px; border-radius: 6px; object-fit: cover; flex-shrink: 0; }
+.home-v2 .dash-tbr-cover.is-fallback { display: flex; align-items: center; justify-content: center; background: var(--line); font-size: 18px; }
+.home-v2 .dash-tbr-info { flex: 1; min-width: 0; }
+.home-v2 .dash-tbr-title { font-weight: 900; font-size: 14px; color: var(--ink); }
+.home-v2 .dash-tbr-author { font-weight: 600; font-size: 12.5px; color: #4A4038; }
+.home-v2 .dash-tbr-place { font-weight: 600; font-size: 12px; color: #8A8178; }
+.home-v2 .dash-tbr-see { display: inline-flex; margin-top: 10px; padding: 6px 16px; font-size: 12px; white-space: nowrap; }
+.home-v2 .dash-tbr-remove { background: none; border: 0; padding: 2px 4px; font-size: 14px; line-height: 1; color: #B5AFA4; cursor: pointer; }
+.home-v2 .dash-tbr-remove:hover { color: #B5462F; }
+.home-v2 .dash-tbr-empty { text-align: center; padding: 32px 0; font-size: 14px; font-weight: 700; color: #8A8178; }

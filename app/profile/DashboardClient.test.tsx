@@ -90,6 +90,28 @@ describe('DashboardClient — notification badges and highlighting', () => {
     expect(screen.getByRole('option', { name: 'IL — Illinois' })).toBeInTheDocument()
   })
 
+  it('renders an unread TBR match as an attention card with a status label and See listing link', () => {
+    const { container } = render(<DashboardClient {...baseProps} exchanges={[]} defaultTab="tbr" />)
+    expect(screen.getByText('NEW MATCH NEARBY')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'See listing' })).toHaveAttribute('href', '/listings/listing-1')
+    expect(container.querySelector('.dash-tbr-card.is-attention')).not.toBeNull()
+  })
+
+  it('renders a read TBR entry as a plain card with title, author, "City, ST" and a Delete control', () => {
+    const entry = { id: 'tbr-2', title: 'Emma', author: 'Jane Austen', city: 'Chicago', state: 'IL', match: null }
+    const { container } = render(
+      <DashboardClient {...baseProps} exchanges={[]} defaultTab="tbr" tbrEntries={[entry] as any}
+        unreadEntityIds={{ ...baseProps.unreadEntityIds, tbrMatch: [] }} />
+    )
+    expect(screen.getByText('Emma')).toBeInTheDocument()
+    expect(screen.getByText('Jane Austen')).toBeInTheDocument()
+    expect(screen.getByText('Chicago, IL')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Delete' })).toBeInTheDocument()
+    expect(screen.queryByText('NEW MATCH NEARBY')).toBeNull()
+    expect(container.querySelector('.is-attention')).toBeNull()
+    expect(screen.queryByRole('link', { name: 'See listing' })).toBeNull()
+  })
+
   it('shows the exchanges unread count as a badge on the Exchanges tab', () => {
     render(<DashboardClient {...baseProps} exchanges={[pendingExchange]} defaultTab="listings" />)
     const exchangesButton = screen.getByText('Exchanges').closest('button')!

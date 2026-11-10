@@ -57,4 +57,11 @@ describe('TbrAddForm', () => {
     expect(container.querySelector('input[name="city"]')).toHaveValue('')
     expect(container.querySelector('select[name="state"]')).toHaveValue('')
   })
+
+  it('uses the house input and pine pill styles (no purple)', () => {
+    const { container } = render(<TbrAddForm addTbrEntry={vi.fn()} search={vi.fn().mockResolvedValue([])} />)
+    expect(screen.getByPlaceholderText('Author (optional)...')).toHaveClass('dash-tbr-input')
+    expect(container.querySelector('select[name="state"]')).toHaveClass('dash-tbr-input')
+    expect(screen.getByRole('button', { name: '+ Add' })).toHaveClass('btn-primary')
+  })
 })
