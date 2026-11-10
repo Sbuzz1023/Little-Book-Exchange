@@ -2379,7 +2379,8 @@ declare
   v_username text;
 begin
   select * into v_conv from conversations where id = p_conversation_id for update;
-  if not found or auth.uid() is null or auth.uid() not in (v_conv.buyer_id, v_conv.seller_id) then
+  if not found or v_conv.type <> 'exchange' or auth.uid() is null
+     or (auth.uid() is distinct from v_conv.buyer_id and auth.uid() is distinct from v_conv.seller_id) then
     return 'not_allowed';
   end if;
   if v_conv.exchange_status <> 'confirmed' then return 'wrong_status'; end if;
@@ -2413,8 +2414,9 @@ declare
   v_conv conversations%rowtype;
   v_id uuid;
 begin
-  select * into v_conv from conversations where id = p_conversation_id;
-  if not found or auth.uid() is null or auth.uid() not in (v_conv.buyer_id, v_conv.seller_id) then
+  select * into v_conv from conversations where id = p_conversation_id for update;
+  if not found or v_conv.type <> 'exchange' or auth.uid() is null
+     or (auth.uid() is distinct from v_conv.buyer_id and auth.uid() is distinct from v_conv.seller_id) then
     return jsonb_build_object('status', 'not_allowed');
   end if;
   if btrim(coalesce(p_message, '')) = '' then return jsonb_build_object('status', 'empty_message'); end if;
@@ -2464,6 +2466,10 @@ returns text as $$
 declare v_listing listings%rowtype;
 begin
   if auth.uid() is null then return 'not_allowed'; end if;
+  -- Check caller has this listing saved before proceeding
+  if not exists (select 1 from saved_listings where user_id = auth.uid() and listing_id = p_listing_id) then
+    return 'not_found';
+  end if;
   select * into v_listing from listings where id = p_listing_id;
   if not found then return 'not_found'; end if;
   insert into tbr_entries (user_id, title, author, city, state)

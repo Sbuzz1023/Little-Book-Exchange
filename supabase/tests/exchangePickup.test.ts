@@ -81,6 +81,26 @@ describe('start_support_conversation', () => {
     expect(b.id).toBe(a.id)
     expect(await call(db, null, 'start_support_conversation()')).toEqual({ status: 'not_allowed' })
   })
+
+  it('blocks exchange operations on support threads', async () => {
+    const me = await createUser(db)
+    const stranger = await createUser(db)
+    const { id: thread } = await call<{ status: string; id: string }>(db, me, 'start_support_conversation()')
+
+    // file_dispute rejects both stranger and owner on support thread
+    expect(await call(db, stranger, 'file_dispute($1, $2)', [thread, 'x'])).toEqual({ status: 'not_allowed' })
+    expect(await call(db, me, 'file_dispute($1, $2)', [thread, 'x'])).toEqual({ status: 'not_allowed' })
+    // No dispute row should exist
+    expect((await db.query('select id from disputes where conversation_id = $1', [thread])).rows).toHaveLength(0)
+
+    // mark_picked_up rejects both
+    expect(await call(db, stranger, 'mark_picked_up($1)', [thread])).toBe('not_allowed')
+    expect(await call(db, me, 'mark_picked_up($1)', [thread])).toBe('not_allowed')
+
+    // hide_exchange rejects both
+    expect(await call(db, stranger, 'hide_exchange($1)', [thread])).toBe('not_allowed')
+    expect(await call(db, me, 'hide_exchange($1)', [thread])).toBe('not_allowed')
+  })
 })
 
 describe('move_saved_to_tbr', () => {
@@ -93,5 +113,15 @@ describe('move_saved_to_tbr', () => {
     expect((await db.query('select title, author from tbr_entries where user_id = $1', [me])).rows).toEqual([{ title: 'Emma', author: 'Jane Austen' }])
     expect((await db.query('select id from saved_listings where user_id = $1', [me])).rows).toHaveLength(0)
     expect(await call(db, me, 'move_saved_to_tbr($1)', ['00000000-0000-0000-0000-000000000000'])).toBe('not_found')
+  })
+
+  it('requires the caller to have saved the listing', async () => {
+    const seller = await createUser(db)
+    const me = await createUser(db)
+    const listing = await seedListing(db, seller, { title: 'Dune', author: 'Frank Herbert' })
+    // listing exists but not saved by me
+    expect(await call(db, me, 'move_saved_to_tbr($1)', [listing])).toBe('not_found')
+    // No TBR entry should exist
+    expect((await db.query('select id from tbr_entries where user_id = $1', [me])).rows).toHaveLength(0)
   })
 })
