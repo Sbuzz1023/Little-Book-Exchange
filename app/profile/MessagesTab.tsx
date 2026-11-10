@@ -124,7 +124,7 @@ export default function MessagesTab({
   const router = useRouter()
   const [localMessages, setLocalMessages] = useState<Record<string, MessageRow[]>>({})
   const [body, setBody] = useState('')
-  const bottomRef = useRef<HTMLDivElement>(null)
+  const scrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
   const convo = exchanges.find(e => e.id === selectedId) ?? null
@@ -174,8 +174,11 @@ export default function MessagesTab({
   }, [convo?.id, isDemo])
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView?.({ behavior: 'smooth' })
-  }, [messages.length])
+    // Scroll only the thread's own container. scrollIntoView would also scroll
+    // every ancestor (the window), making the whole page jump on selection.
+    const el = scrollRef.current
+    if (el) el.scrollTop = el.scrollHeight
+  }, [convo?.id, messages.length])
 
   async function send(e: React.FormEvent) {
     e.preventDefault()
@@ -313,7 +316,7 @@ export default function MessagesTab({
               </div>
             )}
 
-            <div className="dash-msg-scroll" data-testid="thread-messages">
+            <div className="dash-msg-scroll" data-testid="thread-messages" ref={scrollRef}>
               {messages.length === 0 && (
                 <div className="dash-msg-empty">
                   <div style={{ fontSize: 36, marginBottom: 10 }}>👋</div>
@@ -350,7 +353,6 @@ export default function MessagesTab({
                   </div>
                 )
               })}
-              <div ref={bottomRef} />
             </div>
 
             {convo.type === 'admin' && convo.repliable === false ? (

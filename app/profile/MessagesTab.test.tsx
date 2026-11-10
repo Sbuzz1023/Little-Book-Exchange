@@ -1,5 +1,5 @@
 import { render, fireEvent, waitFor } from '@testing-library/react'
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import MessagesTab, { type MessagesTabExchange } from './MessagesTab'
 import { createClient } from '@/lib/supabase/client'
 
@@ -466,5 +466,54 @@ describe('MessagesTab — folk restyle: avatars and who-header', () => {
     // two groups of theirs (b1+b2, b4); my b3 has no avatar
     expect(avatars.length).toBe(2)
     avatars.forEach(a => expect(a.textContent).toBe('SB'))
+  })
+})
+
+describe('MessagesTab — scrolling', () => {
+  const scrollIntoViewSpy = vi.fn()
+  const scrollTopSets: number[] = []
+  let originalScrollIntoView: unknown
+  let scrollHeightDesc: PropertyDescriptor | undefined
+  let scrollTopDesc: PropertyDescriptor | undefined
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    scrollTopSets.length = 0
+    originalScrollIntoView = (Element.prototype as any).scrollIntoView
+    ;(Element.prototype as any).scrollIntoView = scrollIntoViewSpy
+    scrollHeightDesc = Object.getOwnPropertyDescriptor(Element.prototype, 'scrollHeight')
+    scrollTopDesc = Object.getOwnPropertyDescriptor(Element.prototype, 'scrollTop')
+    Object.defineProperty(Element.prototype, 'scrollHeight', { configurable: true, get: () => 777 })
+    Object.defineProperty(Element.prototype, 'scrollTop', {
+      configurable: true,
+      get: () => 0,
+      set(v: number) { scrollTopSets.push(v) },
+    })
+  })
+
+  afterEach(() => {
+    ;(Element.prototype as any).scrollIntoView = originalScrollIntoView
+    if (scrollHeightDesc) Object.defineProperty(Element.prototype, 'scrollHeight', scrollHeightDesc)
+    else delete (Element.prototype as any).scrollHeight
+    if (scrollTopDesc) Object.defineProperty(Element.prototype, 'scrollTop', scrollTopDesc)
+    else delete (Element.prototype as any).scrollTop
+  })
+
+  it('never calls scrollIntoView (which would scroll the whole page) when selecting a conversation', () => {
+    const { rerender } = render(
+      <MessagesTab exchanges={exchanges} userId="me" isDemo={true} selectedId={null} onSelectId={vi.fn()} />
+    )
+    rerender(<MessagesTab exchanges={exchanges} userId="me" isDemo={true} selectedId="convo-1" onSelectId={vi.fn()} />)
+    rerender(<MessagesTab exchanges={exchanges} userId="me" isDemo={true} selectedId="convo-2" onSelectId={vi.fn()} />)
+    expect(scrollIntoViewSpy).not.toHaveBeenCalled()
+  })
+
+  it('scrolls only the messages container to its bottom when a conversation is shown', () => {
+    const { getByTestId } = render(
+      <MessagesTab exchanges={exchanges} userId="me" isDemo={true} selectedId="convo-1" onSelectId={vi.fn()} />
+    )
+    expect(getByTestId('thread-messages')).toBeTruthy()
+    expect(scrollTopSets).toContain(777)
+    expect(scrollIntoViewSpy).not.toHaveBeenCalled()
   })
 })
