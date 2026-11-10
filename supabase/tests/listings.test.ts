@@ -52,6 +52,27 @@ describe('create_listing', () => {
     expect(await call<Created>(db, seller, 'create_listing($1::jsonb)', [JSON.stringify({ ...base, condition: 'Mint' })])).toEqual({ status: 'invalid_listing' })
   })
 
+  it('returns the same listing for an identical double-submit and inserts only one row', async () => {
+    const seller = await createUser(db)
+    const payload = JSON.stringify({ ...base, photo_url: photoFor(seller) })
+    const a = await call<Created>(db, seller, 'create_listing($1::jsonb)', [payload])
+    const b = await call<Created>(db, seller, 'create_listing($1::jsonb)', [payload])
+    expect(a.status).toBe('ok')
+    expect(b).toEqual({ status: 'ok', id: a.id })
+    const n = await db.query<{ n: number }>('select count(*)::int as n from listings where user_id = $1', [seller])
+    expect(n.rows[0].n).toBe(1)
+  })
+
+  it('creates a second listing when the title differs', async () => {
+    const seller = await createUser(db)
+    const a = await call<Created>(db, seller, 'create_listing($1::jsonb)', [JSON.stringify(base)])
+    const b = await call<Created>(db, seller, 'create_listing($1::jsonb)', [JSON.stringify({ ...base, title: 'Dune Messiah' })])
+    expect(b.status).toBe('ok')
+    expect(b.id).not.toBe(a.id)
+    const n = await db.query<{ n: number }>('select count(*)::int as n from listings where user_id = $1', [seller])
+    expect(n.rows[0].n).toBe(2)
+  })
+
   it('refuses a signed-out caller', async () => {
     expect(await call<Created>(db, null, 'create_listing($1::jsonb)', [JSON.stringify(base)])).toEqual({ status: 'not_allowed' })
   })

@@ -2039,6 +2039,23 @@ begin
   v_check := lbe_check_listing(p_listing, v_books);
   if v_check <> 'ok' then return jsonb_build_object('status', v_check); end if;
 
+  -- Double-submit guard: if this caller already created an identical listing (same title,
+  -- author, ol_work_key, is_bundle and bundle_name) in the last 60 seconds, return that
+  -- listing instead of inserting a duplicate (e.g. a second tap while the first request
+  -- was still in flight).
+  select id into v_id from listings
+  where user_id = auth.uid()
+    and created_at > now() - interval '60 seconds'
+    and title is not distinct from (p_listing->>'title')
+    and author is not distinct from (p_listing->>'author')
+    and ol_work_key is not distinct from (p_listing->>'ol_work_key')
+    and is_bundle is not distinct from (jsonb_array_length(v_books) > 0)
+    and bundle_name is not distinct from
+        (case when jsonb_array_length(v_books) > 0 then nullif(btrim(coalesce(p_listing->>'bundle_name', '')), '') end)
+  order by created_at desc
+  limit 1;
+  if v_id is not null then return jsonb_build_object('status', 'ok', 'id', v_id); end if;
+
   insert into listings (user_id, title, author, condition, price, description, genre, format,
                         pickup_description, ol_work_key, cover_url, isbn,
                         photo_url, photo_url_2, photo_url_3, city, is_bundle, bundle_name)
