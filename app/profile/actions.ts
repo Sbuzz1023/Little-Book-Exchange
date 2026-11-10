@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache'
 import { MOCK_CONVERSATIONS, MOCK_LISTINGS, MOCK_USER_ID } from '@/lib/mock-data'
 import { isValidStateCode } from '@/lib/usStates'
 import { normalizeCity } from '@/lib/normalizeCity'
+import { notifyAdminsOfDispute } from '@/lib/disputes/notifyAdmins'
 
 export async function updateProfile(formData: FormData) {
   const supabase = createClient()
@@ -99,51 +100,12 @@ export async function markPickedUp(formData: FormData) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/auth/signin')
   const conversationId = formData.get('conversation_id') as string
+  const { data: result } = await supabase.rpc('mark_picked_up', { p_conversation_id: conversationId })
 
-  const { data: convo } = await supabase
-    .from('conversations')
-    .select('buyer_id, seller_id')
-    .eq('id', conversationId)
-    .single()
-
-  const isSeller = convo?.seller_id === user.id
-  const isBuyer = convo?.buyer_id === user.id
-  if (!convo || (!isSeller && !isBuyer)) redirect('/profile?tab=exchanges')
-
-  const column = isSeller ? 'seller_picked_up_at' : 'buyer_picked_up_at'
-
-  // is(column, null) guards against a double-click re-firing the message
-  // below for a party who already confirmed once.
-  const { data: updated } = await supabase
-    .from('conversations')
-    .update({ [column]: new Date().toISOString() })
-    .eq('id', conversationId)
-    .eq('exchange_status', 'confirmed')
-    .is(column, null)
-    .select('id')
-    .maybeSingle()
-
-  if (updated) {
-    const { data: result } = await supabase.rpc('resolve_pickup', {
-      p_conversation_id: conversationId,
-      p_actor_id: user.id,
-    })
-
-    // Completing moves credits; the root layout reads them (and the unseen
-    // ones the nav's coin show plays), and a redirect alone doesn't
-    // re-render that layout.
-    if (typeof result === 'string' && result.startsWith('completed_')) revalidatePath('/', 'layout')
-
-    if (result === 'waiting') {
-      const { data: profile } = await supabase.from('profiles').select('username').eq('id', user.id).single()
-      await supabase.from('messages').insert({
-        conversation_id: conversationId,
-        sender_id: user.id,
-        body: `📦 ${profile?.username ?? 'They'} marked this picked up! Please confirm on your end within 48 hours.`,
-        kind: 'pickup',
-      })
-    }
-  }
+  // Completing moves credits; the root layout reads them (and the unseen
+  // ones the nav's coin show plays), and a redirect alone doesn't
+  // re-render that layout.
+  if (typeof result === 'string' && result.startsWith('completed_')) revalidatePath('/', 'layout')
 
   redirect('/profile?tab=exchanges')
 }
@@ -157,38 +119,15 @@ export async function fileDispute(formData: FormData): Promise<{ ok: boolean; er
   const message = ((formData.get('message') as string) || '').trim()
   if (!message) return { ok: false, error: 'Please describe the issue.' }
 
-  const { data: convo } = await supabase
-    .from('conversations')
-    .select('buyer_id, seller_id, listing_id')
-    .eq('id', conversationId)
-    .single()
-  if (!convo || (convo.buyer_id !== user.id && convo.seller_id !== user.id)) {
-    return { ok: false, error: 'Exchange not found.' }
-  }
+  const { data, error } = await supabase.rpc('file_dispute', { p_conversation_id: conversationId, p_message: message })
+  const result = data as { status: string; id?: string } | null
+  if (error || !result) return { ok: false, error: 'Could not file the dispute. Please try again.' }
+  if (result.status === 'not_allowed') return { ok: false, error: 'Exchange not found.' }
+  if (result.status === 'already_open') return { ok: false, error: 'A dispute is already open for this exchange.' }
+  if (result.status !== 'ok' || !result.id) return { ok: false, error: 'Could not file the dispute. Please try again.' }
 
-  const { error } = await supabase.from('disputes').insert({
-    conversation_id: conversationId,
-    reporter_id: user.id,
-    message,
-  })
-  if (error) return { ok: false, error: 'Could not file the dispute. Please try again.' }
-
-  // Best-effort admin alert — the dispute row inserted above is what actually
-  // freezes the exchange; a failed email here doesn't undo that.
-  try {
-    const { data: listing } = await supabase.from('listings').select('title').eq('id', convo.listing_id).single()
-    const { data: admins } = await supabase.from('profiles').select('email').eq('is_admin', true)
-    const { sendEmail } = await import('@/lib/email/resend')
-    for (const admin of admins ?? []) {
-      if (admin.email) {
-        await sendEmail({
-          to: admin.email,
-          subject: `Dispute filed: ${listing?.title ?? 'an exchange'}`,
-          text: `A dispute was filed on an exchange.\n\nMessage:\n${message}\n\nConversation ID: ${conversationId}`,
-        })
-      }
-    }
-  } catch {}
+  // Best-effort admin alert — the dispute row is what actually freezes the exchange.
+  try { await notifyAdminsOfDispute(result.id) } catch {}
 
   return { ok: true }
 }
@@ -198,12 +137,7 @@ export async function hideExchangeHistory(formData: FormData) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/auth/signin')
   const conversationId = formData.get('conversation_id') as string
-  const role = formData.get('role') as 'buyer' | 'seller'
-
-  await supabase.from('conversations')
-    .update(role === 'seller' ? { seller_hidden: true } : { buyer_hidden: true })
-    .eq('id', conversationId)
-    .eq(role === 'seller' ? 'seller_id' : 'buyer_id', user.id)
+  await supabase.rpc('hide_exchange', { p_conversation_id: conversationId })
 
   redirect('/profile?tab=exchanges')
 }
@@ -268,27 +202,12 @@ export async function startSupportConversation(): Promise<{ ok: boolean; convers
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { ok: false, error: 'Please sign in.' }
 
-  const { data: existing, error: lookupError } = await supabase
-    .from('conversations')
-    .select('id')
-    .eq('type', 'admin')
-    .eq('user_id', user.id)
-    .eq('repliable', true)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle()
-
-  if (lookupError) return { ok: false, error: 'Could not start a support conversation. Please try again.' }
-  if (existing) return { ok: true, conversationId: existing.id }
-
-  const { data: created, error } = await supabase
-    .from('conversations')
-    .insert({ type: 'admin', user_id: user.id, repliable: true })
-    .select('id')
-    .single()
-
-  if (error || !created) return { ok: false, error: 'Could not start a support conversation. Please try again.' }
-  return { ok: true, conversationId: created.id }
+  const { data, error } = await supabase.rpc('start_support_conversation')
+  const result = data as { status: string; id?: string } | null
+  if (error || result?.status !== 'ok' || !result.id) {
+    return { ok: false, error: 'Could not start a support conversation. Please try again.' }
+  }
+  return { ok: true, conversationId: result.id }
 }
 
 // Used by the "Message Support" link on the homepage, which — unlike ProfileCard's

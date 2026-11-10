@@ -78,27 +78,8 @@ export async function moveSavedListingToTbr(formData: FormData): Promise<void> {
 
   const listingId = formData.get('listing_id') as string
 
-  const { data: listing } = await supabase
-    .from('listings')
-    .select('title, author, city')
-    .eq('id', listingId)
-    .single()
-  if (!listing) redirect('/profile?tab=saved')
-
-  const { error: insertError } = await supabase.from('tbr_entries').insert({
-    user_id: user.id,
-    title: listing.title,
-    author: listing.author,
-    city: listing.city || '',
-    state: '',
-  })
-  if (insertError) redirect('/profile?tab=saved')
-
-  await supabase
-    .from('saved_listings')
-    .delete()
-    .eq('user_id', user.id)
-    .eq('listing_id', listingId)
+  // One transaction: if adding to TBR fails, the saved listing is kept.
+  await supabase.rpc('move_saved_to_tbr', { p_listing_id: listingId })
 
   redirect('/profile?tab=saved')
 }

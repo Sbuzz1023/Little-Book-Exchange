@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { updateProfile, confirmExchange, updateListingStatus } from './actions'
 
 const redirectMock = vi.fn((url: string) => { throw new Error(`REDIRECT:${url}`) })
+vi.mock('@/lib/disputes/notifyAdmins', () => ({ notifyAdminsOfDispute: vi.fn(() => Promise.resolve(true)) }))
 vi.mock('next/navigation', () => ({
   redirect: (url: string) => redirectMock(url),
 }))
