@@ -205,3 +205,49 @@ export async function resendPasswordResetEmail(userId: string): Promise<{ ok: bo
   if (error) return { ok: false, error: error.message }
   return { ok: true }
 }
+
+export type EmailHistoryRow = {
+  id: string
+  kind: 'welcome_confirmation' | 'password_reset' | 'broadcast'
+  recipient_email: string
+  subject: string
+  status: 'sent' | 'failed'
+  error: string | null
+  sent_at: string
+  profiles: { username: string } | null
+}
+
+const HISTORY_PAGE_SIZE = 50
+
+// Quote the value for PostgREST's `or` filter (so commas/parens can't split it)
+// and backslash-escape the ilike wildcards so the term matches literally.
+function historyIlikeValue(term: string): string {
+  const pattern = `%${term.replace(/[\\%_]/g, '\\$&')}%`
+  return `"${pattern.replace(/[\\"]/g, '\\$&')}"`
+}
+
+export async function getEmailHistory(
+  opts: { search?: string; before?: string } = {}
+): Promise<{ ok: boolean; rows?: EmailHistoryRow[]; hasMore?: boolean; error?: string }> {
+  const supabase = createClient()
+  const admin = await requireAdmin(supabase)
+  if (!admin.ok) return { ok: false, error: admin.error }
+
+  let query = supabase
+    .from('email_log')
+    .select('id, kind, recipient_email, subject, status, error, sent_at, profiles(username)')
+    .order('sent_at', { ascending: false })
+    .limit(HISTORY_PAGE_SIZE + 1)
+
+  const term = opts.search?.trim()
+  if (term) {
+    const v = historyIlikeValue(term)
+    query = query.or(`recipient_email.ilike.${v},subject.ilike.${v}`)
+  }
+  if (opts.before) query = query.lt('sent_at', opts.before)
+
+  const { data, error } = await query
+  if (error) return { ok: false, error: error.message }
+  const all = (data ?? []) as unknown as EmailHistoryRow[]
+  return { ok: true, rows: all.slice(0, HISTORY_PAGE_SIZE), hasMore: all.length > HISTORY_PAGE_SIZE }
+}

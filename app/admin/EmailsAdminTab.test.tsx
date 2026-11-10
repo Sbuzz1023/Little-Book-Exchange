@@ -7,6 +7,7 @@ const inboxProps: { openConversationId?: string | null; onOpenConsumed?: () => v
 vi.mock('./EmailComposeTab', () => ({ default: () => <div>Compose</div> }))
 vi.mock('./EmailTemplatesEditor', () => ({ default: () => <div>Templates</div> }))
 vi.mock('./EmailResendTool', () => ({ default: () => <div>Resend</div> }))
+vi.mock('./EmailHistoryTab', () => ({ default: () => <div>History contents</div> }))
 vi.mock('./AdminInboxTab', () => ({
   default: ({ onUnreadCountChange, openConversationId, onOpenConsumed }: { onUnreadCountChange?: (n: number) => void; openConversationId?: string | null; onOpenConsumed?: () => void }) => {
     onUnreadCountChange?.(3)
@@ -56,5 +57,14 @@ describe('EmailsAdminTab â€” Inbox unread badge', () => {
     expect(getByText('Inbox contents')).toBeInTheDocument()
     expect(inboxProps.openConversationId).toBe('convo-1')
     expect(inboxProps.onOpenConsumed).toBe(onOpenConsumed)
+  })
+})
+
+describe('EmailsAdminTab — History sub-tab', () => {
+  it('has a History pill that shows the history component', () => {
+    const { getByText, queryByText } = render(<EmailsAdminTab users={[]} />)
+    expect(queryByText('History contents')).toBeNull()
+    fireEvent.click(getByText('History'))
+    expect(getByText('History contents')).toBeInTheDocument()
   })
 })

@@ -4,10 +4,11 @@ import { useEffect, useRef, useState } from 'react'
 import EmailTemplatesEditor from './EmailTemplatesEditor'
 import EmailComposeTab from './EmailComposeTab'
 import EmailResendTool from './EmailResendTool'
+import EmailHistoryTab from './EmailHistoryTab'
 import AdminInboxTab from './AdminInboxTab'
 
 type EmailUser = { id: string; username: string; email: string; city: string; state: string }
-type SubTab = 'templates' | 'compose' | 'resend' | 'inbox'
+type SubTab = 'templates' | 'compose' | 'resend' | 'history' | 'inbox'
 
 export default function EmailsAdminTab({
   users, openConversationId, onOpenConsumed, onOpenChat, onInboxUnreadCountChange, inboxUnreadCount: inboxUnreadCountProp = 0,
@@ -44,6 +45,7 @@ export default function EmailsAdminTab({
     { id: 'compose', label: 'Compose' },
     { id: 'templates', label: 'Templates' },
     { id: 'resend', label: 'Resend' },
+    { id: 'history', label: 'History' },
     { id: 'inbox', label: 'Inbox' },
   ]
 
@@ -64,6 +66,7 @@ export default function EmailsAdminTab({
       {subTab === 'compose' && <EmailComposeTab users={users} onOpenChat={onOpenChat} />}
       {subTab === 'templates' && <EmailTemplatesEditor />}
       {subTab === 'resend' && <EmailResendTool users={users} />}
+      {subTab === 'history' && <EmailHistoryTab />}
       {subTab === 'inbox' && <AdminInboxTab onUnreadCountChange={handleInboxUnreadCountChange} openConversationId={openConversationId} onOpenConsumed={onOpenConsumed} />}
     </div>
   )
