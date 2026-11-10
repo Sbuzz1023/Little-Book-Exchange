@@ -2522,6 +2522,31 @@ create policy "Participants can send chat messages" on messages
     )
   );
 
+-- Support threads: members start them only via start_support_conversation()
+-- (security definer); direct inserts are admin-only. Members replying in their
+-- own thread send plain chat only.
+drop policy if exists "Admins or a user can start an admin conversation" on conversations;
+drop policy if exists "Admins can start an admin conversation" on conversations;
+create policy "Admins can start an admin conversation" on conversations
+  for insert with check (
+    type = 'admin'
+    and exists (select 1 from profiles p where p.id = auth.uid() and p.is_admin = true)
+  );
+
+drop policy if exists "Admin conversation messages: admin always, user if repliable" on messages;
+create policy "Admin conversation messages: admin always, user if repliable" on messages
+  for insert with check (
+    auth.uid() = sender_id and
+    exists (
+      select 1 from conversations c
+      where c.id = conversation_id and c.type = 'admin'
+      and (
+        exists (select 1 from profiles p where p.id = auth.uid() and p.is_admin = true)
+        or (kind = 'chat' and c.repliable = true and c.user_id = auth.uid())
+      )
+    )
+  );
+
 -- Photos: only into your own folder (the path the site already uses).
 drop policy if exists "Authenticated users can upload photos" on storage.objects;
 drop policy if exists "Users can upload photos to their own folder" on storage.objects;

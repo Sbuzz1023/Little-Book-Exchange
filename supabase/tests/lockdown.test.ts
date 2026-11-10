@@ -64,6 +64,36 @@ describe('the exchange-status hole is closed', () => {
   })
 })
 
+describe('support and admin paths still work', () => {
+  it('a member cannot insert a support thread directly, but an admin can', async () => {
+    const member = await createUser(db)
+    const admin = await createUser(db, { isAdmin: true })
+    await expect(asUser(db, member, `insert into conversations (type, user_id) values ('admin', $1)`, [member])).rejects.toThrow(/row-level security/)
+    expect(await asUser(db, admin, `insert into conversations (type, user_id) values ('admin', $1) returning id`, [member])).toHaveLength(1)
+  })
+
+  it('a member gets a thread via start_support_conversation and can send plain chat only', async () => {
+    const member = await createUser(db)
+    const { id } = await call<{ id: string }>(db, member, 'start_support_conversation()')
+    expect(await asUser(db, member, `insert into messages (conversation_id, sender_id, body) values ($1, $2, 'help') returning kind`, [id, member])).toEqual([{ kind: 'chat' }])
+    await expect(asUser(db, member, `insert into messages (conversation_id, sender_id, body, kind) values ($1, $2, 'x', 'confirmation')`, [id, member])).rejects.toThrow(/row-level security/)
+  })
+
+  it('an admin can message into a support thread', async () => {
+    const member = await createUser(db)
+    const admin = await createUser(db, { isAdmin: true })
+    const { id } = await call<{ id: string }>(db, member, 'start_support_conversation()')
+    expect(await asUser(db, admin, `insert into messages (conversation_id, sender_id, body) values ($1, $2, 'hello') returning id`, [id, admin])).toHaveLength(1)
+  })
+
+  it('an admin can resolve a dispute directly', async () => {
+    const { buyer, convo } = await confirmedExchange()
+    const admin = await createUser(db, { isAdmin: true })
+    const { id } = await call<{ id: string }>(db, buyer, 'file_dispute($1, $2)', [convo, 'problem'])
+    expect(await asUser(db, admin, `update disputes set status = 'resolved' where id = $1 returning id`, [id])).toHaveLength(1)
+  })
+})
+
 describe('photo uploads', () => {
   it('are allowed only into your own folder', async () => {
     const me = await createUser(db)
