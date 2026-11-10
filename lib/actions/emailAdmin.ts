@@ -44,7 +44,7 @@ async function fetchRecipients(
   target: BroadcastTarget,
   channel: BroadcastChannel = 'email'
 ): Promise<{ recipients?: Recipient[]; error?: string }> {
-  const { data, error } = await supabase.from('profiles').select('id, email, city, state, marketing_opt_out')
+  const { data, error } = await supabase.rpc('admin_list_users')
   if (error) return { error: error.message }
   return { recipients: filterRecipients((data ?? []) as ProfileRow[], target, channel) }
 }
@@ -128,6 +128,20 @@ async function findOrCreateAdminConversation(
   return created.id
 }
 
+export async function openAdminChat(userId: string): Promise<{ ok: boolean; conversationId?: string; error?: string }> {
+  const supabase = createClient()
+  const admin = await requireAdmin(supabase)
+  if (!admin.ok) return { ok: false, error: admin.error }
+
+  try {
+    const conversationId = await findOrCreateAdminConversation(supabase, userId, true)
+    return { ok: true, conversationId }
+  } catch (err) {
+    console.error('openAdminChat failed', err)
+    return { ok: false, error: 'Could not open the chat.' }
+  }
+}
+
 export async function sendBroadcastMessage(target: BroadcastTarget, body: string, repliable: boolean): Promise<{ ok: boolean; sent: number; failed: number; error?: string }> {
   const supabase = createClient()
   const admin = await requireAdmin(supabase)
@@ -162,7 +176,7 @@ export async function sendBroadcastMessage(target: BroadcastTarget, body: string
 }
 
 async function lookupUserEmail(supabase: ReturnType<typeof createClient>, userId: string): Promise<string | null> {
-  const { data } = await supabase.from('profiles').select('email').eq('id', userId).single()
+  const { data } = await supabase.rpc('admin_list_users', { p_user_ids: [userId] }).maybeSingle<{ email: string | null }>()
   return data?.email ?? null
 }
 
@@ -190,4 +204,50 @@ export async function resendPasswordResetEmail(userId: string): Promise<{ ok: bo
   const { error } = await supabase.auth.resetPasswordForEmail(email)
   if (error) return { ok: false, error: error.message }
   return { ok: true }
+}
+
+export type EmailHistoryRow = {
+  id: string
+  kind: 'welcome_confirmation' | 'password_reset' | 'broadcast'
+  recipient_email: string
+  subject: string
+  status: 'sent' | 'failed'
+  error: string | null
+  sent_at: string
+  profiles: { username: string } | null
+}
+
+const HISTORY_PAGE_SIZE = 50
+
+// Quote the value for PostgREST's `or` filter (so commas/parens can't split it)
+// and backslash-escape the ilike wildcards so the term matches literally.
+function historyIlikeValue(term: string): string {
+  const pattern = `%${term.replace(/[\\%_]/g, '\\$&')}%`
+  return `"${pattern.replace(/[\\"]/g, '\\$&')}"`
+}
+
+export async function getEmailHistory(
+  opts: { search?: string; before?: string } = {}
+): Promise<{ ok: boolean; rows?: EmailHistoryRow[]; hasMore?: boolean; error?: string }> {
+  const supabase = createClient()
+  const admin = await requireAdmin(supabase)
+  if (!admin.ok) return { ok: false, error: admin.error }
+
+  let query = supabase
+    .from('email_log')
+    .select('id, kind, recipient_email, subject, status, error, sent_at, profiles(username)')
+    .order('sent_at', { ascending: false })
+    .limit(HISTORY_PAGE_SIZE + 1)
+
+  const term = opts.search?.trim()
+  if (term) {
+    const v = historyIlikeValue(term)
+    query = query.or(`recipient_email.ilike.${v},subject.ilike.${v}`)
+  }
+  if (opts.before) query = query.lt('sent_at', opts.before)
+
+  const { data, error } = await query
+  if (error) return { ok: false, error: error.message }
+  const all = (data ?? []) as unknown as EmailHistoryRow[]
+  return { ok: true, rows: all.slice(0, HISTORY_PAGE_SIZE), hasMore: all.length > HISTORY_PAGE_SIZE }
 }

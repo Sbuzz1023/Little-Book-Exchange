@@ -19,6 +19,8 @@ describe('enrichDisputes', () => {
     expect(enriched.otherPartyName).toBe('Sam')
     expect(enriched.reporterName).toBe('Alex')
     expect(enriched.bookTitle).toBe('Dune')
+    expect(enriched.buyerId).toBe('buyer-1')
+    expect(enriched.sellerId).toBe('seller-1')
   })
 
   it('resolves the other party correctly when the seller is the reporter', () => {
@@ -39,6 +41,8 @@ describe('enrichDisputes', () => {
     expect(enriched.otherPartyName).toBe('Unknown')
     expect(enriched.reporterName).toBe('Unknown')
     expect(enriched.bookTitle).toBe('Unknown book')
+    expect(enriched.buyerId).toBeNull()
+    expect(enriched.sellerId).toBeNull()
   })
 
   it('passes an unresolved status through unchanged', () => {

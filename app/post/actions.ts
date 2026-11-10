@@ -2,7 +2,8 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { parseListingForm, parseBundleBooks, validateOpenLibraryMatch } from '@/lib/parseListingForm'
+import { validateOpenLibraryMatch } from '@/lib/parseListingForm'
+import { buildListingPayload, listingErrorMessage } from '@/lib/listingPayload'
 
 async function uploadPhoto(
   supabase: ReturnType<typeof createClient>,
@@ -28,47 +29,24 @@ export async function createListing(formData: FormData) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) redirect('/auth/signin')
 
-    const { data: prof } = await supabase.from('profiles').select('city').eq('id', user!.id).single()
+    // Validate before uploading, so a refused post doesn't leave orphan photos.
+    const draft = buildListingPayload(formData, { photo_url: null, photo_url_2: null, photo_url_3: null })
+    const matchError = validateOpenLibraryMatch(draft.listing, draft.books)
+    if (matchError) redirect(`/post?error=${encodeURIComponent(matchError)}`)
 
     const [photo_url, photo_url_2, photo_url_3] = await Promise.all([
       uploadPhoto(supabase, user!.id, formData, 'photo', 1),
       uploadPhoto(supabase, user!.id, formData, 'photo_2', 2),
       uploadPhoto(supabase, user!.id, formData, 'photo_3', 3),
     ])
+    const { listing, books } = buildListingPayload(formData, { photo_url, photo_url_2, photo_url_3 })
 
-    const fields = parseListingForm(formData)
-    const isBundle = formData.get('is_bundle') === 'true'
-    const bundleBooks = isBundle ? parseBundleBooks(formData) : []
-    const bundleName = (formData.get('bundle_name') as string)?.trim() || null
+    const { data, error } = await supabase.rpc('create_listing', { p_listing: listing, p_books: books })
+    const result = data as { status: string; id?: string } | null
+    if (error || !result) redirect(`/post?error=${encodeURIComponent(error?.message || 'Failed to post listing')}`)
+    if (result!.status !== 'ok' || !result!.id) redirect(`/post?error=${encodeURIComponent(listingErrorMessage(result!.status))}`)
 
-    const matchError = validateOpenLibraryMatch(fields, bundleBooks)
-    if (matchError) redirect(`/post?error=${encodeURIComponent(matchError)}`)
-
-    const { data: listing, error } = await supabase.from('listings').insert({
-      user_id: user!.id,
-      ...fields,
-      photo_url,
-      photo_url_2,
-      photo_url_3,
-      city: prof?.city ?? '',
-      is_bundle: isBundle && bundleBooks.length > 0,
-      bundle_name: isBundle && bundleBooks.length > 0 ? bundleName : null,
-    }).select('id').single()
-
-    if (error) redirect(`/post?error=${encodeURIComponent(error.message || 'Failed to post listing')}`)
-    if (!listing) redirect('/post?error=No+listing+returned')
-
-    if (isBundle && bundleBooks.length > 0) {
-      const { error: booksError } = await supabase.from('listing_books').insert(
-        bundleBooks.map((b, i) => ({
-          listing_id: listing!.id, title: b.title, author: b.author,
-          ol_work_key: b.ol_work_key, cover_url: b.cover_url, position: i,
-        }))
-      )
-      if (booksError) console.error('Failed to insert bundle books:', booksError)
-    }
-
-    redirect(`/listings/${listing!.id}`)
+    redirect(`/listings/${result!.id}`)
   } catch (err: any) {
     if (err?.digest?.startsWith('NEXT_REDIRECT')) throw err
     const msg = err?.message || String(err) || 'Unknown error'
@@ -83,53 +61,33 @@ export async function updateListing(listingId: string, formData: FormData) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) redirect('/auth/signin')
 
+    // Early exit before uploading photos; update_listing re-checks both.
     const { data: existing } = await supabase
-      .from('listings').select('photo_url, photo_url_2, photo_url_3, status')
+      .from('listings').select('status')
       .eq('id', listingId).eq('user_id', user.id).single()
     if (!existing) redirect('/profile?tab=listings')
-
-    // A buyer has already requested this listing at its current price. Editing
-    // it now (adding bundle books, in particular) would change what they're
-    // charged at completion, since book_count is read live from the listing.
     if (existing.status === 'pending') {
-      redirect(`/listings/${listingId}/edit?error=${encodeURIComponent('This listing has a pending purchase request and can\'t be edited right now.')}`)
+      redirect(`/listings/${listingId}/edit?error=${encodeURIComponent(listingErrorMessage('pending_request'))}`)
     }
+    if (existing.status === 'sold') {
+      redirect(`/listings/${listingId}/edit?error=${encodeURIComponent(listingErrorMessage('sold'))}`)
+    }
+
+    const draft = buildListingPayload(formData, { photo_url: null, photo_url_2: null, photo_url_3: null })
+    const matchError = validateOpenLibraryMatch(draft.listing, draft.books)
+    if (matchError) redirect(`/listings/${listingId}/edit?error=${encodeURIComponent(matchError)}`)
 
     const [photo_url, photo_url_2, photo_url_3] = await Promise.all([
       uploadPhoto(supabase, user.id, formData, 'photo', 1),
       uploadPhoto(supabase, user.id, formData, 'photo_2', 2),
       uploadPhoto(supabase, user.id, formData, 'photo_3', 3),
     ])
+    // A null photo keeps the one already on the listing (update_listing).
+    const { listing, books } = buildListingPayload(formData, { photo_url, photo_url_2, photo_url_3 })
 
-    const fields = parseListingForm(formData)
-    const isBundle = formData.get('is_bundle') === 'true'
-    const bundleBooks = isBundle ? parseBundleBooks(formData) : []
-    const bundleName = (formData.get('bundle_name') as string)?.trim() || null
-
-    const matchError = validateOpenLibraryMatch(fields, bundleBooks)
-    if (matchError) redirect(`/listings/${listingId}/edit?error=${encodeURIComponent(matchError)}`)
-
-    const { error } = await supabase.from('listings').update({
-      ...fields,
-      photo_url:   photo_url   ?? existing.photo_url,
-      photo_url_2: photo_url_2 ?? existing.photo_url_2,
-      photo_url_3: photo_url_3 ?? existing.photo_url_3,
-      is_bundle: isBundle && bundleBooks.length > 0,
-      bundle_name: isBundle && bundleBooks.length > 0 ? bundleName : null,
-    }).eq('id', listingId).eq('user_id', user.id)
-
+    const { data: status, error } = await supabase.rpc('update_listing', { p_listing_id: listingId, p_listing: listing, p_books: books })
     if (error) redirect(`/listings/${listingId}/edit?error=${encodeURIComponent(error.message)}`)
-
-    await supabase.from('listing_books').delete().eq('listing_id', listingId)
-    if (isBundle && bundleBooks.length > 0) {
-      const { error: booksError } = await supabase.from('listing_books').insert(
-        bundleBooks.map((b, i) => ({
-          listing_id: listingId, title: b.title, author: b.author,
-          ol_work_key: b.ol_work_key, cover_url: b.cover_url, position: i,
-        }))
-      )
-      if (booksError) console.error('Failed to update bundle books:', booksError)
-    }
+    if (status !== 'ok') redirect(`/listings/${listingId}/edit?error=${encodeURIComponent(listingErrorMessage(String(status)))}`)
 
     redirect('/profile?tab=listings')
   } catch (err: any) {

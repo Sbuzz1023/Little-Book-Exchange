@@ -4,10 +4,9 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { MOCK_CONVERSATIONS, MOCK_LISTINGS, MOCK_USER_ID } from '@/lib/mock-data'
-import { buildConfirmationMessage } from '@/lib/buildConfirmationMessage'
-import { formatPickupAvailability } from '@/lib/formatPickupAvailability'
 import { isValidStateCode } from '@/lib/usStates'
 import { normalizeCity } from '@/lib/normalizeCity'
+import { notifyAdminsOfDispute } from '@/lib/disputes/notifyAdmins'
 
 export async function updateProfile(formData: FormData) {
   const supabase = createClient()
@@ -15,10 +14,8 @@ export async function updateProfile(formData: FormData) {
   if (!user) redirect('/auth/signin')
 
   const { data: currentProfile } = await supabase
-    .from('profiles')
-    .select('phone_verified')
-    .eq('id', user!.id)
-    .single()
+    .rpc('get_my_profile')
+    .maybeSingle<{ phone_verified: boolean }>()
   const phoneVerified = !!currentProfile?.phone_verified
 
   const rawState = (formData.get('state') as string) ?? ''
@@ -74,9 +71,9 @@ export async function updateListingStatus(formData: FormData) {
   const id = formData.get('id') as string
   const status = formData.get('status') as string
   if (status === 'delete') {
-    await supabase.from('listings').delete().eq('id', id).eq('user_id', user!.id)
+    await supabase.rpc('delete_listing', { p_listing_id: id })
   } else {
-    await supabase.from('listings').update({ status }).eq('id', id).eq('user_id', user!.id)
+    await supabase.rpc('set_listing_status', { p_listing_id: id, p_status: status })
   }
   redirect('/profile')
 }
@@ -103,51 +100,12 @@ export async function markPickedUp(formData: FormData) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/auth/signin')
   const conversationId = formData.get('conversation_id') as string
+  const { data: result } = await supabase.rpc('mark_picked_up', { p_conversation_id: conversationId })
 
-  const { data: convo } = await supabase
-    .from('conversations')
-    .select('buyer_id, seller_id')
-    .eq('id', conversationId)
-    .single()
-
-  const isSeller = convo?.seller_id === user.id
-  const isBuyer = convo?.buyer_id === user.id
-  if (!convo || (!isSeller && !isBuyer)) redirect('/profile?tab=exchanges')
-
-  const column = isSeller ? 'seller_picked_up_at' : 'buyer_picked_up_at'
-
-  // is(column, null) guards against a double-click re-firing the message
-  // below for a party who already confirmed once.
-  const { data: updated } = await supabase
-    .from('conversations')
-    .update({ [column]: new Date().toISOString() })
-    .eq('id', conversationId)
-    .eq('exchange_status', 'confirmed')
-    .is(column, null)
-    .select('id')
-    .maybeSingle()
-
-  if (updated) {
-    const { data: result } = await supabase.rpc('resolve_pickup', {
-      p_conversation_id: conversationId,
-      p_actor_id: user.id,
-    })
-
-    // Completing moves credits; the root layout reads them (and the unseen
-    // ones the nav's coin show plays), and a redirect alone doesn't
-    // re-render that layout.
-    if (typeof result === 'string' && result.startsWith('completed_')) revalidatePath('/', 'layout')
-
-    if (result === 'waiting') {
-      const { data: profile } = await supabase.from('profiles').select('username').eq('id', user.id).single()
-      await supabase.from('messages').insert({
-        conversation_id: conversationId,
-        sender_id: user.id,
-        body: `📦 ${profile?.username ?? 'They'} marked this picked up! Please confirm on your end within 48 hours.`,
-        kind: 'pickup',
-      })
-    }
-  }
+  // Completing moves credits; the root layout reads them (and the unseen
+  // ones the nav's coin show plays), and a redirect alone doesn't
+  // re-render that layout.
+  if (typeof result === 'string' && result.startsWith('completed_')) revalidatePath('/', 'layout')
 
   redirect('/profile?tab=exchanges')
 }
@@ -161,38 +119,15 @@ export async function fileDispute(formData: FormData): Promise<{ ok: boolean; er
   const message = ((formData.get('message') as string) || '').trim()
   if (!message) return { ok: false, error: 'Please describe the issue.' }
 
-  const { data: convo } = await supabase
-    .from('conversations')
-    .select('buyer_id, seller_id, listing_id')
-    .eq('id', conversationId)
-    .single()
-  if (!convo || (convo.buyer_id !== user.id && convo.seller_id !== user.id)) {
-    return { ok: false, error: 'Exchange not found.' }
-  }
+  const { data, error } = await supabase.rpc('file_dispute', { p_conversation_id: conversationId, p_message: message })
+  const result = data as { status: string; id?: string } | null
+  if (error || !result) return { ok: false, error: 'Could not file the dispute. Please try again.' }
+  if (result.status === 'not_allowed') return { ok: false, error: 'Exchange not found.' }
+  if (result.status === 'already_open') return { ok: false, error: 'A dispute is already open for this exchange.' }
+  if (result.status !== 'ok' || !result.id) return { ok: false, error: 'Could not file the dispute. Please try again.' }
 
-  const { error } = await supabase.from('disputes').insert({
-    conversation_id: conversationId,
-    reporter_id: user.id,
-    message,
-  })
-  if (error) return { ok: false, error: 'Could not file the dispute. Please try again.' }
-
-  // Best-effort admin alert — the dispute row inserted above is what actually
-  // freezes the exchange; a failed email here doesn't undo that.
-  try {
-    const { data: listing } = await supabase.from('listings').select('title').eq('id', convo.listing_id).single()
-    const { data: admins } = await supabase.from('profiles').select('email').eq('is_admin', true)
-    const { sendEmail } = await import('@/lib/email/resend')
-    for (const admin of admins ?? []) {
-      if (admin.email) {
-        await sendEmail({
-          to: admin.email,
-          subject: `Dispute filed: ${listing?.title ?? 'an exchange'}`,
-          text: `A dispute was filed on an exchange.\n\nMessage:\n${message}\n\nConversation ID: ${conversationId}`,
-        })
-      }
-    }
-  } catch {}
+  // Best-effort admin alert — the dispute row is what actually freezes the exchange.
+  try { await notifyAdminsOfDispute(result.id) } catch {}
 
   return { ok: true }
 }
@@ -202,12 +137,7 @@ export async function hideExchangeHistory(formData: FormData) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/auth/signin')
   const conversationId = formData.get('conversation_id') as string
-  const role = formData.get('role') as 'buyer' | 'seller'
-
-  await supabase.from('conversations')
-    .update(role === 'seller' ? { seller_hidden: true } : { buyer_hidden: true })
-    .eq('id', conversationId)
-    .eq(role === 'seller' ? 'seller_id' : 'buyer_id', user.id)
+  await supabase.rpc('hide_exchange', { p_conversation_id: conversationId })
 
   redirect('/profile?tab=exchanges')
 }
@@ -219,24 +149,7 @@ export async function cancelPurchase(formData: FormData) {
 
   const conversationId = formData.get('conversation_id') as string
 
-  const { data: convo } = await supabase
-    .from('conversations')
-    .select('listing_id, exchange_status')
-    .eq('id', conversationId)
-    .eq('buyer_id', user.id)
-    .maybeSingle()
-
-  if (convo?.listing_id && convo.exchange_status === 'requested') {
-    await supabase.rpc('reopen_listing', { p_listing_id: convo.listing_id })
-  }
-
-  // Only allowed while still pending — not after seller confirms
-  await supabase
-    .from('conversations')
-    .delete()
-    .eq('id', conversationId)
-    .eq('buyer_id', user.id)
-    .in('exchange_status', ['requested', 'none'])
+  await supabase.rpc('cancel_request', { p_conversation_id: conversationId })
 
   redirect('/profile?tab=exchanges')
 }
@@ -247,103 +160,27 @@ export async function confirmExchange(formData: FormData) {
   if (!user) redirect('/auth/signin')
 
   const conversationId = formData.get('conversation_id') as string
+  const text = (key: string) => ((formData.get(key) as string) || '').trim()
+  const rawState = text('state')
+
   // These come from the seller's confirm-and-review popup — a one-time
-  // override for this exchange only. Address/pickup are stored on the
-  // conversation itself (not written back to profiles/listings) so the
-  // confirmation message and the buyer's "Ready for Pick Up" summary always
-  // agree. City/state have no equivalent summary to stay in sync with, so
-  // they only flow into the message below.
-  const address     = ((formData.get('address') as string) || '').trim()
-  const addressUnit = ((formData.get('address_unit') as string) || '').trim()
-  const rawState    = (formData.get('state') as string) || ''
-  const city        = ((formData.get('city') as string) || '').trim()
-  const state       = isValidStateCode(rawState) ? rawState : ''
-  const pickup      = ((formData.get('pickup') as string) || '').trim()
-
-  // Pickup availability is required (enforced client-side via the popup's
-  // native `required` attributes) — re-validated here in case that's ever
-  // bypassed. An invalid/incomplete submission bails out before any writes,
-  // rather than confirming the exchange with a broken or missing pickup time.
-  const rawMode      = (formData.get('pickup_mode') as string) || ''
-  const pickupMode   = rawMode === 'window' || rawMode === 'after' || rawMode === 'anytime' ? rawMode : null
-  const pickupDate      = ((formData.get('pickup_date') as string) || '').trim() || null
-  const pickupTimeStart = ((formData.get('pickup_time_start') as string) || '').trim() || null
-  const pickupTimeEnd   = ((formData.get('pickup_time_end') as string) || '').trim() || null
-
-  const pickupAvailabilityValid =
-    pickupMode === 'anytime' ? true :
-    pickupMode === 'after' ? !!(pickupDate && pickupTimeStart) :
-    pickupMode === 'window' ? !!(pickupDate && pickupTimeStart && pickupTimeEnd) :
-    false
-
-  if (!pickupAvailabilityValid) redirect('/profile?tab=exchanges')
-
-  const confirmedPickupDate      = pickupMode === 'anytime' ? null : pickupDate
-  const confirmedPickupTimeStart = pickupMode === 'anytime' ? null : pickupTimeStart
-  const confirmedPickupTimeEnd   = pickupMode === 'window' ? pickupTimeEnd : null
-
-  await supabase.from('conversations')
-    .update({
-      exchange_status: 'confirmed',
-      confirmed_address: address || null,
-      confirmed_address_unit: addressUnit || null,
-      confirmed_pickup: pickup || null,
-      confirmed_pickup_mode: pickupMode,
-      confirmed_pickup_date: confirmedPickupDate,
-      confirmed_pickup_time_start: confirmedPickupTimeStart,
-      confirmed_pickup_time_end: confirmedPickupTimeEnd,
-    })
-    .eq('id', conversationId)
-    .eq('seller_id', user.id)
-
-  await supabase
-    .from('notifications')
-    .update({ read: true })
-    .eq('user_id', user.id)
-    .eq('entity_id', conversationId)
-    .eq('type', 'purchase_request')
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('username')
-    .eq('id', user.id)
-    .single()
-
-  const { data: convo } = await supabase
-    .from('conversations')
-    .select('listing_id')
-    .eq('id', conversationId)
-    .single()
-  if (convo?.listing_id) {
-    await supabase
-      .from('listings')
-      .update({ status: 'sold' })
-      .eq('id', convo.listing_id)
-      .eq('status', 'pending')
-  }
-
-  if (profile) {
-    const body = buildConfirmationMessage({
-      username: profile.username,
-      city,
-      state,
-      address,
-      address_unit: addressUnit,
-      pickup,
-      pickupAvailability: formatPickupAvailability({
-        mode: pickupMode,
-        date: confirmedPickupDate,
-        timeStart: confirmedPickupTimeStart,
-        timeEnd: confirmedPickupTimeEnd,
-      }),
-    })
-    await supabase.from('messages').insert({
-      conversation_id: conversationId,
-      sender_id: user.id,
-      body,
-      kind: 'confirmation',
-    })
-  }
+  // override for this exchange only. confirm_exchange (supabase/schema.sql,
+  // shared backend 4/6) validates the pickup time, stores it, marks the
+  // listing sold and posts the confirmation message.
+  await supabase.rpc('confirm_exchange', {
+    p_conversation_id: conversationId,
+    p_pickup: {
+      address: text('address'),
+      address_unit: text('address_unit'),
+      city: text('city'),
+      state: isValidStateCode(rawState) ? rawState : '',
+      pickup: text('pickup'),
+      pickup_mode: text('pickup_mode'),
+      pickup_date: text('pickup_date'),
+      pickup_time_start: text('pickup_time_start'),
+      pickup_time_end: text('pickup_time_end'),
+    },
+  })
 
   redirect('/profile?tab=exchanges')
 }
@@ -355,45 +192,7 @@ export async function denyPurchase(formData: FormData) {
 
   const conversationId = formData.get('conversation_id') as string
 
-  const { data: convo } = await supabase
-    .from('conversations')
-    .select('listing_id, buyer_id, exchange_status')
-    .eq('id', conversationId)
-    .eq('seller_id', user.id)
-    .eq('exchange_status', 'requested')
-    .maybeSingle()
-
-  if (convo?.buyer_id) {
-    try {
-      await supabase.rpc('create_notification', {
-        p_user_id: convo.buyer_id,
-        p_type: 'purchase_decision',
-        p_entity_id: conversationId,
-      })
-    } catch {}
-  }
-
-  await supabase
-    .from('conversations')
-    .update({ exchange_status: 'declined', completed_at: new Date().toISOString() })
-    .eq('id', conversationId)
-    .eq('seller_id', user.id)
-    .eq('exchange_status', 'requested')
-
-  if (convo?.listing_id) {
-    await supabase
-      .from('listings')
-      .update({ status: 'active' })
-      .eq('id', convo.listing_id)
-      .eq('status', 'pending')
-  }
-
-  await supabase
-    .from('notifications')
-    .update({ read: true })
-    .eq('user_id', user.id)
-    .eq('entity_id', conversationId)
-    .eq('type', 'purchase_request')
+  await supabase.rpc('deny_request', { p_conversation_id: conversationId })
 
   redirect('/profile?tab=exchanges')
 }
@@ -403,27 +202,12 @@ export async function startSupportConversation(): Promise<{ ok: boolean; convers
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { ok: false, error: 'Please sign in.' }
 
-  const { data: existing, error: lookupError } = await supabase
-    .from('conversations')
-    .select('id')
-    .eq('type', 'admin')
-    .eq('user_id', user.id)
-    .eq('repliable', true)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle()
-
-  if (lookupError) return { ok: false, error: 'Could not start a support conversation. Please try again.' }
-  if (existing) return { ok: true, conversationId: existing.id }
-
-  const { data: created, error } = await supabase
-    .from('conversations')
-    .insert({ type: 'admin', user_id: user.id, repliable: true })
-    .select('id')
-    .single()
-
-  if (error || !created) return { ok: false, error: 'Could not start a support conversation. Please try again.' }
-  return { ok: true, conversationId: created.id }
+  const { data, error } = await supabase.rpc('start_support_conversation')
+  const result = data as { status: string; id?: string } | null
+  if (error || result?.status !== 'ok' || !result.id) {
+    return { ok: false, error: 'Could not start a support conversation. Please try again.' }
+  }
+  return { ok: true, conversationId: result.id }
 }
 
 // Used by the "Message Support" link on the homepage, which — unlike ProfileCard's

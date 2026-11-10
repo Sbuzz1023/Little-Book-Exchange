@@ -1,6 +1,6 @@
 // app/admin/AdminInboxTab.tsx
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { hasUnreadMessage } from '@/lib/adminUnread'
 
@@ -15,7 +15,15 @@ type InboxConversation = {
   messages: InboxMessage[]
 }
 
-export default function AdminInboxTab({ onUnreadCountChange }: { onUnreadCountChange?: (count: number) => void }) {
+export default function AdminInboxTab({
+  onUnreadCountChange, openConversationId, onOpenConsumed,
+}: {
+  onUnreadCountChange?: (count: number) => void
+  // Conversation to select once the list has loaded (e.g. one an admin just
+  // started from a dispute). Reloads once if it isn't in the list yet.
+  openConversationId?: string | null
+  onOpenConsumed?: () => void
+}) {
   const [adminId, setAdminId] = useState<string | null>(null)
   const [conversations, setConversations] = useState<InboxConversation[]>([])
   const [loading, setLoading] = useState(true)
@@ -90,6 +98,25 @@ export default function AdminInboxTab({ onUnreadCountChange }: { onUnreadCountCh
 
   const selected = conversations.find(c => c.id === selectedId) ?? null
 
+  const reloadedFor = useRef<string | null>(null)
+  useEffect(() => {
+    if (!openConversationId || loading) return
+    const target = conversations.find(c => c.id === openConversationId)
+    if (target) {
+      openConversation(target)
+      onOpenConsumed?.()
+      return
+    }
+    // Not in the list: it may have just been created, so reload once.
+    if (reloadedFor.current !== openConversationId) {
+      reloadedFor.current = openConversationId
+      load()
+      return
+    }
+    onOpenConsumed?.()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openConversationId, loading, conversations])
+
   // Per-item read: opening a specific conversation marks only that one read —
   // others stay highlighted/counted until opened individually. Only updates
   // local state once the write is actually confirmed — an RLS-blocked update
@@ -134,7 +161,7 @@ export default function AdminInboxTab({ onUnreadCountChange }: { onUnreadCountCh
 
   if (loading) return <p className="font-bold text-[13px]" style={{ color: '#aaa' }}>Loading inbox...</p>
 
-  const visibleConversations = conversations.filter(c => showAnnouncements || c.repliable)
+  const visibleConversations = conversations.filter(c => showAnnouncements || c.repliable || c.id === selectedId)
 
   return (
     <div>

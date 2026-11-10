@@ -1,7 +1,15 @@
 import { render, screen, fireEvent, within, waitFor } from '@testing-library/react'
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
 import PostForm from './PostForm'
 import type { BookSuggestion } from '@/lib/openLibrary'
+
+// react-dom 18.3 only ships useFormStatus on the canary channel (Next's bundled React has it),
+// so the stable build used by vitest lacks it. Stub it with a controllable pending flag.
+const formStatus = vi.hoisted(() => ({ pending: false }))
+vi.mock('react-dom', async (importActual) => ({
+  ...(await importActual<typeof import('react-dom')>()),
+  useFormStatus: () => ({ pending: formStatus.pending, data: null, method: null, action: null }),
+}))
 
 // BookSearchInput defaults to the real searchBooks server action (a live fetch to
 // openlibrary.org) when no `search` prop is given. Every pre-existing test below types
@@ -483,5 +491,25 @@ describe('PostForm — bundle row Open Library integration', () => {
     await waitFor(() => expect(screen.getByAltText(/cover photo of your book preview/)).toHaveAttribute('src', 'blob:odd.tiff'))
     expect(assigned).toBeUndefined()
     vi.unstubAllGlobals()
+  })
+})
+
+describe('PostForm — pending submit (double-submit guard)', () => {
+  afterEach(() => { formStatus.pending = false })
+
+  it('disables the button and shows "Posting…" while the form is submitting', async () => {
+    formStatus.pending = true
+    render(<PostForm action={vi.fn()} search={vi.fn().mockResolvedValue([DUNE])} />)
+    await selectDune()
+    const btn = screen.getByText('Posting…').closest('button')
+    expect(btn).toBeDisabled()
+    expect(screen.queryByText('Post My Book →')).not.toBeInTheDocument()
+  })
+
+  it('shows "Saving…" while pending when a submitLabel is supplied (edit page)', async () => {
+    formStatus.pending = true
+    render(<PostForm action={vi.fn()} search={vi.fn().mockResolvedValue([DUNE])} submitLabel="Save Changes" />)
+    await selectDune()
+    expect(screen.getByText('Saving…').closest('button')).toBeDisabled()
   })
 })

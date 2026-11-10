@@ -1915,3 +1915,677 @@ alter table profiles
 
 -- Existing users start caught up, so their history doesn't replay.
 update profiles set credits_seen_at = now();
+
+-- ── Migration: shared backend 1/6 — private profile functions ────────────────
+-- Run this block in Supabase SQL Editor:
+-- Private profile columns (email, phone, address, credits, settings) are about
+-- to be hidden from direct reads (block 6). These are the only ways to read
+-- them afterwards: your own row, or — for admins — the Users list.
+create or replace function get_my_profile()
+returns setof profiles as $$
+  select * from profiles where id = auth.uid();
+$$ language sql stable security definer set search_path = public, pg_temp;
+grant execute on function get_my_profile() to authenticated;
+
+-- Replaces a direct update whose `credits_seen_at < upTo` filter would need
+-- SELECT on a hidden column.
+create or replace function mark_credits_seen(p_up_to timestamptz)
+returns void as $$
+  update profiles set credits_seen_at = p_up_to
+  where id = auth.uid() and credits_seen_at < p_up_to;
+$$ language sql security definer set search_path = public, pg_temp;
+grant execute on function mark_credits_seen(timestamptz) to authenticated;
+
+create or replace function admin_list_users(p_user_ids uuid[] default null)
+returns table (
+  id uuid, username text, email text, city text, state text, zip text,
+  created_at timestamptz, is_admin boolean, credits integer, marketing_opt_out boolean
+) as $$
+begin
+  if not exists (select 1 from profiles p where p.id = auth.uid() and p.is_admin = true) then
+    return;
+  end if;
+  return query
+    select p.id, p.username::text, p.email, p.city, p.state, p.zip,
+           p.created_at, p.is_admin, p.credits, p.marketing_opt_out
+    from profiles p
+    where p_user_ids is null or p.id = any(p_user_ids)
+    order by p.created_at desc;
+end;
+$$ language plpgsql stable security definer set search_path = public, pg_temp;
+grant execute on function admin_list_users(uuid[]) to authenticated;
+-- ──────────────────────────────────────────────────────────────────────────────
+
+-- ── Migration: shared backend 2/6 — listing functions ────────────────────────
+-- Run this block in Supabase SQL Editor:
+-- Posting, editing, pausing and deleting go through these functions so the
+-- website and the iPhone app follow the same rules. Mirrors lib/parseListingForm
+-- (500-char description, max 20 bundle books, Open Library cover URLs only,
+-- every book must have an Open Library match).
+
+-- A photo must be in the caller's own folder of the book-photos bucket.
+create or replace function lbe_photo_ok(p_url text)
+returns boolean as $$
+  select p_url is null
+      or p_url ~ ('^https://[^/?#]+/storage/v1/object/public/book-photos/' || auth.uid()::text || '/[^/?#]+$');
+$$ language sql stable set search_path = public, pg_temp;
+
+-- Same pattern as COVER_URL_PATTERN in lib/openLibrary.ts.
+create or replace function lbe_cover_or_null(p_url text)
+returns text as $$
+  select case when p_url ~ '^https://covers\.openlibrary\.org/b/id/\d+-[SML]\.jpg$' then p_url end;
+$$ language sql immutable;
+
+-- Trims bundle rows, drops blank ones, caps at 20, keeps order.
+create or replace function lbe_clean_books(p_books jsonb)
+returns jsonb as $$
+  select coalesce(jsonb_agg(b order by ord), '[]'::jsonb) from (
+    select jsonb_build_object(
+             'title', btrim(coalesce(e->>'title', '')),
+             'author', btrim(coalesce(e->>'author', '')),
+             'ol_work_key', nullif(e->>'ol_work_key', ''),
+             'cover_url', lbe_cover_or_null(e->>'cover_url')) as b, ord
+    from jsonb_array_elements(coalesce(p_books, '[]'::jsonb)) with ordinality as t(e, ord)
+    where btrim(coalesce(e->>'title', '')) <> '' or btrim(coalesce(e->>'author', '')) <> ''
+    order by ord
+    limit 20
+  ) s;
+$$ language sql immutable;
+
+create or replace function lbe_check_listing(p_listing jsonb, p_books jsonb)
+returns text as $$
+declare v_price text;
+begin
+  if btrim(coalesce(p_listing->>'title', '')) = '' or btrim(coalesce(p_listing->>'author', '')) = '' then
+    return 'invalid_listing';
+  end if;
+  if coalesce(p_listing->>'condition', '') not in ('Good', 'Fair', 'Well-Loved', 'good', 'fair', 'well-loved') then
+    return 'invalid_listing';
+  end if;
+  if nullif(p_listing->>'ol_work_key', '') is null
+     or exists (select 1 from jsonb_array_elements(p_books) b where nullif(b->>'ol_work_key', '') is null) then
+    return 'needs_match';
+  end if;
+  if not (lbe_photo_ok(nullif(p_listing->>'photo_url', ''))
+          and lbe_photo_ok(nullif(p_listing->>'photo_url_2', ''))
+          and lbe_photo_ok(nullif(p_listing->>'photo_url_3', ''))) then
+    return 'invalid_photo';
+  end if;
+  -- Validate price format: must be null/empty or match pattern for valid numeric(8,2)
+  v_price := nullif(p_listing->>'price', '');
+  if v_price is not null and not (v_price ~ '^\d{1,6}(\.\d{1,2})?$') then
+    return 'invalid_listing';
+  end if;
+  return 'ok';
+end;
+$$ language plpgsql stable set search_path = public, pg_temp;
+
+create or replace function create_listing(p_listing jsonb, p_books jsonb default '[]'::jsonb)
+returns jsonb as $$
+declare
+  v_books jsonb;
+  v_check text;
+  v_id uuid;
+begin
+  if auth.uid() is null then return jsonb_build_object('status', 'not_allowed'); end if;
+  -- Guard against malformed input: p_listing must be object, p_books must be array (or null)
+  if jsonb_typeof(p_listing) is distinct from 'object' then
+    return jsonb_build_object('status', 'invalid_listing');
+  end if;
+  if p_books is not null and jsonb_typeof(p_books) <> 'array' then
+    return jsonb_build_object('status', 'invalid_listing');
+  end if;
+  v_books := case when coalesce(p_listing->>'is_bundle', '') = 'true' then lbe_clean_books(p_books) else '[]'::jsonb end;
+  v_check := lbe_check_listing(p_listing, v_books);
+  if v_check <> 'ok' then return jsonb_build_object('status', v_check); end if;
+
+  -- Double-submit guard: if this caller already created an identical listing (same title,
+  -- author, ol_work_key, is_bundle and bundle_name) in the last 60 seconds, return that
+  -- listing instead of inserting a duplicate (e.g. a second tap while the first request
+  -- was still in flight).
+  select id into v_id from listings
+  where user_id = auth.uid()
+    and created_at > now() - interval '60 seconds'
+    and title is not distinct from (p_listing->>'title')
+    and author is not distinct from (p_listing->>'author')
+    and ol_work_key is not distinct from (p_listing->>'ol_work_key')
+    and is_bundle is not distinct from (jsonb_array_length(v_books) > 0)
+    and bundle_name is not distinct from
+        (case when jsonb_array_length(v_books) > 0 then nullif(btrim(coalesce(p_listing->>'bundle_name', '')), '') end)
+  order by created_at desc
+  limit 1;
+  if v_id is not null then return jsonb_build_object('status', 'ok', 'id', v_id); end if;
+
+  insert into listings (user_id, title, author, condition, price, description, genre, format,
+                        pickup_description, ol_work_key, cover_url, isbn,
+                        photo_url, photo_url_2, photo_url_3, city, is_bundle, bundle_name)
+  values (
+    auth.uid(),
+    p_listing->>'title', p_listing->>'author', p_listing->>'condition',
+    nullif(p_listing->>'price', '')::numeric,
+    nullif(left(coalesce(p_listing->>'description', ''), 500), ''),
+    nullif(p_listing->>'genre', ''), nullif(p_listing->>'format', ''),
+    nullif(p_listing->>'pickup_description', ''),
+    p_listing->>'ol_work_key', lbe_cover_or_null(p_listing->>'cover_url'), nullif(p_listing->>'isbn', ''),
+    nullif(p_listing->>'photo_url', ''), nullif(p_listing->>'photo_url_2', ''), nullif(p_listing->>'photo_url_3', ''),
+    coalesce((select city from profiles where id = auth.uid()), ''),
+    jsonb_array_length(v_books) > 0,
+    case when jsonb_array_length(v_books) > 0 then nullif(btrim(coalesce(p_listing->>'bundle_name', '')), '') end
+  ) returning id into v_id;
+
+  insert into listing_books (listing_id, title, author, ol_work_key, cover_url, position)
+  select v_id, b->>'title', b->>'author', b->>'ol_work_key', b->>'cover_url', (ord - 1)::int
+  from jsonb_array_elements(v_books) with ordinality as t(b, ord);
+
+  return jsonb_build_object('status', 'ok', 'id', v_id);
+end;
+$$ language plpgsql security definer set search_path = public, pg_temp;
+grant execute on function create_listing(jsonb, jsonb) to authenticated;
+
+create or replace function update_listing(p_listing_id uuid, p_listing jsonb, p_books jsonb default '[]'::jsonb)
+returns text as $$
+declare
+  v_existing listings%rowtype;
+  v_books jsonb;
+  v_check text;
+begin
+  select * into v_existing from listings where id = p_listing_id for update;
+  if not found or v_existing.user_id is distinct from auth.uid() then return 'not_allowed'; end if;
+  -- A buyer already requested it at its current book count (= price); once
+  -- confirmed it is 'sold' and the completion trigger still reads book_count.
+  if v_existing.status = 'pending' then return 'pending_request'; end if;
+  if v_existing.status = 'sold' then return 'sold'; end if;
+  -- Guard against malformed input: p_listing must be object, p_books must be array (or null)
+  if jsonb_typeof(p_listing) is distinct from 'object' then
+    return 'invalid_listing';
+  end if;
+  if p_books is not null and jsonb_typeof(p_books) <> 'array' then
+    return 'invalid_listing';
+  end if;
+  v_books := case when coalesce(p_listing->>'is_bundle', '') = 'true' then lbe_clean_books(p_books) else '[]'::jsonb end;
+  v_check := lbe_check_listing(p_listing, v_books);
+  if v_check <> 'ok' then return v_check; end if;
+
+  update listings set
+    title = p_listing->>'title', author = p_listing->>'author', condition = p_listing->>'condition',
+    price = nullif(p_listing->>'price', '')::numeric,
+    description = nullif(left(coalesce(p_listing->>'description', ''), 500), ''),
+    genre = nullif(p_listing->>'genre', ''), format = nullif(p_listing->>'format', ''),
+    pickup_description = nullif(p_listing->>'pickup_description', ''),
+    ol_work_key = p_listing->>'ol_work_key', cover_url = lbe_cover_or_null(p_listing->>'cover_url'),
+    isbn = nullif(p_listing->>'isbn', ''),
+    photo_url   = coalesce(nullif(p_listing->>'photo_url', ''),   v_existing.photo_url),
+    photo_url_2 = coalesce(nullif(p_listing->>'photo_url_2', ''), v_existing.photo_url_2),
+    photo_url_3 = coalesce(nullif(p_listing->>'photo_url_3', ''), v_existing.photo_url_3),
+    is_bundle = jsonb_array_length(v_books) > 0,
+    bundle_name = case when jsonb_array_length(v_books) > 0 then nullif(btrim(coalesce(p_listing->>'bundle_name', '')), '') end
+  where id = p_listing_id;
+
+  delete from listing_books where listing_id = p_listing_id;
+  insert into listing_books (listing_id, title, author, ol_work_key, cover_url, position)
+  select p_listing_id, b->>'title', b->>'author', b->>'ol_work_key', b->>'cover_url', (ord - 1)::int
+  from jsonb_array_elements(v_books) with ordinality as t(b, ord);
+  return 'ok';
+end;
+$$ language plpgsql security definer set search_path = public, pg_temp;
+grant execute on function update_listing(uuid, jsonb, jsonb) to authenticated;
+
+-- Only the two states the Dashboard offers; pending/sold belong to the exchange flow.
+create or replace function set_listing_status(p_listing_id uuid, p_status text)
+returns text as $$
+begin
+  if p_status not in ('active', 'paused') then return 'invalid_status'; end if;
+  update listings set status = p_status
+  where id = p_listing_id and user_id = auth.uid() and status in ('active', 'paused');
+  if not found then return 'not_allowed'; end if;
+  return 'ok';
+end;
+$$ language plpgsql security definer set search_path = public, pg_temp;
+grant execute on function set_listing_status(uuid, text) to authenticated;
+
+create or replace function delete_listing(p_listing_id uuid)
+returns text as $$
+declare v_status text;
+begin
+  select status into v_status from listings where id = p_listing_id and user_id = auth.uid() for update;
+  if not found then return 'not_allowed'; end if;
+  if v_status = 'pending' then return 'pending_request'; end if;
+  -- conversations.listing_id cascades: deleting a sold listing would erase the exchange, messages, disputes.
+  if v_status = 'sold' then return 'sold'; end if;
+  delete from listings where id = p_listing_id;
+  return 'ok';
+end;
+$$ language plpgsql security definer set search_path = public, pg_temp;
+grant execute on function delete_listing(uuid) to authenticated;
+-- ──────────────────────────────────────────────────────────────────────────────
+
+-- ── Migration: shared backend 3/6 — messaging and requesting a book ──────────
+-- Run this block in Supabase SQL Editor:
+
+-- Credits are deducted only when an exchange completes, so every requested or
+-- confirmed exchange holds its book_count until then. (Earlier code only
+-- counted exchanges whose listing was still 'pending', but confirming marks
+-- the listing 'sold' — freeing the buyer's credits too early. Mirrored in
+-- lib/creditCheck.ts.)
+create or replace function lbe_held_credits(p_buyer uuid, p_exclude_listing uuid)
+returns integer as $$
+  select coalesce(sum(l.book_count), 0)::int
+  from conversations c join listings l on l.id = c.listing_id
+  where c.buyer_id = p_buyer and c.type = 'exchange'
+    and c.exchange_status in ('requested', 'confirmed')
+    and c.listing_id is distinct from p_exclude_listing;
+$$ language sql stable set search_path = public, pg_temp;
+revoke execute on function lbe_held_credits(uuid, uuid) from public, anon, authenticated;
+
+create or replace function start_conversation(p_listing_id uuid)
+returns jsonb as $$
+declare
+  v_seller uuid;
+  v_id uuid;
+begin
+  if auth.uid() is null then return jsonb_build_object('status', 'not_allowed'); end if;
+  select user_id into v_seller from listings where id = p_listing_id;
+  if not found then return jsonb_build_object('status', 'not_found'); end if;
+  if v_seller = auth.uid() then return jsonb_build_object('status', 'own_listing'); end if;
+  insert into conversations (listing_id, buyer_id, seller_id) values (p_listing_id, auth.uid(), v_seller)
+  on conflict (listing_id, buyer_id) do nothing
+  returning id into v_id;
+  if v_id is null then
+    select id into v_id from conversations where listing_id = p_listing_id and buyer_id = auth.uid();
+  end if;
+  return jsonb_build_object('status', 'ok', 'id', v_id);
+end;
+$$ language plpgsql security definer set search_path = public, pg_temp;
+grant execute on function start_conversation(uuid) to authenticated;
+
+-- Replaces lock_listing_for_request + the website's multi-step request: one
+-- transaction, so a failure can never leave a listing locked with no request.
+create or replace function request_book(p_listing_id uuid)
+returns jsonb as $$
+declare
+  v_listing listings%rowtype;
+  v_balance integer;
+  v_id uuid;
+begin
+  if auth.uid() is null then return jsonb_build_object('status', 'not_allowed'); end if;
+  select * into v_listing from listings where id = p_listing_id for update;
+  if not found then return jsonb_build_object('status', 'not_available'); end if;
+  if v_listing.user_id = auth.uid() then return jsonb_build_object('status', 'own_listing'); end if;
+  if v_listing.status <> 'active' then return jsonb_build_object('status', 'not_available'); end if;
+
+  if exists (select 1 from conversations where listing_id = p_listing_id and buyer_id <> auth.uid()
+             and exchange_status in ('requested', 'confirmed')) then
+    return jsonb_build_object('status', 'not_available');
+  end if;
+
+  select credits into v_balance from profiles where id = auth.uid() for update;
+  if coalesce(v_balance, 0) - lbe_held_credits(auth.uid(), p_listing_id) < v_listing.book_count then
+    return jsonb_build_object('status', 'insufficient_credits');
+  end if;
+
+  update listings set status = 'pending' where id = p_listing_id;
+
+  insert into conversations (listing_id, buyer_id, seller_id, exchange_status)
+  values (p_listing_id, auth.uid(), v_listing.user_id, 'requested')
+  on conflict (listing_id, buyer_id) do update set exchange_status = 'requested', completed_at = null
+  returning id into v_id;
+
+  insert into messages (conversation_id, sender_id, body, kind)
+  values (v_id, auth.uid(), '🛒 I''d like to purchase this book! Please confirm when you''re ready.', 'purchase_request');
+
+  return jsonb_build_object('status', 'ok', 'id', v_id);
+end;
+$$ language plpgsql security definer set search_path = public, pg_temp;
+grant execute on function request_book(uuid) to authenticated;
+
+create or replace function cancel_request(p_conversation_id uuid)
+returns text as $$
+declare v_conv conversations%rowtype;
+begin
+  select * into v_conv from conversations where id = p_conversation_id for update;
+  if not found or v_conv.buyer_id is distinct from auth.uid() then return 'not_allowed'; end if;
+  if v_conv.exchange_status not in ('requested', 'none') then return 'wrong_status'; end if;
+  if v_conv.exchange_status = 'requested' then
+    update listings set status = 'active'
+    where id = v_conv.listing_id and status = 'pending'
+      and not exists (select 1 from conversations o where o.listing_id = v_conv.listing_id
+                      and o.id <> p_conversation_id and o.exchange_status in ('requested', 'confirmed'));
+  end if;
+  delete from conversations where id = p_conversation_id;
+  return 'ok';
+end;
+$$ language plpgsql security definer set search_path = public, pg_temp;
+grant execute on function cancel_request(uuid) to authenticated;
+-- ──────────────────────────────────────────────────────────────────────────────
+
+-- ── Migration: shared backend 4/6 — confirming and declining ─────────────────
+-- Run this block in Supabase SQL Editor:
+
+-- Same text as formatPickupAvailability() in lib/formatPickupAvailability.ts
+-- (a test checks they agree). Used for the confirmation message.
+create or replace function format_pickup_availability(p_mode text, p_date date, p_start time, p_end time)
+returns text as $$
+  select case
+    when p_mode = 'anytime' then '✅ Ready for pickup now'
+    when p_mode = 'after' and p_date is not null and p_start is not null and p_start < '24:00'::time
+      then to_char(p_date, 'Dy, Mon FMDD') || ' · after ' || to_char(p_start, 'FMHH12:MI AM')
+    when p_mode = 'window' and p_date is not null and p_start is not null and p_end is not null
+      and p_start < '24:00'::time and p_end < '24:00'::time
+      then to_char(p_date, 'Dy, Mon FMDD') || ' · ' || to_char(p_start, 'FMHH12:MI AM')
+           || '–' || to_char(p_end, 'FMHH12:MI AM')
+  end;
+$$ language sql immutable;
+
+-- Phone numbers are never included in the message, on purpose — they must
+-- never be shared between users.
+create or replace function confirm_exchange(p_conversation_id uuid, p_pickup jsonb)
+returns text as $$
+declare
+  v_conv conversations%rowtype;
+  v_mode text := p_pickup->>'pickup_mode';
+  v_date date;
+  v_start time;
+  v_end time;
+  v_address text := btrim(coalesce(p_pickup->>'address', ''));
+  v_unit text := btrim(coalesce(p_pickup->>'address_unit', ''));
+  v_city text := btrim(coalesce(p_pickup->>'city', ''));
+  v_state text := case when coalesce(p_pickup->>'state', '') ~ '^[A-Z]{2}$' then p_pickup->>'state' else '' end;
+  v_pickup text := btrim(coalesce(p_pickup->>'pickup', ''));
+  v_username text;
+  v_lines text[];
+  v_avail text;
+  v_date_str text;
+  v_start_str text;
+  v_end_str text;
+begin
+  select * into v_conv from conversations where id = p_conversation_id for update;
+  if not found or v_conv.seller_id is distinct from auth.uid() then return 'not_allowed'; end if;
+  if v_conv.exchange_status <> 'requested' then return 'wrong_status'; end if;
+
+  if jsonb_typeof(p_pickup) is distinct from 'object' then return 'invalid_pickup'; end if;
+  if v_mode is null or v_mode not in ('window', 'after', 'anytime') then return 'invalid_pickup'; end if;
+
+  v_date_str := nullif(p_pickup->>'pickup_date', '');
+  v_start_str := nullif(p_pickup->>'pickup_time_start', '');
+  v_end_str := nullif(p_pickup->>'pickup_time_end', '');
+
+  if v_date_str is not null and v_date_str !~ '^\d{4}-\d{2}-\d{2}$' then
+    return 'invalid_pickup';
+  end if;
+  if v_start_str is not null and v_start_str !~ '^([01]?\d|2[0-3]):[0-5]\d(:[0-5]\d)?$' then
+    return 'invalid_pickup';
+  end if;
+  if v_end_str is not null and v_end_str !~ '^([01]?\d|2[0-3]):[0-5]\d(:[0-5]\d)?$' then
+    return 'invalid_pickup';
+  end if;
+
+  begin
+    v_date  := v_date_str::date;
+    v_start := v_start_str::time;
+    v_end   := v_end_str::time;
+  exception when others then
+    return 'invalid_pickup';
+  end;
+  if not (v_mode = 'anytime'
+          or (v_mode = 'after' and v_date is not null and v_start is not null)
+          or (v_mode = 'window' and v_date is not null and v_start is not null and v_end is not null)) then
+    return 'invalid_pickup';
+  end if;
+  if v_mode = 'anytime' then v_date := null; v_start := null; end if;
+  if v_mode <> 'window' then v_end := null; end if;
+
+  update conversations set
+    exchange_status = 'confirmed',
+    confirmed_address = nullif(v_address, ''), confirmed_address_unit = nullif(v_unit, ''),
+    confirmed_pickup = nullif(v_pickup, ''), confirmed_pickup_mode = v_mode,
+    confirmed_pickup_date = v_date, confirmed_pickup_time_start = v_start, confirmed_pickup_time_end = v_end
+  where id = p_conversation_id;
+
+  update notifications set read = true
+  where user_id = auth.uid() and entity_id = p_conversation_id and type = 'purchase_request';
+
+  update listings set status = 'sold' where id = v_conv.listing_id and status = 'pending';
+
+  select username into v_username from profiles where id = auth.uid();
+  v_avail := format_pickup_availability(v_mode, v_date, v_start, v_end);
+  v_lines := array[
+    '📍 Exchange confirmed! Here''s how to connect:',
+    '👤 ' || coalesce(v_username, ''),
+    '📌 ' || v_city || case when v_state <> '' then ', ' || v_state else '' end
+  ];
+  if v_address <> '' or v_unit <> '' then
+    v_lines := v_lines || ('🏠 ' || concat_ws(' ', nullif(v_address, ''), nullif(v_unit, '')));
+  end if;
+  if v_pickup <> '' then v_lines := v_lines || ('📦 Pickup: ' || v_pickup); end if;
+  if v_avail is not null then v_lines := v_lines || ('🕐 ' || v_avail); end if;
+
+  insert into messages (conversation_id, sender_id, body, kind)
+  values (p_conversation_id, auth.uid(), array_to_string(v_lines, E'\n'), 'confirmation');
+  return 'ok';
+end;
+$$ language plpgsql security definer set search_path = public, pg_temp;
+grant execute on function confirm_exchange(uuid, jsonb) to authenticated;
+
+create or replace function deny_request(p_conversation_id uuid)
+returns text as $$
+declare v_conv conversations%rowtype;
+begin
+  select * into v_conv from conversations where id = p_conversation_id for update;
+  if not found or v_conv.seller_id is distinct from auth.uid() then return 'not_allowed'; end if;
+  if v_conv.exchange_status <> 'requested' then return 'wrong_status'; end if;
+
+  perform create_notification(v_conv.buyer_id, 'purchase_decision', p_conversation_id);
+  update conversations set exchange_status = 'declined', completed_at = now() where id = p_conversation_id;
+  update listings set status = 'active' where id = v_conv.listing_id and status = 'pending';
+  update notifications set read = true
+  where user_id = auth.uid() and entity_id = p_conversation_id and type = 'purchase_request';
+  return 'ok';
+end;
+$$ language plpgsql security definer set search_path = public, pg_temp;
+grant execute on function deny_request(uuid) to authenticated;
+-- ──────────────────────────────────────────────────────────────────────────────
+
+-- ── Migration: shared backend 5/6 — pickup, disputes, history, support, TBR ──
+-- Run this block in Supabase SQL Editor:
+
+-- Set (by the server, service role) once the admins have been emailed about a
+-- dispute, so the app's notify endpoint can't be used to spam them.
+alter table disputes add column if not exists admin_notified_at timestamptz;
+
+create or replace function mark_picked_up(p_conversation_id uuid)
+returns text as $$
+declare
+  v_conv conversations%rowtype;
+  v_result text;
+  v_username text;
+begin
+  select * into v_conv from conversations where id = p_conversation_id for update;
+  if not found or v_conv.type <> 'exchange' or auth.uid() is null
+     or (auth.uid() is distinct from v_conv.buyer_id and auth.uid() is distinct from v_conv.seller_id) then
+    return 'not_allowed';
+  end if;
+  if v_conv.exchange_status <> 'confirmed' then return 'wrong_status'; end if;
+
+  if auth.uid() = v_conv.seller_id then
+    if v_conv.seller_picked_up_at is not null then return 'already_marked'; end if;
+    update conversations set seller_picked_up_at = now() where id = p_conversation_id;
+  else
+    if v_conv.buyer_picked_up_at is not null then return 'already_marked'; end if;
+    update conversations set buyer_picked_up_at = now() where id = p_conversation_id;
+  end if;
+
+  -- resolve_pickup completes the exchange (and so moves credits) only when its
+  -- own rules say so: both sides marked, no open dispute.
+  v_result := resolve_pickup(p_conversation_id, auth.uid());
+  if v_result = 'waiting' then
+    select username into v_username from profiles where id = auth.uid();
+    insert into messages (conversation_id, sender_id, body, kind)
+    values (p_conversation_id, auth.uid(),
+            '📦 ' || coalesce(v_username, 'They') || ' marked this picked up! Please confirm on your end within 48 hours.',
+            'pickup');
+  end if;
+  return v_result;
+end;
+$$ language plpgsql security definer set search_path = public, pg_temp;
+grant execute on function mark_picked_up(uuid) to authenticated;
+
+create or replace function file_dispute(p_conversation_id uuid, p_message text)
+returns jsonb as $$
+declare
+  v_conv conversations%rowtype;
+  v_id uuid;
+begin
+  select * into v_conv from conversations where id = p_conversation_id for update;
+  if not found or v_conv.type <> 'exchange' or auth.uid() is null
+     or (auth.uid() is distinct from v_conv.buyer_id and auth.uid() is distinct from v_conv.seller_id) then
+    return jsonb_build_object('status', 'not_allowed');
+  end if;
+  if btrim(coalesce(p_message, '')) = '' then return jsonb_build_object('status', 'empty_message'); end if;
+  if exists (select 1 from disputes where conversation_id = p_conversation_id and status = 'open') then
+    return jsonb_build_object('status', 'already_open');
+  end if;
+  insert into disputes (conversation_id, reporter_id, message)
+  values (p_conversation_id, auth.uid(), btrim(p_message))
+  returning id into v_id;
+  return jsonb_build_object('status', 'ok', 'id', v_id);
+end;
+$$ language plpgsql security definer set search_path = public, pg_temp;
+grant execute on function file_dispute(uuid, text) to authenticated;
+
+create or replace function hide_exchange(p_conversation_id uuid)
+returns text as $$
+begin
+  update conversations set
+    buyer_hidden  = buyer_hidden  or buyer_id  = auth.uid(),
+    seller_hidden = seller_hidden or seller_id = auth.uid()
+  where id = p_conversation_id and auth.uid() in (buyer_id, seller_id);
+  if not found then return 'not_allowed'; end if;
+  return 'ok';
+end;
+$$ language plpgsql security definer set search_path = public, pg_temp;
+grant execute on function hide_exchange(uuid) to authenticated;
+
+create or replace function start_support_conversation()
+returns jsonb as $$
+declare v_id uuid;
+begin
+  if auth.uid() is null then return jsonb_build_object('status', 'not_allowed'); end if;
+  select id into v_id from conversations
+  where type = 'admin' and user_id = auth.uid() and repliable = true
+  order by created_at desc limit 1;
+  if v_id is null then
+    insert into conversations (type, user_id, repliable) values ('admin', auth.uid(), true)
+    returning id into v_id;
+  end if;
+  return jsonb_build_object('status', 'ok', 'id', v_id);
+end;
+$$ language plpgsql security definer set search_path = public, pg_temp;
+grant execute on function start_support_conversation() to authenticated;
+
+create or replace function move_saved_to_tbr(p_listing_id uuid)
+returns text as $$
+declare v_listing listings%rowtype;
+begin
+  if auth.uid() is null then return 'not_allowed'; end if;
+  -- Check caller has this listing saved before proceeding
+  if not exists (select 1 from saved_listings where user_id = auth.uid() and listing_id = p_listing_id) then
+    return 'not_found';
+  end if;
+  select * into v_listing from listings where id = p_listing_id;
+  if not found then return 'not_found'; end if;
+  insert into tbr_entries (user_id, title, author, city, state)
+  values (auth.uid(), v_listing.title, v_listing.author, coalesce(v_listing.city, ''), '');
+  delete from saved_listings where user_id = auth.uid() and listing_id = p_listing_id;
+  return 'ok';
+end;
+$$ language plpgsql security definer set search_path = public, pg_temp;
+grant execute on function move_saved_to_tbr(uuid) to authenticated;
+-- ──────────────────────────────────────────────────────────────────────────────
+
+-- ── Migration: shared backend 6/6 — lockdown ─────────────────────────────────
+-- Run this block in Supabase SQL Editor ONLY AFTER the website using blocks
+-- 1–5 is deployed. From here on members change exchanges, listings and
+-- disputes only through the functions in blocks 2–5, and private profile
+-- columns are readable only through get_my_profile() / admin_list_users().
+-- Policies are dropped under both names they have had (schema.sql and the
+-- older rls-policies.sql) since either may be live.
+
+-- Exchanges: no direct member writes (admin policies stay).
+drop policy if exists "Buyers can create conversations" on conversations;
+drop policy if exists "create conversations as buyer" on conversations;
+drop policy if exists "Participants can update conversations" on conversations;
+drop policy if exists "update own conversations" on conversations;
+drop policy if exists "buyer can cancel conversations" on conversations;
+drop policy if exists "Sellers can deny conversations" on conversations;
+
+-- Listings and bundle books: only via create/update/set_status/delete_listing.
+drop policy if exists "Users can insert own listings" on listings;
+drop policy if exists "Users can update own listings" on listings;
+drop policy if exists "Users can delete own listings" on listings;
+drop policy if exists "Owners can manage their listing's books" on listing_books;
+
+-- Disputes: only via file_dispute (admins keep update/delete).
+drop policy if exists "A participant can file a dispute on their own exchange" on disputes;
+
+-- Messages: members send plain chat only; request/confirmation/pickup
+-- messages come from the functions. Support-thread policy is unchanged.
+drop policy if exists "Participants can send messages" on messages;
+drop policy if exists "participants can send messages" on messages;
+drop policy if exists "Participants can send chat messages" on messages;
+create policy "Participants can send chat messages" on messages
+  for insert with check (
+    kind = 'chat'
+    and auth.uid() = sender_id
+    and exists (
+      select 1 from conversations c
+      where c.id = conversation_id and c.type = 'exchange'
+        and auth.uid() in (c.buyer_id, c.seller_id)
+    )
+  );
+
+-- Support threads: members start them only via start_support_conversation()
+-- (security definer); direct inserts are admin-only. Members replying in their
+-- own thread send plain chat only.
+drop policy if exists "Admins or a user can start an admin conversation" on conversations;
+drop policy if exists "Admins can start an admin conversation" on conversations;
+create policy "Admins can start an admin conversation" on conversations
+  for insert with check (
+    type = 'admin'
+    and exists (select 1 from profiles p where p.id = auth.uid() and p.is_admin = true)
+  );
+
+drop policy if exists "Admin conversation messages: admin always, user if repliable" on messages;
+create policy "Admin conversation messages: admin always, user if repliable" on messages
+  for insert with check (
+    auth.uid() = sender_id and
+    exists (
+      select 1 from conversations c
+      where c.id = conversation_id and c.type = 'admin'
+      and (
+        exists (select 1 from profiles p where p.id = auth.uid() and p.is_admin = true)
+        or (kind = 'chat' and c.repliable = true and c.user_id = auth.uid())
+      )
+    )
+  );
+
+-- Photos: only into your own folder (the path the site already uses).
+drop policy if exists "Authenticated users can upload photos" on storage.objects;
+drop policy if exists "Users can upload photos to their own folder" on storage.objects;
+create policy "Users can upload photos to their own folder" on storage.objects
+  for insert with check (
+    bucket_id = 'book-photos'
+    and auth.uid()::text = (storage.foldername(name))[1]
+  );
+
+-- Folded into request_book.
+revoke execute on function lock_listing_for_request(uuid) from public, anon, authenticated;
+-- cancel_request/deny_request replace it (its website callers are gone; the cron and admin use resolve_pickup).
+revoke execute on function reopen_listing(uuid) from public, anon, authenticated;
+
+-- Profiles: only public columns are directly readable. is_admin stays
+-- readable because many policies check it for the caller.
+revoke select on profiles from anon, authenticated;
+grant select (id, username, city, state, created_at, is_admin) on profiles to anon, authenticated;
+-- Any NEW profile column that should be publicly readable needs its own
+-- `grant select (col) on profiles to anon, authenticated`.
+-- ──────────────────────────────────────────────────────────────────────────────

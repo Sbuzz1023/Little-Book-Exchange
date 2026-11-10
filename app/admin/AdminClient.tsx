@@ -3,6 +3,7 @@ import { useState, useEffect, useMemo, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { adminUpdateReview, adminDeleteReview } from '@/lib/actions/reviews'
 import { adminUpdateUserCredits } from '@/lib/actions/admin'
+import { openAdminChat } from '@/lib/actions/emailAdmin'
 import LocationsAdminTab from './LocationsAdminTab'
 import EmailsAdminTab from './EmailsAdminTab'
 import DisputesAdminTab from './DisputesAdminTab'
@@ -15,6 +16,12 @@ import { bucketActivity, type ActivityPeriod, type ActivityBucket } from '@/lib/
 import { buildRecentActivity, type RecentActivityEvent, type RecentActivityItem } from '@/lib/recentActivity'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
+
+// Row shape returned by the admin_list_users RPC.
+type AdminUserRow = {
+  id: string; username: string | null; email: string | null; city: string | null; state: string | null
+  zip: string | null; created_at: string | null; is_admin: boolean | null; credits: number | null
+}
 
 type Tab = 'dashboard' | 'users' | 'locations' | 'reviews' | 'emails' | 'disputes'
 type User = {
@@ -647,23 +654,23 @@ export default function AdminClient() {
   const [reviews, setReviews] = useState<Review[]>([])
   const [reviewSellerIds, setReviewSellerIds] = useState<string[]>([])
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const [messagePrefillUserId, setMessagePrefillUserId] = useState<string | null>(null)
+  const [openChatConversationId, setOpenChatConversationId] = useState<string | null>(null)
+  const [chatError, setChatError] = useState<string | null>(null)
   const hasTabCount = useRef(false)
   const [enrichedDisputes, setEnrichedDisputes] = useState<EnrichedDispute[]>([])
   const [disputesLoaded, setDisputesLoaded] = useState(false)
   const [disputesVersion, setDisputesVersion] = useState(0)
   const [inboxUnreadCount, setInboxUnreadCount] = useState(0)
   const hasInboxTabCount = useRef(false)
+  const openChatInFlight = useRef(false)
 
   useEffect(() => {
     const supabase = createClient()
     supabase
-      .from('profiles')
-      .select('id, username, email, city, state, zip, created_at, is_admin, credits')
-      .order('created_at', { ascending: false })
+      .rpc('admin_list_users')
       .then(({ data }) => {
         if (!data) return
-        setUsers(data.map(p => ({
+        setUsers((data as AdminUserRow[]).map(p => ({
           id: p.id,
           username: p.username || p.email || 'Unknown',
           email: p.email || '',
@@ -918,9 +925,28 @@ export default function AdminClient() {
     setInboxUnreadCount(count)
   }
 
-  function handleMessageReporter(userId: string) {
-    setMessagePrefillUserId(userId)
-    setTab('emails')
+  async function handleOpenChat(userId: string) {
+    // Ignore clicks while one is running so a double click can't race two
+    // find-or-create calls into two threads.
+    if (openChatInFlight.current) return
+    openChatInFlight.current = true
+    setChatError(null)
+    try {
+      const res = await openAdminChat(userId)
+      if (!res.ok || !res.conversationId) {
+        setChatError(res.error ?? 'Could not open the chat.')
+        return
+      }
+      setOpenChatConversationId(res.conversationId)
+      setTab('emails')
+    } finally {
+      openChatInFlight.current = false
+    }
+  }
+
+  function selectTab(id: Tab) {
+    setChatError(null)
+    setTab(id)
   }
 
   async function toggleAdmin(userId: string, current: boolean) {
@@ -966,7 +992,7 @@ export default function AdminClient() {
           {TABS.map(t => {
             const b = badge(t.id)
             return (
-              <button key={t.id} onClick={() => setTab(t.id)}
+              <button key={t.id} onClick={() => selectTab(t.id)}
                 className={`w-full flex items-center gap-3 px-5 py-3 text-left transition-colors ${tab === t.id ? 'bg-white/10 text-white' : 'text-white/50 hover:text-white/80 hover:bg-white/5'}`}>
                 <span className="text-[17px]">{t.icon}</span>
                 <span className="font-bold text-[14px] flex-1">{t.label}</span>
@@ -987,7 +1013,7 @@ export default function AdminClient() {
         {TABS.map(t => {
           const b = badge(t.id)
           return (
-            <button key={t.id} onClick={() => setTab(t.id)}
+            <button key={t.id} onClick={() => selectTab(t.id)}
               className={`flex-1 flex flex-col items-center py-2 gap-0.5 relative transition-colors ${tab === t.id ? 'text-white' : 'text-white/40'}`}>
               <span className="text-[18px]">{t.icon}</span>
               <span className="text-[9px] font-extrabold uppercase">{t.label}</span>
@@ -1000,6 +1026,9 @@ export default function AdminClient() {
       {/* Main content */}
       <div className="flex-1 bg-[#f8fafc] overflow-auto">
         <div className="max-w-[1100px] mx-auto px-4 md:px-6 py-6 pb-24 md:pb-6">
+          {chatError && (
+            <div className="mb-4 bg-red-50 border-2 border-red-200 rounded-xl px-4 py-3 text-red-700 font-bold text-sm">{chatError}</div>
+          )}
           {tab === 'dashboard' && <Dashboard users={usersWithStats} pendingLocationReports={pendingLocationReports} reviews={reviews} activeListingsCount={activeListingsCount} rawActivity={rawActivity} recentActivity={recentActivity} />}
           {tab === 'users'     && (
             <UsersTab
@@ -1017,8 +1046,9 @@ export default function AdminClient() {
           {tab === 'emails'    && (
             <EmailsAdminTab
               users={users}
-              messagePrefillUserId={messagePrefillUserId}
-              onPrefillConsumed={() => setMessagePrefillUserId(null)}
+              openConversationId={openChatConversationId}
+              onOpenConsumed={() => setOpenChatConversationId(null)}
+              onOpenChat={handleOpenChat}
               onInboxUnreadCountChange={handleInboxUnreadCountChange}
               inboxUnreadCount={inboxUnreadCount}
             />
@@ -1028,7 +1058,7 @@ export default function AdminClient() {
               disputes={enrichedDisputes}
               disputesLoaded={disputesLoaded}
               onChanged={refetchDisputes}
-              onMessageReporter={handleMessageReporter}
+              onOpenChat={handleOpenChat}
             />
           )}
         </div>

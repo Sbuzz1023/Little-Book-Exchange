@@ -28,10 +28,10 @@ export default function SignInPage({
       let email = identifier
 
       if (!identifier.includes('@')) {
-        const { data: profile } = await supabase
-          .from('profiles').select('email').eq('username', identifier).single()
-        if (!profile?.email) go(`/auth/signin?error=${encodeURIComponent('No account found with that username.')}`)
-        email = profile!.email
+        const { lookupEmailForUsername } = await import('@/lib/auth/usernameLookup')
+        const found = await lookupEmailForUsername(identifier)
+        if (!found) go(`/auth/signin?error=${encodeURIComponent('No account found with that username.')}`)
+        email = found!
       }
 
       const { error } = await supabase.auth.signInWithPassword({ email, password: formData.get('password') as string })

@@ -17,6 +17,11 @@ describe('parseListingForm', () => {
     expect(result.price).toBe(1)
   })
 
+  it('rounds price to two decimals', () => {
+    const fd = makeFormData({ title: 'Dune', author: 'Frank Herbert', condition: 'Good', price: '4.999' })
+    expect(parseListingForm(fd).price).toBe(5)
+  })
+
   it('defaults price to null when blank', () => {
     const fd = makeFormData({ title: 'Dune', author: 'Frank Herbert', condition: 'Good', price: '' })
     expect(parseListingForm(fd).price).toBeNull()

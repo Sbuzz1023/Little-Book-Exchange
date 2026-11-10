@@ -1,5 +1,5 @@
 import { render, fireEvent, waitFor } from '@testing-library/react'
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import MessagesTab, { type MessagesTabExchange } from './MessagesTab'
 import { createClient } from '@/lib/supabase/client'
 
@@ -343,5 +343,177 @@ describe('MessagesTab — admin conversations', () => {
     expect(container.textContent).toContain('Little Book Exchange Team')
     const listingMatches = container.textContent!.match(/📚/g) ?? []
     expect(listingMatches.length).toBe(1)
+  })
+})
+
+describe('MessagesTab — book card', () => {
+  const bookConvo = (over: Partial<MessagesTabExchange> = {}): MessagesTabExchange => ({
+    ...exchanges[0],
+    listings: { title: 'The Hobbit', author: 'J.R.R. Tolkien', cover_url: 'https://covers.example/hobbit.jpg' },
+    ...over,
+  })
+
+  it('shows the book card with cover, title, author and a Back to book link', () => {
+    const { getByTestId, getByRole } = render(
+      <MessagesTab exchanges={[bookConvo()]} userId="me" isDemo={true} selectedId="convo-1" onSelectId={vi.fn()} />
+    )
+    const card = getByTestId('thread-book-card')
+    expect(card.textContent).toContain('The Hobbit')
+    expect(card.textContent).toContain('J.R.R. Tolkien')
+    expect(card.querySelector('img')?.getAttribute('src')).toBe('https://covers.example/hobbit.jpg')
+    expect(getByRole('link', { name: /Back to book/ }).getAttribute('href')).toBe('/listings/listing-1')
+  })
+
+  it('shows the card without a button when the listing was deleted', () => {
+    const { getByTestId, queryByRole } = render(
+      <MessagesTab
+        exchanges={[bookConvo({ listing_id: null, listings: { title: 'Unknown', author: '' } })]}
+        userId="me" isDemo={true} selectedId="convo-1" onSelectId={vi.fn()}
+      />
+    )
+    expect(getByTestId('thread-book-card').textContent).toContain('Unknown')
+    expect(queryByRole('link', { name: /Back to book/ })).toBeNull()
+  })
+
+  it('shows no book card for a support conversation', () => {
+    const admin: MessagesTabExchange = {
+      id: 'admin-x', type: 'admin', user_id: 'me', repliable: true,
+      created_at: '2026-08-02T09:00:00.000Z', messages: [],
+    }
+    const { queryByTestId, queryByText } = render(
+      <MessagesTab exchanges={[admin]} userId="me" isDemo={true} selectedId="admin-x" onSelectId={vi.fn()} />
+    )
+    expect(queryByTestId('thread-book-card')).toBeNull()
+    expect(queryByText(/Back to book/)).toBeNull()
+  })
+})
+
+describe('MessagesTab — folk restyle: avatars and who-header', () => {
+  const asBuyer: MessagesTabExchange = {
+    id: 'c-buy', listing_id: 'l-1', buyer_id: 'me', seller_id: 'them-s',
+    created_at: '2026-07-01T09:00:00.000Z',
+    listings: { title: 'Dune', author: 'Frank Herbert' },
+    buyer: { username: 'buzz' }, seller: { username: 'SeanB', city: 'Portland', state: 'OR' },
+    messages: [
+      { id: 'b1', body: 'Hi there', sender_id: 'them-s', created_at: '2026-07-01T10:00:00.000Z' },
+      { id: 'b2', body: 'Still have it', sender_id: 'them-s', created_at: '2026-07-01T10:01:00.000Z' },
+      { id: 'b3', body: 'Great', sender_id: 'me', created_at: '2026-07-01T10:02:00.000Z' },
+      { id: 'b4', body: 'Saturday?', sender_id: 'them-s', created_at: '2026-07-01T10:03:00.000Z' },
+    ],
+  }
+  const asSeller: MessagesTabExchange = {
+    id: 'c-sell', listing_id: 'l-2', buyer_id: 'them-b', seller_id: 'me',
+    created_at: '2026-07-01T09:00:00.000Z',
+    listings: { title: 'Emma', author: 'Jane Austen' },
+    buyer: { username: 'buzz' }, seller: { username: 'SeanB' },
+    messages: [],
+  }
+  const support: MessagesTabExchange = {
+    id: 'c-sup', type: 'admin', user_id: 'me', repliable: true,
+    created_at: '2026-07-01T09:00:00.000Z',
+    messages: [{ id: 's1', body: 'Welcome!', sender_id: 'admin-1', created_at: '2026-07-01T10:00:00.000Z' }],
+  }
+
+  it('list rows show nav-style initials for the other person', () => {
+    const { getAllByTestId } = render(
+      <MessagesTab exchanges={[asBuyer, asSeller]} userId="me" isDemo={true} selectedId={null} onSelectId={vi.fn()} />
+    )
+    const initials = getAllByTestId('message-avatar').map(a => a.textContent)
+    expect(initials).toContain('SB')
+    expect(initials).toContain('B')
+  })
+
+  it('header shows the other person\'s initials avatar, name, "Seller" and their city when I am the buyer', () => {
+    const { getByTestId } = render(
+      <MessagesTab exchanges={[asBuyer]} userId="me" isDemo={true} selectedId="c-buy" onSelectId={vi.fn()} />
+    )
+    const header = getByTestId('thread-header')
+    expect(header.querySelector('[data-testid="message-avatar"]')?.textContent).toBe('SB')
+    expect(header.textContent).toContain('SeanB')
+    expect(getByTestId('thread-header-role').textContent).toBe('Seller · Portland, OR')
+  })
+
+  it('header says "Buyer" (no location when unknown) when I am the seller', () => {
+    const { getByTestId } = render(
+      <MessagesTab exchanges={[asSeller]} userId="me" isDemo={true} selectedId="c-sell" onSelectId={vi.fn()} />
+    )
+    expect(getByTestId('thread-header-role').textContent).toBe('Buyer')
+  })
+
+  it('header says "Support" and uses the sprout logo for a support thread', () => {
+    const { getByTestId } = render(
+      <MessagesTab exchanges={[support]} userId="me" isDemo={true} selectedId="c-sup" onSelectId={vi.fn()} />
+    )
+    expect(getByTestId('thread-header-role').textContent).toBe('Support')
+    const logo = getByTestId('thread-header').querySelector('img')
+    expect(logo?.getAttribute('alt')).toBe('Little Book Exchange')
+  })
+
+  it('support list row avatar is the logo', () => {
+    const { getByAltText } = render(
+      <MessagesTab exchanges={[support]} userId="me" isDemo={true} selectedId={null} onSelectId={vi.fn()} />
+    )
+    expect(getByAltText('Little Book Exchange')).toBeTruthy()
+  })
+
+  it('their message groups show their avatar once per group and no grey name; mine have none', () => {
+    const { getByTestId } = render(
+      <MessagesTab exchanges={[asBuyer]} userId="me" isDemo={true} selectedId="c-buy" onSelectId={vi.fn()} />
+    )
+    const thread = getByTestId('thread-messages')
+    expect(thread.textContent).not.toContain('SeanB')
+    const avatars = thread.querySelectorAll('[data-testid="message-avatar"]')
+    // two groups of theirs (b1+b2, b4); my b3 has no avatar
+    expect(avatars.length).toBe(2)
+    avatars.forEach(a => expect(a.textContent).toBe('SB'))
+  })
+})
+
+describe('MessagesTab — scrolling', () => {
+  const scrollIntoViewSpy = vi.fn()
+  const scrollTopSets: number[] = []
+  let originalScrollIntoView: unknown
+  let scrollHeightDesc: PropertyDescriptor | undefined
+  let scrollTopDesc: PropertyDescriptor | undefined
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    scrollTopSets.length = 0
+    originalScrollIntoView = (Element.prototype as any).scrollIntoView
+    ;(Element.prototype as any).scrollIntoView = scrollIntoViewSpy
+    scrollHeightDesc = Object.getOwnPropertyDescriptor(Element.prototype, 'scrollHeight')
+    scrollTopDesc = Object.getOwnPropertyDescriptor(Element.prototype, 'scrollTop')
+    Object.defineProperty(Element.prototype, 'scrollHeight', { configurable: true, get: () => 777 })
+    Object.defineProperty(Element.prototype, 'scrollTop', {
+      configurable: true,
+      get: () => 0,
+      set(v: number) { scrollTopSets.push(v) },
+    })
+  })
+
+  afterEach(() => {
+    ;(Element.prototype as any).scrollIntoView = originalScrollIntoView
+    if (scrollHeightDesc) Object.defineProperty(Element.prototype, 'scrollHeight', scrollHeightDesc)
+    else delete (Element.prototype as any).scrollHeight
+    if (scrollTopDesc) Object.defineProperty(Element.prototype, 'scrollTop', scrollTopDesc)
+    else delete (Element.prototype as any).scrollTop
+  })
+
+  it('never calls scrollIntoView (which would scroll the whole page) when selecting a conversation', () => {
+    const { rerender } = render(
+      <MessagesTab exchanges={exchanges} userId="me" isDemo={true} selectedId={null} onSelectId={vi.fn()} />
+    )
+    rerender(<MessagesTab exchanges={exchanges} userId="me" isDemo={true} selectedId="convo-1" onSelectId={vi.fn()} />)
+    rerender(<MessagesTab exchanges={exchanges} userId="me" isDemo={true} selectedId="convo-2" onSelectId={vi.fn()} />)
+    expect(scrollIntoViewSpy).not.toHaveBeenCalled()
+  })
+
+  it('scrolls only the messages container to its bottom when a conversation is shown', () => {
+    const { getByTestId } = render(
+      <MessagesTab exchanges={exchanges} userId="me" isDemo={true} selectedId="convo-1" onSelectId={vi.fn()} />
+    )
+    expect(getByTestId('thread-messages')).toBeTruthy()
+    expect(scrollTopSets).toContain(777)
+    expect(scrollIntoViewSpy).not.toHaveBeenCalled()
   })
 })

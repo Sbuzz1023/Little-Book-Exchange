@@ -79,7 +79,7 @@ export default async function ProfilePage({
       if (!user) redirect('/auth/signin?redirect=/profile')
 
       const [{ data: p }, { data: l }] = await Promise.all([
-        supabase.from('profiles').select('*').eq('id', user.id).single(),
+        supabase.rpc('get_my_profile').maybeSingle(),
         supabase.from('listings').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
       ])
       profile = p

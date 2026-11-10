@@ -5,6 +5,8 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { StarRatingBadge } from '@/components/StarRating'
+import { thumbnailUrl } from '@/lib/listingPhotos'
+import { avatarInitials } from '@/lib/avatarInitials'
 
 export type MessageRow = { id: string; body: string; sender_id: string; created_at: string }
 
@@ -17,22 +19,51 @@ export type MessagesTabExchange = {
   user_id?: string | null
   repliable?: boolean
   created_at: string
-  listings?: { title: string; author: string; photo_url?: string | null } | null
-  buyer?: { username?: string | null; name?: string | null }
-  seller?: { username?: string | null; name?: string | null }
+  listings?: { title: string; author: string; photo_url?: string | null; cover_url?: string | null } | null
+  buyer?: { username?: string | null; name?: string | null; city?: string | null; state?: string | null }
+  seller?: { username?: string | null; name?: string | null; city?: string | null; state?: string | null }
   sellerRating?: { average: number; count: number } | null
   messages: MessageRow[]
 }
 
-const AVATAR_COLORS = ['#f97316', '#0d9488', '#8b5cf6', '#ec4899', '#3b82f6', '#10b981']
+// Folk palette (app/home.css .home-v2 tokens) for the other person's avatar —
+// picked deterministically from their name so it stays stable.
+const AVATAR_PALETTE = [
+  { bg: '#234A40', fg: '#fff' },    // pine
+  { bg: '#E4B04A', fg: '#2B2622' }, // mustard
+  { bg: '#B5462F', fg: '#fff' },    // rust (brick)
+  { bg: '#6E7B3E', fg: '#fff' },    // sage (moss)
+  { bg: '#E07A5F', fg: '#fff' },    // coral
+  { bg: '#5F574D', fg: '#fff' },    // ink-soft
+]
 
-function avatarColor(str: string) {
-  const sum = str.split('').reduce((a, c) => a + c.charCodeAt(0), 0)
-  return AVATAR_COLORS[sum % AVATAR_COLORS.length]
+function avatarPalette(name: string) {
+  const sum = name.split('').reduce((a, c) => a + c.charCodeAt(0), 0)
+  return AVATAR_PALETTE[sum % AVATAR_PALETTE.length]
 }
 
-function initial(name: string) {
-  return (name ?? '?')[0].toUpperCase()
+// Circle avatar matching the nav's .hnav-avatar: initials from the nav rule,
+// or the sprout logo for the Little Book Exchange Team (support threads).
+function MessageAvatar({ name, support = false, size }: { name: string; support?: boolean; size: number }) {
+  if (support) {
+    return (
+      <span className="dash-msg-avatar is-support" style={{ width: size, height: size }} data-testid="message-avatar">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/home/sprout-mark.svg" alt="Little Book Exchange" />
+      </span>
+    )
+  }
+  const { bg, fg } = avatarPalette(name)
+  return (
+    <span
+      className="dash-msg-avatar"
+      style={{ width: size, height: size, background: bg, color: fg, fontSize: Math.round(size / 3) }}
+      data-testid="message-avatar"
+      aria-hidden="true"
+    >
+      {avatarInitials(name)}
+    </span>
+  )
 }
 
 function lastActivity(convo: MessagesTabExchange, localMessages: Record<string, MessageRow[]>) {
@@ -44,6 +75,16 @@ function otherNameFor(convo: MessagesTabExchange, userId: string) {
   if (convo.type === 'admin') return 'Little Book Exchange Team'
   const other = convo.buyer_id === userId ? convo.seller : convo.buyer
   return other?.name || other?.username || 'Neighbor'
+}
+
+// "Seller" / "Buyer" is the other person's role relative to me; "Support"
+// for a Little Book Exchange Team thread. Adds " · City, ST" when known.
+function otherRoleLine(convo: MessagesTabExchange, userId: string) {
+  if (convo.type === 'admin') return 'Support'
+  const iAmBuyer = convo.buyer_id === userId
+  const other = iAmBuyer ? convo.seller : convo.buyer
+  const place = [other?.city, other?.state].filter(Boolean).join(', ')
+  return `${iAmBuyer ? 'Seller' : 'Buyer'}${place ? ` · ${place}` : ''}`
 }
 
 function timeAgo(iso: string) {
@@ -83,7 +124,7 @@ export default function MessagesTab({
   const router = useRouter()
   const [localMessages, setLocalMessages] = useState<Record<string, MessageRow[]>>({})
   const [body, setBody] = useState('')
-  const bottomRef = useRef<HTMLDivElement>(null)
+  const scrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
   const convo = exchanges.find(e => e.id === selectedId) ?? null
@@ -133,8 +174,11 @@ export default function MessagesTab({
   }, [convo?.id, isDemo])
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView?.({ behavior: 'smooth' })
-  }, [messages.length])
+    // Scroll only the thread's own container. scrollIntoView would also scroll
+    // every ancestor (the window), making the whole page jump on selection.
+    const el = scrollRef.current
+    if (el) el.scrollTop = el.scrollHeight
+  }, [convo?.id, messages.length])
 
   async function send(e: React.FormEvent) {
     e.preventDefault()
@@ -172,20 +216,14 @@ export default function MessagesTab({
   const inThread = !!convo
 
   return (
-    <div
-      className="rounded-[20px] border-2 border-[#f3f4f6]"
-      style={{ height: 560, display: 'flex', overflow: 'hidden', boxShadow: '0 6px 0 #e5e7eb' }}
-    >
+    <div className="dash-msg">
       {/* Conversation list */}
-      <div
-        className={`${inThread ? 'hidden md:flex' : 'flex'} md:w-[260px] md:shrink-0 w-full flex-col`}
-        style={{ borderRight: '2px solid #f3f4f6', overflowY: 'auto', background: '#fff' }}
-      >
+      <div className={`${inThread ? 'hidden md:flex' : 'flex'} dash-msg-list md:w-[260px] md:shrink-0 w-full flex-col`}>
         {sortedExchanges.length === 0 ? (
-          <div className="flex-1 flex items-center justify-center text-center px-6 py-10 font-bold" style={{ color: '#ccc' }}>
+          <div className="dash-msg-list-empty">
             <div>
               <div className="text-4xl mb-3">💬</div>
-              <p className="text-[13px]">No conversations yet</p>
+              <p>No conversations yet</p>
             </div>
           </div>
         ) : (
@@ -195,45 +233,24 @@ export default function MessagesTab({
             const lastMsg = msgs[msgs.length - 1]
             const isActive = selectedId === ex.id
             const isUnread = unreadConversationIds.includes(ex.id)
-            const color = avatarColor(otherName)
             return (
               <button
                 key={ex.id}
                 type="button"
                 onClick={() => selectConversation(ex.id)}
                 data-testid={isUnread ? 'conversation-row-unread' : undefined}
-                className="flex items-center gap-3 text-left"
-                style={{
-                  padding: '14px 16px', border: 'none', width: '100%', fontFamily: 'inherit', cursor: 'pointer',
-                  background: isActive ? '#fff7ed' : isUnread ? '#fef9f0' : 'transparent',
-                  borderLeft: isActive ? '3px solid #f97316' : isUnread ? '3px solid #fdba74' : '3px solid transparent',
-                  borderBottom: '1px solid #f3f4f6',
-                }}
+                className={`dash-msg-row${isActive ? ' is-active' : isUnread ? ' is-unread' : ''}`}
               >
-                <div style={{
-                  width: 44, height: 44, borderRadius: '50%', background: ex.type === 'admin' ? '#f97316' : color,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                  color: '#fff', fontWeight: 900, fontSize: ex.type === 'admin' ? 20 : 17,
-                }}>
-                  {ex.type === 'admin' ? '📣' : initial(otherName)}
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 6, marginBottom: 2 }}>
-                    <p style={{ fontSize: 14, fontWeight: 800, color: '#1a1a1a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {otherName}
-                    </p>
-                    {lastMsg && <span style={{ fontSize: 11, fontWeight: 700, color: '#bbb', flexShrink: 0 }}>{timeAgo(lastMsg.created_at)}</span>}
+                <MessageAvatar name={otherName} support={ex.type === 'admin'} size={40} />
+                <div className="dash-msg-row-body">
+                  <div className="dash-msg-row-top">
+                    <p className="dash-msg-row-name">{otherName}</p>
+                    {lastMsg && <span className="dash-msg-row-time">{timeAgo(lastMsg.created_at)}</span>}
                   </div>
                   {ex.type !== 'admin' && (
-                    <p style={{ fontSize: 12, fontWeight: 700, color: isActive ? '#f97316' : '#aaa', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: 2 }}>
-                      📚 {ex.listings?.title}
-                    </p>
+                    <p className="dash-msg-row-book">📚 {ex.listings?.title}</p>
                   )}
-                  {lastMsg && (
-                    <p style={{ fontSize: 12, fontWeight: 600, color: '#bbb', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {lastMsg.body}
-                    </p>
-                  )}
+                  {lastMsg && <p className="dash-msg-row-last">{lastMsg.body}</p>}
                 </div>
               </button>
             )
@@ -242,52 +259,66 @@ export default function MessagesTab({
       </div>
 
       {/* Thread */}
-      <div className={`${inThread ? 'flex' : 'hidden md:flex'} flex-1 flex-col`} style={{ background: '#fffbf0', overflow: 'hidden' }}>
+      <div className={`${inThread ? 'flex' : 'hidden md:flex'} dash-msg-thread flex-1 flex-col`}>
         {!convo ? (
-          <div className="flex-1 flex flex-col items-center justify-center text-center px-4" style={{ color: '#ccc' }}>
+          <div className="dash-msg-placeholder">
             <div style={{ fontSize: 56, marginBottom: 16 }}>💬</div>
-            <p className="font-black text-[18px] mb-2" style={{ color: '#bbb' }}>Your messages</p>
-            <p className="font-bold text-[14px]">Select a conversation to start chatting</p>
+            <p className="dash-msg-placeholder-title">Your messages</p>
+            <p>Select a conversation to start chatting</p>
           </div>
         ) : (
           <>
-            <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 14, padding: '14px 20px', background: '#fff', borderBottom: '2px solid #e5e7eb' }}>
+            <div className="dash-msg-head" data-testid="thread-header">
               <button
                 type="button"
                 onClick={() => onSelectId(null)}
-                className="md:hidden font-extrabold text-bk-orange text-[20px] leading-none shrink-0"
-                style={{ background: 'none', border: 'none', cursor: 'pointer', margin: '-8px 0 -8px -4px', padding: 8, fontFamily: 'inherit' }}
+                className="md:hidden dash-msg-back"
               >
                 ‹
               </button>
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <MessageAvatar name={otherNameFor(convo, userId)} support={convo.type === 'admin'} size={44} />
+              <div className="dash-msg-head-info">
+                <div className="dash-msg-head-name-row">
                   <button
                     type="button"
                     data-testid="thread-title-back"
                     onClick={() => onSelectId(null)}
-                    className="md:hidden"
-                    style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}
+                    className="md:hidden dash-msg-head-title-btn"
                   >
-                    <p style={{ fontWeight: 900, fontSize: 16, color: '#1a1a1a', lineHeight: 1.2 }}>{otherNameFor(convo, userId)}</p>
+                    <p className="dash-msg-head-name">{otherNameFor(convo, userId)}</p>
                   </button>
-                  <p className="hidden md:block" style={{ fontWeight: 900, fontSize: 16, color: '#1a1a1a', lineHeight: 1.2 }}>{otherNameFor(convo, userId)}</p>
+                  <p className="hidden md:block dash-msg-head-name">{otherNameFor(convo, userId)}</p>
                   {convo.type !== 'admin' && convo.seller_id !== userId && <StarRatingBadge rating={convo.sellerRating ?? null} sellerId={convo.seller_id!} />}
                 </div>
-                {convo.type !== 'admin' && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: '#aaa' }}>📚 {convo.listings?.title}</span>
-                    <Link href={`/listings/${convo.listing_id}`} style={{ fontSize: 11, fontWeight: 700, color: '#f97316', textDecoration: 'none' }}>
-                      View →
-                    </Link>
-                  </div>
-                )}
+                <p className="dash-msg-head-role" data-testid="thread-header-role">{otherRoleLine(convo, userId)}</p>
               </div>
             </div>
 
-            <div style={{ flex: 1, overflowY: 'auto', padding: '20px 20px 8px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {convo.type !== 'admin' && (
+              <div className="home-v2 dash-msg-book" data-testid="thread-book-card">
+                <div className="dash-msg-book-cover">
+                  {thumbnailUrl(convo.listings) ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={thumbnailUrl(convo.listings)!} alt={convo.listings?.title ?? ''} />
+                  ) : (
+                    <span>📚</span>
+                  )}
+                </div>
+                <div className="dash-msg-book-info">
+                  <p className="dash-msg-book-title">{convo.listings?.title ?? 'Unknown'}</p>
+                  {convo.listings?.author && <p className="dash-msg-book-author">{convo.listings.author}</p>}
+                </div>
+                {convo.listing_id && (
+                  <Link href={`/listings/${convo.listing_id}`} className="btn btn-primary dash-msg-book-btn">
+                    ← Back to book
+                  </Link>
+                )}
+              </div>
+            )}
+
+            <div className="dash-msg-scroll" data-testid="thread-messages" ref={scrollRef}>
               {messages.length === 0 && (
-                <div style={{ textAlign: 'center', paddingTop: 60, color: '#ccc', fontWeight: 700 }}>
+                <div className="dash-msg-empty">
                   <div style={{ fontSize: 36, marginBottom: 10 }}>👋</div>
                   <p>No messages yet. Say hello!</p>
                 </div>
@@ -303,62 +334,49 @@ export default function MessagesTab({
                   ? `18px 18px ${sameSenderBelow ? '4px' : '18px'} 18px`
                   : `18px 18px 18px ${sameSenderBelow ? '4px' : '18px'}`
                 return (
-                  <div key={m.id}>
-                    {!sameSenderAbove && !isMine && (
-                      <p style={{ fontSize: 11, fontWeight: 700, color: '#bbb', marginLeft: 4, marginBottom: 3, marginTop: idx === 0 ? 0 : 10 }}>
-                        {otherNameFor(convo, userId)}
-                      </p>
-                    )}
-                    {!sameSenderAbove && isMine && idx > 0 && <div style={{ marginTop: 10 }} />}
-                    <div style={{ display: 'flex', justifyContent: isMine ? 'flex-end' : 'flex-start', marginBottom: sameSenderBelow ? 2 : 0 }}>
-                      <div style={{
-                        maxWidth: '68%', padding: '10px 14px', borderRadius: br,
-                        fontSize: 14, fontWeight: 600, lineHeight: 1.45, wordBreak: 'break-word',
-                        ...(isMine ? { background: '#f97316', color: '#fff' } : { background: '#fff', color: '#1a1a1a', border: '1.5px solid #e5e7eb' }),
-                      }}>
+                  <div key={m.id} style={{ marginTop: !sameSenderAbove && idx > 0 ? 10 : 0 }}>
+                    <div className={`dash-msg-line${isMine ? ' is-mine' : ''}`} style={{ marginBottom: sameSenderBelow ? 2 : 0 }}>
+                      {/* Their avatar sits beside the first bubble of each group;
+                          later bubbles keep an empty slot so they stay aligned. */}
+                      {!isMine && (
+                        <span className="dash-msg-line-avatar">
+                          {!sameSenderAbove && <MessageAvatar name={otherNameFor(convo, userId)} support={convo.type === 'admin'} size={28} />}
+                        </span>
+                      )}
+                      <div className={`dash-msg-bubble${isMine ? ' is-mine' : ''}`} style={{ borderRadius: br }}>
                         {m.body}
                       </div>
                     </div>
                     {showTime && (
-                      <p style={{ fontSize: 11, fontWeight: 700, color: '#ccc', textAlign: isMine ? 'right' : 'left', marginTop: 4, marginBottom: 6 }}>
-                        {formatTime(m.created_at)}
-                      </p>
+                      <p className={`dash-msg-time${isMine ? ' is-mine' : ''}`}>{formatTime(m.created_at)}</p>
                     )}
                   </div>
                 )
               })}
-              <div ref={bottomRef} />
             </div>
 
             {convo.type === 'admin' && convo.repliable === false ? (
-              <div style={{ flexShrink: 0, padding: '14px 16px', background: '#fff', borderTop: '2px solid #e5e7eb', textAlign: 'center', fontSize: 13, fontWeight: 700, color: '#bbb' }}>
+              <div className="dash-msg-readonly">
                 🔒 Announcement — replies aren't enabled
               </div>
             ) : (
-              <form onSubmit={send} style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', background: '#fff', borderTop: '2px solid #e5e7eb' }}>
+              <form onSubmit={send} className="dash-msg-composer">
                 <input
                   ref={inputRef}
                   value={body}
                   onChange={e => setBody(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(e as any) } }}
-                  placeholder="iMessage"
-                  style={{
-                    flex: 1, background: '#f3f4f6', border: '1.5px solid #e5e7eb', borderRadius: 22,
-                    padding: '10px 16px', fontSize: 14, fontWeight: 600, fontFamily: 'inherit', outline: 'none', color: '#1a1a1a',
-                  }}
+                  placeholder="Write a message…"
+                  className="dash-msg-input"
                 />
                 <button
                   type="submit"
                   disabled={!body.trim()}
-                  style={{
-                    width: 36, height: 36, borderRadius: '50%',
-                    background: body.trim() ? '#f97316' : '#e5e7eb', border: 'none',
-                    cursor: body.trim() ? 'pointer' : 'default',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                  }}
+                  aria-label="Send"
+                  className={`dash-msg-send${body.trim() ? ' is-ready' : ''}`}
                 >
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                    <path d="M14 8L2 2l3 6-3 6 12-6z" fill={body.trim() ? '#fff' : '#aaa'} />
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                    <path d="M14 8L2 2l3 6-3 6 12-6z" fill="currentColor" />
                   </svg>
                 </button>
               </form>

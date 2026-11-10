@@ -11,7 +11,7 @@ export async function fetchUnseenCredits(
   userId: string,
 ): Promise<UnseenCredit[]> {
   try {
-    const { data: seen, error } = await supabase.from('profiles').select('credits_seen_at').eq('id', userId).single()
+    const { data: seen, error } = await supabase.rpc('get_my_profile').maybeSingle<{ credits_seen_at: string | null }>()
     if (error || !seen?.credits_seen_at) return []
     const { data: rows, error: ledgerError } = await supabase
       .from('credit_transactions')

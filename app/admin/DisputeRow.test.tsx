@@ -12,7 +12,7 @@ vi.mock('@/lib/actions/admin', () => ({
 const openDispute: EnrichedDispute = {
   id: 'd1', conversationId: 'c1', message: 'Book never showed up', status: 'open',
   createdAt: '2026-08-01T00:00:00.000Z', resolvedAt: null, adminReadAt: null,
-  reporterId: 'u1', reporterName: 'Alex', otherPartyId: 'u2', otherPartyName: 'Sam', bookTitle: 'Dune',
+  reporterId: 'u1', reporterName: 'Alex', otherPartyId: 'u2', buyerId: 'u1', sellerId: 'u2', otherPartyName: 'Sam', bookTitle: 'Dune',
 }
 const resolvedDispute: EnrichedDispute = { ...openDispute, id: 'd2', status: 'resolved', resolvedAt: '2026-08-02T00:00:00.000Z' }
 const unresolvedDispute: EnrichedDispute = { ...openDispute, id: 'd3', status: 'unresolved', resolvedAt: '2026-08-02T00:00:00.000Z' }
@@ -98,22 +98,33 @@ describe('DisputeRow', () => {
     expect(onChanged).not.toHaveBeenCalled()
   })
 
-  it('shows the reporter/other-party framing and a Message button in admin-tab context', () => {
-    const onMessageReporter = vi.fn()
+  it('shows the reporter/other-party framing and Message buyer / Message seller buttons in admin-tab context', () => {
+    const onOpenChat = vi.fn()
     const { getByText, container } = render(
-      <DisputeRow dispute={openDispute} context="admin-tab" onChanged={vi.fn()} onMessageReporter={onMessageReporter} />
+      <DisputeRow dispute={openDispute} context="admin-tab" onChanged={vi.fn()} onOpenChat={onOpenChat} />
     )
     expect(container.textContent).toContain('Reported by Alex against Sam')
-    fireEvent.click(getByText('💬 Message'))
-    expect(onMessageReporter).toHaveBeenCalledWith('u1')
+    fireEvent.click(getByText('💬 Message buyer'))
+    expect(onOpenChat).toHaveBeenLastCalledWith('u1')
+    fireEvent.click(getByText('💬 Message seller'))
+    expect(onOpenChat).toHaveBeenLastCalledWith('u2')
   })
 
-  it('labels "Filed by this user" when the card owner is the reporter, and hides the Message button', () => {
+  it('hides a message button whose party id is missing', () => {
+    const { queryByText } = render(
+      <DisputeRow dispute={{ ...openDispute, buyerId: null }} context="admin-tab" onChanged={vi.fn()} onOpenChat={vi.fn()} />
+    )
+    expect(queryByText('💬 Message buyer')).toBeNull()
+    expect(queryByText('💬 Message seller')).toBeTruthy()
+  })
+
+  it('labels "Filed by this user" when the card owner is the reporter, and hides the message buttons', () => {
     const { container, queryByText } = render(
       <DisputeRow dispute={openDispute} context="user-card" cardUserId="u1" onChanged={vi.fn()} />
     )
     expect(container.textContent).toContain('Filed by this user')
-    expect(queryByText('💬 Message')).toBeNull()
+    expect(queryByText('💬 Message buyer')).toBeNull()
+    expect(queryByText('💬 Message seller')).toBeNull()
   })
 
   it('labels "Filed against this user" when the card owner is the other party', () => {

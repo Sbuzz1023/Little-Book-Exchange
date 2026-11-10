@@ -9,13 +9,13 @@ export type OpenRequestRow = {
   listings: { status: string; book_count: number | null } | null
 }
 
-// A request is still open (its credits still to be spent) while it's
-// requested/confirmed and its listing is still locked as pending. A
-// confirmed exchange on a listing that's since been sold/reopened is stale
-// and holds nothing.
+// A request holds its credits from the moment it's made until the exchange
+// completes (when they're actually deducted) or ends. Listing status doesn't
+// matter: confirming marks the listing sold while the pickup is still to come.
+// Mirrors lbe_held_credits() in supabase/schema.sql.
 function isOpen(row: OpenRequestRow): boolean {
   return (row.exchange_status === 'requested' || row.exchange_status === 'confirmed')
-    && row.listings?.status === 'pending'
+    && row.listings !== null
 }
 
 function heldCredits(buyerExchanges: OpenRequestRow[]): number {

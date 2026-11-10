@@ -1,45 +1,36 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { markCreditsSeen } from './creditsSeen'
 
-const ltMock = vi.fn(() => Promise.resolve({ error: null }))
-const eqMock = vi.fn(() => ({ lt: ltMock }))
-const updateMock = vi.fn((_v: Record<string, unknown>) => ({ eq: eqMock }))
-const fromMock = vi.fn((_t: string) => ({ update: updateMock }))
+const rpcMock = vi.fn((_fn: string, _args: Record<string, unknown>) => Promise.resolve({ data: null, error: null }))
 let user: { id: string } | null = { id: 'user-1' }
-const getUserMock = vi.fn(() => Promise.resolve({ data: { user } }))
-
 vi.mock('@/lib/supabase/server', () => ({
-  createClient: () => ({ auth: { getUser: getUserMock }, from: fromMock }),
+  createClient: () => ({
+    auth: { getUser: () => Promise.resolve({ data: { user } }) },
+    rpc: (fn: string, args: Record<string, unknown>) => rpcMock(fn, args),
+  }),
 }))
 
 describe('markCreditsSeen', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    user = { id: 'user-1' }
-  })
+  beforeEach(() => { rpcMock.mockClear(); user = { id: 'user-1' } })
 
-  it("moves the caller's credits_seen_at forward to the given time only", async () => {
-    await markCreditsSeen('2026-10-06T10:00:05.123456+00:00')
-    expect(fromMock).toHaveBeenCalledWith('profiles')
-    expect(updateMock).toHaveBeenCalledWith({ credits_seen_at: '2026-10-06T10:00:05.123456+00:00' })
-    expect(eqMock).toHaveBeenCalledWith('id', 'user-1')
-    expect(ltMock).toHaveBeenCalledWith('credits_seen_at', '2026-10-06T10:00:05.123456+00:00')
+  it("moves the caller's credits_seen_at forward to the given time", async () => {
+    await markCreditsSeen('2026-11-09T10:00:00.000Z')
+    expect(rpcMock).toHaveBeenCalledWith('mark_credits_seen', { p_up_to: '2026-11-09T10:00:00.000Z' })
   })
 
   it('does nothing when signed out', async () => {
     user = null
-    await markCreditsSeen('2026-10-06T10:00:00Z')
-    expect(updateMock).not.toHaveBeenCalled()
+    await markCreditsSeen('2026-11-09T10:00:00.000Z')
+    expect(rpcMock).not.toHaveBeenCalled()
   })
 
   it('ignores a value that is not a timestamp', async () => {
     await markCreditsSeen('not a date')
-    expect(getUserMock).not.toHaveBeenCalled()
-    expect(updateMock).not.toHaveBeenCalled()
+    expect(rpcMock).not.toHaveBeenCalled()
   })
 
   it('never throws, even if Supabase does', async () => {
-    getUserMock.mockImplementationOnce(() => Promise.reject(new Error('down')))
-    await expect(markCreditsSeen('2026-10-06T10:00:00Z')).resolves.toBeUndefined()
+    rpcMock.mockImplementationOnce(() => { throw new Error('boom') })
+    await expect(markCreditsSeen('2026-11-09T10:00:00.000Z')).resolves.toBeUndefined()
   })
 })

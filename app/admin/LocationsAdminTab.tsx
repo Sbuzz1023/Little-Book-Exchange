@@ -126,7 +126,7 @@ export default function LocationsAdminTab({ onPendingCountChange }: { onPendingC
 
     supabase
       .from('location_reports')
-      .select('id, location_id, reason, status, resolution, created_at, library_locations(name, type, street, city), profiles!reporter_id(username, email)')
+      .select('id, location_id, reason, status, resolution, created_at, library_locations(name, type, street, city), profiles!reporter_id(username)')
       .order('created_at', { ascending: false })
       .then(({ data }) => {
         if (!data) return
@@ -138,7 +138,7 @@ export default function LocationsAdminTab({ onPendingCountChange }: { onPendingC
           street: row.library_locations?.street ?? '',
           city: row.library_locations?.city ?? '',
           reason: row.reason,
-          reporter: row.profiles?.username || row.profiles?.email || 'Unknown',
+          reporter: row.profiles?.username || 'Unknown',
           date: row.created_at ? row.created_at.slice(0, 10) : '',
           status: row.status,
           resolution: row.resolution,

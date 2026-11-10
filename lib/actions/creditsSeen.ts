@@ -13,10 +13,6 @@ export async function markCreditsSeen(upTo: string): Promise<void> {
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
-    await supabase
-      .from('profiles')
-      .update({ credits_seen_at: upTo })
-      .eq('id', user.id)
-      .lt('credits_seen_at', upTo)
+    await supabase.rpc('mark_credits_seen', { p_up_to: upTo })
   } catch {}
 }

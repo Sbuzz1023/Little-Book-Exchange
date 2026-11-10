@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { updateProfile, confirmExchange } from './actions'
+import { updateProfile, confirmExchange, updateListingStatus } from './actions'
 
 const redirectMock = vi.fn((url: string) => { throw new Error(`REDIRECT:${url}`) })
+vi.mock('@/lib/disputes/notifyAdmins', () => ({ notifyAdminsOfDispute: vi.fn(() => Promise.resolve(true)) }))
 vi.mock('next/navigation', () => ({
   redirect: (url: string) => redirectMock(url),
 }))
@@ -16,37 +17,30 @@ const singleMock = vi.fn(() => Promise.resolve(selectResult))
 const selectEqMock = vi.fn(() => ({ single: singleMock }))
 const selectMock = vi.fn(() => ({ eq: selectEqMock }))
 
-// confirmExchange touches several other tables — each mocked with just enough
-// chain shape to match the real calls in actions.ts.
-let conversationsSelectResult: { data: { listing_id: string | null } | null } = { data: { listing_id: 'listing-1' } }
-const conversationsUpdateEqMock = vi.fn(() => Promise.resolve({ error: null }))
-const conversationsUpdateMock = vi.fn((_payload: Record<string, unknown>) => ({ eq: () => ({ eq: conversationsUpdateEqMock }) }))
-const conversationsSingleMock = vi.fn(() => Promise.resolve(conversationsSelectResult))
-const conversationsSelectMock = vi.fn(() => ({ eq: () => ({ single: conversationsSingleMock }) }))
-
-const notificationsUpdateMock = vi.fn(() => ({ eq: () => ({ eq: () => ({ eq: () => Promise.resolve({ error: null }) }) }) }))
-
-const listingsUpdateEqMock = vi.fn(() => Promise.resolve({ error: null }))
-const listingsUpdateMock = vi.fn(() => ({ eq: () => ({ eq: listingsUpdateEqMock }) }))
-
-const messagesInsertMock = vi.fn((_payload: Record<string, unknown>) => Promise.resolve({ error: null }))
+const rpcCalls: { fn: string; args: Record<string, unknown> }[] = []
 
 const fromMock = vi.fn((table: string) => {
   switch (table) {
     case 'profiles': return { update: updateMock, select: selectMock }
-    case 'conversations': return { update: conversationsUpdateMock, select: conversationsSelectMock }
-    case 'notifications': return { update: notificationsUpdateMock }
-    case 'listings': return { update: listingsUpdateMock }
-    case 'messages': return { insert: messagesInsertMock }
     default: throw new Error(`unexpected table in test: ${table}`)
   }
 })
+const listingRpcMock = vi.fn((_fn: string, _args?: Record<string, unknown>) => Promise.resolve({ data: 'ok', error: null }))
 const getUserMock = vi.fn(() => Promise.resolve({ data: { user: { id: 'user-1' } } }))
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: () => ({
     auth: { getUser: getUserMock },
     from: fromMock,
+    rpc: (fn: string, args?: Record<string, unknown>) => {
+      if (fn === 'get_my_profile') return { maybeSingle: () => Promise.resolve(selectResult) }
+      if (fn === 'delete_listing' || fn === 'set_listing_status') return listingRpcMock(fn, args)
+      if (fn === 'confirm_exchange' || fn === 'deny_request') {
+        rpcCalls.push({ fn, args: args ?? {} })
+        return Promise.resolve({ data: 'ok', error: null })
+      }
+      throw new Error(`unexpected rpc ${fn}`)
+    },
   }),
 }))
 
@@ -156,82 +150,40 @@ describe('updateProfile', () => {
 })
 
 describe('confirmExchange', () => {
-  const confirmFields = {
-    conversation_id: 'convo-1',
-    address: '123 Main St',
-    address_unit: '',
-    city: 'Chicago',
-    state: 'IL',
-    pickup: 'front porch',
+  beforeEach(() => { rpcCalls.length = 0 })
+
+  const fields = {
+    conversation_id: 'convo-1', address: ' 1 Main St ', address_unit: '', city: 'Springfield', state: 'IL',
+    pickup: 'front porch', pickup_mode: 'window', pickup_date: '2026-11-12', pickup_time_start: '15:05', pickup_time_end: '17:00',
   }
 
-  beforeEach(() => {
-    redirectMock.mockClear()
-    fromMock.mockClear()
-    conversationsUpdateMock.mockClear()
-    conversationsUpdateEqMock.mockClear()
-    conversationsSelectMock.mockClear()
-    conversationsSingleMock.mockClear()
-    notificationsUpdateMock.mockClear()
-    listingsUpdateMock.mockClear()
-    listingsUpdateEqMock.mockClear()
-    messagesInsertMock.mockClear()
-    selectResult = { data: { username: 'sarahreads' } as any, error: null }
-    conversationsSelectResult = { data: { listing_id: 'listing-1' } }
+  it('sends the pickup details to confirm_exchange and returns to Exchanges', async () => {
+    await expect(confirmExchange(buildFormData(fields))).rejects.toThrow('REDIRECT:/profile?tab=exchanges')
+    expect(rpcCalls).toEqual([{ fn: 'confirm_exchange', args: {
+      p_conversation_id: 'convo-1',
+      p_pickup: {
+        address: '1 Main St', address_unit: '', city: 'Springfield', state: 'IL', pickup: 'front porch',
+        pickup_mode: 'window', pickup_date: '2026-11-12', pickup_time_start: '15:05', pickup_time_end: '17:00',
+      },
+    } }])
   })
 
-  it('persists a "ready now" pickup availability selection with no date/time', async () => {
-    await expect(confirmExchange(buildFormData({ ...confirmFields, pickup_mode: 'anytime' })))
-      .rejects.toThrow('REDIRECT:/profile?tab=exchanges')
-    expect(conversationsUpdateMock).toHaveBeenCalledWith(expect.objectContaining({
-      confirmed_pickup_mode: 'anytime',
-      confirmed_pickup_date: null,
-      confirmed_pickup_time_start: null,
-      confirmed_pickup_time_end: null,
-    }))
+  it('drops a state that is not a real state code', async () => {
+    await expect(confirmExchange(buildFormData({ ...fields, state: 'ZZ' }))).rejects.toThrow('REDIRECT:')
+    expect((rpcCalls[0].args.p_pickup as Record<string, string>).state).toBe('')
+  })
+})
+
+describe('updateListingStatus', () => {
+  beforeEach(() => { listingRpcMock.mockClear(); redirectMock.mockClear() })
+
+  it('deletes through delete_listing', async () => {
+    await expect(updateListingStatus(buildFormData({ id: 'l-1', status: 'delete' }))).rejects.toThrow('REDIRECT:/profile')
+    expect(listingRpcMock).toHaveBeenCalledWith('delete_listing', { p_listing_id: 'l-1' })
   })
 
-  it('persists a time-window selection with a start and end time', async () => {
-    await expect(confirmExchange(buildFormData({
-      ...confirmFields, pickup_mode: 'window', pickup_date: '2026-08-26', pickup_time_start: '15:00', pickup_time_end: '17:00',
-    }))).rejects.toThrow('REDIRECT:/profile?tab=exchanges')
-    expect(conversationsUpdateMock).toHaveBeenCalledWith(expect.objectContaining({
-      confirmed_pickup_mode: 'window',
-      confirmed_pickup_date: '2026-08-26',
-      confirmed_pickup_time_start: '15:00',
-      confirmed_pickup_time_end: '17:00',
-    }))
-  })
-
-  it('persists an "after a time" selection with no end time', async () => {
-    await expect(confirmExchange(buildFormData({
-      ...confirmFields, pickup_mode: 'after', pickup_date: '2026-08-26', pickup_time_start: '17:00',
-    }))).rejects.toThrow('REDIRECT:/profile?tab=exchanges')
-    expect(conversationsUpdateMock).toHaveBeenCalledWith(expect.objectContaining({
-      confirmed_pickup_mode: 'after',
-      confirmed_pickup_date: '2026-08-26',
-      confirmed_pickup_time_start: '17:00',
-      confirmed_pickup_time_end: null,
-    }))
-  })
-
-  it('does not confirm the exchange when pickup mode is missing (enforces required server-side too)', async () => {
-    await expect(confirmExchange(buildFormData({ ...confirmFields })))
-      .rejects.toThrow('REDIRECT:/profile?tab=exchanges')
-    expect(conversationsUpdateMock).not.toHaveBeenCalled()
-  })
-
-  it('does not confirm the exchange when a time window is missing its end time', async () => {
-    await expect(confirmExchange(buildFormData({
-      ...confirmFields, pickup_mode: 'window', pickup_date: '2026-08-26', pickup_time_start: '15:00',
-    }))).rejects.toThrow('REDIRECT:/profile?tab=exchanges')
-    expect(conversationsUpdateMock).not.toHaveBeenCalled()
-  })
-
-  it('includes the formatted pickup availability in the confirmation message sent to the buyer', async () => {
-    await expect(confirmExchange(buildFormData({ ...confirmFields, pickup_mode: 'anytime' })))
-      .rejects.toThrow('REDIRECT:/profile?tab=exchanges')
-    const payload = messagesInsertMock.mock.calls[0][0]
-    expect(payload.body).toContain('🕐 ✅ Ready for pickup now')
+  it('pauses through set_listing_status', async () => {
+    await expect(updateListingStatus(buildFormData({ id: 'l-1', status: 'paused' }))).rejects.toThrow('REDIRECT:/profile')
+    expect(listingRpcMock).toHaveBeenCalledWith('set_listing_status', { p_listing_id: 'l-1', p_status: 'paused' })
   })
 })

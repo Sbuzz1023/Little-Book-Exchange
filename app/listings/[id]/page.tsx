@@ -8,14 +8,15 @@ import PurchaseRequestedModal from './PurchaseRequestedModal'
 import { listingPhotos } from '@/lib/listingPhotos'
 import ShortfallNote from './ShortfallNote'
 import ScrollToPurchaseStatus from './ScrollToPurchaseStatus'
-import { MOCK_LISTINGS, MOCK_CONVERSATIONS, MOCK_USER_ID } from '@/lib/mock-data'
+import { startConversationAction, requestBookAction } from './actions'
+import { MOCK_LISTINGS, MOCK_USER_ID } from '@/lib/mock-data'
 import { averageRating } from '@/lib/reviewAverages'
 import { StarRatingBadge } from '@/components/StarRating'
 import { getListingAvailability } from '@/lib/listingAvailability'
 import type { ListingStatus } from '@/lib/types'
 import { addTbrEntry } from '@/lib/actions/tbrEntries'
 import { saveListingAndGoToWallet } from '@/lib/actions/savedListings'
-import { availableCredits, creditShortfall, type CreditShortfall, type OpenRequestRow } from '@/lib/creditCheck'
+import { creditShortfall, type CreditShortfall, type OpenRequestRow } from '@/lib/creditCheck'
 import '../../home.css'
 import './detail.css'
 
@@ -84,7 +85,7 @@ export default async function ListingDetailPage({ params, searchParams }: { para
     try {
       const supabase = createClient()
       const [{ data: p }, { data: rows }] = await Promise.all([
-        supabase.from('profiles').select('credits').eq('id', user.id).single(),
+        supabase.rpc('get_my_profile').maybeSingle<{ credits: number }>(),
         supabase.from('conversations')
           .select('exchange_status, listings(status, book_count)')
           .eq('buyer_id', user.id).neq('listing_id', params.id),
@@ -98,133 +99,6 @@ export default async function ListingDetailPage({ params, searchParams }: { para
     isOwner,
     isRequester: myConvoStatus === 'requested',
   })
-
-  async function startConversation(formData: FormData) {
-    'use server'
-    const { redirect } = await import('next/navigation')
-    const { cookies } = await import('next/headers')
-    const { revalidatePath } = await import('next/cache')
-
-    const isDemo = !process.env.NEXT_PUBLIC_SUPABASE_URL?.startsWith('http') ||
-      !!cookies().get('lbe_demo_user')
-
-    if (isDemo) {
-      const { MOCK_CONVERSATIONS: convos } = await import('@/lib/mock-data')
-      const mock = convos.find(c => c.listing_id === params.id)
-      revalidatePath('/profile')
-      redirect(`/profile?tab=messages&conversation=${mock?.id ?? 'mock-convo-1'}`)
-    }
-
-    try {
-      const { createClient: createSrv } = await import('@/lib/supabase/server')
-      const supabase = createSrv()
-      const { data: { user: u } } = await supabase.auth.getUser()
-      if (!u) redirect(`/auth/signin?redirect=/listings/${params.id}`)
-
-      const { data: existing } = await supabase
-        .from('conversations').select('id').eq('listing_id', listing.id).eq('buyer_id', u!.id).maybeSingle()
-      if (existing) {
-        revalidatePath('/profile')
-        redirect(`/profile?tab=messages&conversation=${existing.id}`)
-      }
-
-      const sellerId = (listing.profiles as any)?.id ?? listing.user_id
-      const { data: convo } = await supabase
-        .from('conversations')
-        .insert({ listing_id: listing.id, buyer_id: u!.id, seller_id: sellerId })
-        .select('id').single()
-
-      revalidatePath('/profile')
-      redirect(`/profile?tab=messages&conversation=${convo!.id}`)
-    } catch (err: any) {
-      if (err?.digest?.startsWith('NEXT_REDIRECT')) throw err
-      const { MOCK_CONVERSATIONS: convos } = await import('@/lib/mock-data')
-      const mock = convos.find(c => c.listing_id === params.id)
-      revalidatePath('/profile')
-      redirect(`/profile?tab=messages&conversation=${mock?.id ?? 'mock-convo-1'}`)
-    }
-  }
-
-  async function requestPurchase(formData: FormData) {
-    'use server'
-    const { redirect } = await import('next/navigation')
-    const { cookies } = await import('next/headers')
-
-    const isDemo = !process.env.NEXT_PUBLIC_SUPABASE_URL?.startsWith('http') ||
-      !!cookies().get('lbe_demo_user')
-
-    if (isDemo) {
-      cookies().set('lbe_demo_pending', params.id, { maxAge: 86400, path: '/', sameSite: 'lax' })
-      redirect(`/listings/${params.id}?requested=1`)
-    }
-
-    let lockAcquired = false
-    try {
-      const { createClient: createSrv } = await import('@/lib/supabase/server')
-      const supabase = createSrv()
-      const { data: { user: u } } = await supabase.auth.getUser()
-      if (!u) redirect(`/auth/signin?redirect=/listings/${params.id}`)
-
-      // Check against credits not already committed to the buyer's other open
-      // requests — see lib/creditCheck.ts.
-      const [{ data: buyerProfile }, { data: buyerExchanges }] = await Promise.all([
-        supabase.from('profiles').select('credits').eq('id', u!.id).single(),
-        supabase.from('conversations')
-          .select('exchange_status, listings(status, book_count)')
-          .eq('buyer_id', u!.id).neq('listing_id', listing.id),
-      ])
-      if (!buyerProfile || availableCredits(buyerProfile.credits, (buyerExchanges ?? []) as unknown as OpenRequestRow[]) < (listing.book_count ?? 1)) {
-        redirect(`/listings/${params.id}?insufficient_credits=1`)
-      }
-
-      const { data: locked } = await supabase.rpc('lock_listing_for_request', { p_listing_id: listing.id })
-      if (!locked) {
-        redirect(`/listings/${params.id}?purchase_failed=1`)
-      }
-      lockAcquired = true
-
-      // Find or create conversation (without exchange_status so it works before migration)
-      let convoId: string
-      const { data: existing } = await supabase
-        .from('conversations').select('id').eq('listing_id', listing.id).eq('buyer_id', u!.id).maybeSingle()
-
-      if (existing) {
-        convoId = existing.id
-      } else {
-        const sellerId = (listing.profiles as any)?.id ?? listing.user_id
-        const { data: convo, error: insertErr } = await supabase
-          .from('conversations')
-          .insert({ listing_id: listing.id, buyer_id: u!.id, seller_id: sellerId })
-          .select('id').single()
-        if (insertErr || !convo) throw new Error(insertErr?.message ?? 'insert failed')
-        convoId = convo.id
-      }
-
-      // Try to set exchange_status (no-op if migration hasn't been run yet)
-      await supabase.from('conversations').update({ exchange_status: 'requested' }).eq('id', convoId).then(() => {})
-
-      // Send a purchase request message
-      await supabase.from('messages').insert({
-        conversation_id: convoId,
-        sender_id: u!.id,
-        body: '🛒 I\'d like to purchase this book! Please confirm when you\'re ready.',
-        kind: 'purchase_request',
-      })
-
-      redirect(`/listings/${params.id}?requested=1`)
-    } catch (err: any) {
-      if (err?.digest?.startsWith('NEXT_REDIRECT')) throw err
-      if (lockAcquired) {
-        try {
-          const { createClient: createSrv } = await import('@/lib/supabase/server')
-          const supabase = createSrv()
-          await supabase.rpc('reopen_listing', { p_listing_id: listing.id })
-        } catch {}
-      }
-      redirect(`/listings/${params.id}?purchase_failed=1`)
-    }
-  }
-
 
   const displayPhotos = listingPhotos(listing)
 
@@ -327,12 +201,12 @@ export default async function ListingDetailPage({ params, searchParams }: { para
                 <div className="ld-note muted">No longer available</div>
               ) : (
                 <div className="ld-actions">
-                  <form action={requestPurchase}>
+                  <form action={requestBookAction.bind(null, listing.id)}>
                     <button type="submit" className="btn btn-primary">
                       {listing.is_bundle ? `Purchase Bundle for ${listing.book_count ?? 1} Credits` : 'Purchase with 1 Credit'}
                     </button>
                   </form>
-                  <form action={startConversation}>
+                  <form action={startConversationAction.bind(null, listing.id)}>
                     <button type="submit" className="btn btn-outline">Message Seller</button>
                   </form>
                 </div>

@@ -90,6 +90,61 @@ describe('DashboardClient — notification badges and highlighting', () => {
     expect(screen.getByRole('option', { name: 'IL — Illinois' })).toBeInTheDocument()
   })
 
+  it('renders an unread TBR match as an attention card with a status label and See listing link', () => {
+    const { container } = render(<DashboardClient {...baseProps} exchanges={[]} defaultTab="tbr" />)
+    expect(screen.getByText('NEW MATCH NEARBY')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'See listing' })).toHaveAttribute('href', '/listings/listing-1')
+    expect(container.querySelector('.dash-tbr-card.is-attention')).not.toBeNull()
+  })
+
+  it('renders a read TBR entry as a plain card with title, author, "City, ST" and a Delete control', () => {
+    const entry = { id: 'tbr-2', title: 'Emma', author: 'Jane Austen', city: 'Chicago', state: 'IL', match: null }
+    const { container } = render(
+      <DashboardClient {...baseProps} exchanges={[]} defaultTab="tbr" tbrEntries={[entry] as any}
+        unreadEntityIds={{ ...baseProps.unreadEntityIds, tbrMatch: [] }} />
+    )
+    expect(screen.getByText('Emma')).toBeInTheDocument()
+    expect(screen.getByText('Jane Austen')).toBeInTheDocument()
+    expect(screen.getByText('Chicago, IL')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Delete' })).toBeInTheDocument()
+    expect(screen.queryByText('NEW MATCH NEARBY')).toBeNull()
+    expect(container.querySelector('.is-attention')).toBeNull()
+    expect(screen.queryByRole('link', { name: 'See listing' })).toBeNull()
+  })
+
+  it("shows It's available! beside the See listing link only on entries with a match", () => {
+    const entries = [
+      { id: 'a', title: 'Alpha', author: '', city: '', state: '', match: null },
+      { id: 'b', title: 'Bravo', author: '', city: '', state: '', match: { id: 'l-b', title: 'Bravo' } },
+    ]
+    const { container } = render(
+      <DashboardClient {...baseProps} exchanges={[]} defaultTab="tbr" tbrEntries={entries as any}
+        unreadEntityIds={{ ...baseProps.unreadEntityIds, tbrMatch: [] }} />
+    )
+    expect(screen.getAllByText("It's available!")).toHaveLength(1)
+    const link = screen.getByRole('link', { name: 'See listing' })
+    expect(link.parentElement).toContainElement(screen.getByText("It's available!"))
+    const cardA = screen.getByText('Alpha').closest('.dash-tbr-card')!
+    expect(within(cardA as HTMLElement).queryByText("It's available!")).toBeNull()
+    expect(container.querySelectorAll('.dash-tbr-card')).toHaveLength(2)
+  })
+
+  it('bumps entries with a matching listing to the top, keeping relative order within each group', () => {
+    const mk = (id: string, title: string, match: any) => ({ id, title, author: '', city: '', state: '', match })
+    const entries = [
+      mk('a', 'A-nomatch', null),
+      mk('b', 'B-match', { id: 'l-b', title: 'B' }),
+      mk('c', 'C-nomatch', null),
+      mk('d', 'D-match', { id: 'l-d', title: 'D' }),
+    ]
+    const { container } = render(
+      <DashboardClient {...baseProps} exchanges={[]} defaultTab="tbr" tbrEntries={entries as any}
+        unreadEntityIds={{ ...baseProps.unreadEntityIds, tbrMatch: [] }} />
+    )
+    const titles = Array.from(container.querySelectorAll('.dash-tbr-title')).map(n => n.textContent)
+    expect(titles).toEqual(['B-match', 'D-match', 'A-nomatch', 'C-nomatch'])
+  })
+
   it('shows the exchanges unread count as a badge on the Exchanges tab', () => {
     render(<DashboardClient {...baseProps} exchanges={[pendingExchange]} defaultTab="listings" />)
     const exchangesButton = screen.getByText('Exchanges').closest('button')!
@@ -305,6 +360,25 @@ describe('DashboardClient — dual pickup confirmation', () => {
     await waitFor(() => expect(fileDispute).toHaveBeenCalled())
   })
 
+  it('shows only a short confirmation after the dispute is sent, and Done closes it', async () => {
+    const fileDispute = vi.fn(() => Promise.resolve({ ok: true }))
+    render(<DashboardClient {...baseProps} exchanges={[confirmedExchange]} defaultTab="exchanges" fileDispute={fileDispute} />)
+
+    fireEvent.click(screen.getByText('🚩 Dispute'))
+    const textarea = await screen.findByPlaceholderText(/describe the issue/i)
+    fireEvent.change(textarea, { target: { value: 'The book was damaged.' } })
+    fireEvent.click(screen.getByRole('button', { name: /Send to Admin/i }))
+
+    expect(await screen.findByText('Sent ✓')).toBeInTheDocument()
+    expect(screen.getByText('An admin will look into it. The exchange is paused until then.')).toBeInTheDocument()
+    expect(screen.queryByText('Report an issue')).not.toBeInTheDocument()
+    expect(screen.queryByText(/Tell us what's wrong/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/We've notified the admin team/)).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }))
+    expect(screen.queryByText('Sent ✓')).not.toBeInTheDocument()
+  })
+
   it('places the Dispute button in the header (top-right) area, not the action row, once both parties can act', () => {
     const { container } = render(<DashboardClient {...baseProps} exchanges={[confirmedExchange]} defaultTab="exchanges" />)
     const header = container.querySelector('[data-testid="exchange-header-actions"]')
@@ -458,6 +532,36 @@ describe('DashboardClient — wallet balance', () => {
   })
 })
 
+describe('DashboardClient — wallet rate line', () => {
+  it('shows the credit rate exactly once', () => {
+    render(<DashboardClient {...baseProps} exchanges={[]} defaultTab="wallet" />)
+    expect(screen.getAllByText('1 credit = 1 book · $5 each')).toHaveLength(1)
+    expect(screen.queryByText('$5.00 per credit')).not.toBeInTheDocument()
+  })
+})
+
+describe('DashboardClient — checklist steps', () => {
+  const base = { ...baseProps.profile, email_verified: true, phone_verified: false, onboarding_bonus_claimed: false }
+  const books = (n: number) => Array.from({ length: n }, (_, i) => ({ id: `l${i}`, title: `B${i}`, author: 'A', condition: 'Good', status: 'active' }))
+
+  it('hides actions for completed steps', () => {
+    render(<DashboardClient {...baseProps} exchanges={[]} transactions={[]} profile={base} listings={books(3)}
+      defaultTab="wallet" resendEmailConfirmation={vi.fn()} />)
+    expect(screen.getByText('2 of 3 done')).toBeInTheDocument()
+    expect(screen.getByText('Post 3 books')).toBeInTheDocument()
+    expect(screen.getByText('3 of 3 · a bundle counts each book')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Resend email' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Post a book' })).not.toBeInTheDocument()
+  })
+
+  it('offers Post a book with 1 book', () => {
+    render(<DashboardClient {...baseProps} exchanges={[]} transactions={[]} profile={base} listings={books(1)}
+      defaultTab="wallet" resendEmailConfirmation={vi.fn()} />)
+    expect(screen.getByText('1 of 3 done')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Post a book' })).toHaveAttribute('href', '/post')
+  })
+})
+
 describe('DashboardClient — transaction history', () => {
   const tx = [
     { id: 't1', amount: -1, reason: 'purchase_spent', created_at: '2026-08-01T00:00:00.000Z' },
@@ -483,36 +587,48 @@ describe('DashboardClient — onboarding checklist', () => {
     render(<DashboardClient {...baseProps} exchanges={[]} transactions={[]} profile={unclaimedProfile}
       listings={[{ id: 'l1', title: 'Dune', author: 'Herbert', condition: 'Good', status: 'active' }]}
       defaultTab="wallet" resendEmailConfirmation={vi.fn()} />)
-    expect(screen.getByText('Earn Your First Credit')).toBeInTheDocument()
-    expect(screen.getByText('1/3')).toBeInTheDocument()
+    expect(screen.getByText('Earn your first credit')).toBeInTheDocument()
+    expect(screen.getByText('0 of 3 done')).toBeInTheDocument()
+    expect(screen.getByText('1 of 3 · a bundle counts each book')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Post a book' })).toHaveAttribute('href', '/post')
   })
 
   it('shows the bonus-earned message instead of the checklist once claimed', () => {
-    render(<DashboardClient {...baseProps} exchanges={[]} transactions={[]}
+    const recent = [{ id: 'b1', amount: 1, reason: 'onboarding_bonus', created_at: new Date().toISOString() }]
+    render(<DashboardClient {...baseProps} exchanges={[]} transactions={recent}
       profile={{ ...unclaimedProfile, onboarding_bonus_claimed: true }}
       defaultTab="wallet" resendEmailConfirmation={vi.fn()} />)
     expect(screen.getByText(/Bonus earned/)).toBeInTheDocument()
-    expect(screen.queryByText('Earn Your First Credit')).not.toBeInTheDocument()
+    expect(screen.getByAltText('Credit coin')).toHaveAttribute('src', '/home/credit-coin-small.png')
+    expect(screen.queryByText('Earn your first credit')).not.toBeInTheDocument()
+  })
+
+  it('hides the bonus strip once the bonus is over 7 days old', () => {
+    const old = [{ id: 'b1', amount: 1, reason: 'onboarding_bonus', created_at: new Date(Date.now() - 8 * 86400000).toISOString() }]
+    render(<DashboardClient {...baseProps} exchanges={[]} transactions={old}
+      profile={{ ...unclaimedProfile, onboarding_bonus_claimed: true }}
+      defaultTab="wallet" resendEmailConfirmation={vi.fn()} />)
+    expect(screen.queryByText(/Bonus earned/)).not.toBeInTheDocument()
   })
 
   it('calls resendEmailConfirmation when the resend button is clicked', async () => {
     const resend = vi.fn(() => Promise.resolve({ ok: true }))
     render(<DashboardClient {...baseProps} exchanges={[]} transactions={[]} profile={unclaimedProfile} defaultTab="wallet" resendEmailConfirmation={resend} />)
-    fireEvent.click(screen.getByRole('button', { name: /Resend confirmation email/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Resend email/ }))
     expect(resend).toHaveBeenCalled()
   })
 
   it('confirms a successful resend to the user', async () => {
     const resend = vi.fn(() => Promise.resolve({ ok: true }))
     render(<DashboardClient {...baseProps} exchanges={[]} transactions={[]} profile={unclaimedProfile} defaultTab="wallet" resendEmailConfirmation={resend} />)
-    fireEvent.click(screen.getByRole('button', { name: /Resend confirmation email/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Resend email/ }))
     expect(await screen.findByText(/Confirmation email sent/)).toBeInTheDocument()
   })
 
   it('surfaces a failed resend instead of failing silently', async () => {
     const resend = vi.fn(() => Promise.resolve({ ok: false, error: 'Rate limit exceeded.' }))
     render(<DashboardClient {...baseProps} exchanges={[]} transactions={[]} profile={unclaimedProfile} defaultTab="wallet" resendEmailConfirmation={resend} />)
-    fireEvent.click(screen.getByRole('button', { name: /Resend confirmation email/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Resend email/ }))
     expect(await screen.findByText('Rate limit exceeded.')).toBeInTheDocument()
   })
 })

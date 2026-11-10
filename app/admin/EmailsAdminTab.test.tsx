@@ -2,12 +2,17 @@ import { render, fireEvent } from '@testing-library/react'
 import { describe, it, expect, vi } from 'vitest'
 import EmailsAdminTab from './EmailsAdminTab'
 
+const inboxProps: { openConversationId?: string | null; onOpenConsumed?: () => void } = {}
+
 vi.mock('./EmailComposeTab', () => ({ default: () => <div>Compose</div> }))
 vi.mock('./EmailTemplatesEditor', () => ({ default: () => <div>Templates</div> }))
 vi.mock('./EmailResendTool', () => ({ default: () => <div>Resend</div> }))
+vi.mock('./EmailHistoryTab', () => ({ default: () => <div>History contents</div> }))
 vi.mock('./AdminInboxTab', () => ({
-  default: ({ onUnreadCountChange }: { onUnreadCountChange?: (n: number) => void }) => {
+  default: ({ onUnreadCountChange, openConversationId, onOpenConsumed }: { onUnreadCountChange?: (n: number) => void; openConversationId?: string | null; onOpenConsumed?: () => void }) => {
     onUnreadCountChange?.(3)
+    inboxProps.openConversationId = openConversationId
+    inboxProps.onOpenConsumed = onOpenConsumed
     return <div>Inbox contents</div>
   },
 }))
@@ -44,5 +49,22 @@ describe('EmailsAdminTab â€” Inbox unread badge', () => {
     expect(getByText('3')).toBeInTheDocument()
     rerender(<EmailsAdminTab users={[]} inboxUnreadCount={5} />)
     expect(getByText('3')).toBeInTheDocument()
+  })
+
+  it('switches to the Inbox sub-tab when told to open a conversation', () => {
+    const onOpenConsumed = vi.fn()
+    const { getByText } = render(<EmailsAdminTab users={[]} openConversationId="convo-1" onOpenConsumed={onOpenConsumed} />)
+    expect(getByText('Inbox contents')).toBeInTheDocument()
+    expect(inboxProps.openConversationId).toBe('convo-1')
+    expect(inboxProps.onOpenConsumed).toBe(onOpenConsumed)
+  })
+})
+
+describe('EmailsAdminTab — History sub-tab', () => {
+  it('has a History pill that shows the history component', () => {
+    const { getByText, queryByText } = render(<EmailsAdminTab users={[]} />)
+    expect(queryByText('History contents')).toBeNull()
+    fireEvent.click(getByText('History'))
+    expect(getByText('History contents')).toBeInTheDocument()
   })
 })

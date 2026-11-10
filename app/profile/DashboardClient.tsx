@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { isDashboardTab } from '@/lib/dashboardTab'
 import Link from 'next/link'
+import { showBonusBanner } from '@/lib/bonusBanner'
 import Image from 'next/image'
 import ProfileCard from './ProfileCard'
 import MessagesTab from './MessagesTab'
@@ -956,17 +957,25 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
                     >
                       ✕
                     </button>
-                    <h3 className="mb-1">Report an issue</h3>
-                    <p className="font-semibold text-[12px] mb-4" style={{ color: '#8A8178' }}>
-                      Tell us what's wrong with <strong style={{ color: '#4A4038' }}>{disputeModal.title}</strong> — this pauses the exchange until an admin looks into it.
-                    </p>
-
                     {disputeSubmitted ? (
-                      <p className="font-bold text-[13px]" style={{ color: '#234A40' }}>
-                        We've notified the admin team. This exchange is paused until it's resolved.
-                      </p>
+                      <>
+                        <h3 className="mb-1">Sent ✓</h3>
+                        <p className="font-semibold text-[13px] mb-4" style={{ color: '#8A8178' }}>
+                          An admin will look into it. The exchange is paused until then.
+                        </p>
+                        <div className="flex justify-end mt-4">
+                          <button type="button" onClick={() => setDisputeModal(null)} className="font-extrabold text-[13px] text-white"
+                            style={{ background: '#B5462F', padding: '9px 20px', borderRadius: 999, border: 'none', cursor: 'pointer' }}>
+                            Done
+                          </button>
+                        </div>
+                      </>
                     ) : (
                       <>
+                        <h3 className="mb-1">Report an issue</h3>
+                        <p className="font-semibold text-[12px] mb-4" style={{ color: '#8A8178' }}>
+                          Tell us what's wrong with <strong style={{ color: '#4A4038' }}>{disputeModal.title}</strong> — this pauses the exchange until an admin looks into it.
+                        </p>
                         <textarea
                           value={disputeMessage}
                           onChange={e => setDisputeMessage(e.target.value)}
@@ -1024,96 +1033,43 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
             <TbrAddForm addTbrEntry={addTbrEntry} defaultCity={profile?.city ?? ''} defaultState={profile?.state ?? ''} />
 
             {tbrEntries.length === 0 ? (
-              <div className="text-center py-8 font-bold text-[14px]" style={{ color: '#8A8178' }}>
+              <div className="dash-tbr-empty">
                 No books on your TBR yet.
               </div>
             ) : (
-              <>
-                {/* Desktop: table with column headers */}
-                <div className="hidden md:block">
-                  <div className="grid gap-3 px-1 pb-2" style={{ gridTemplateColumns: '46px 2fr 1.5fr 1fr 70px 150px', borderBottom: '1px solid #E7DCCB' }}>
-                    {['', 'Title', 'Author', 'City', 'State', ''].map(h => (
-                      <span key={h} className="font-black text-[11px]" style={{ textTransform: 'uppercase', letterSpacing: '0.6px', color: '#8A8178' }}>
-                        {h}
-                      </span>
-                    ))}
-                  </div>
-                  {tbrEntries.map(entry => {
-                    const isUnread = unreadEntityIds.tbrMatch.includes(entry.id)
-                    return (
-                    <div key={entry.id} className="grid gap-3 items-center px-1"
-                      style={{ gridTemplateColumns: '46px 2fr 1.5fr 1fr 70px 150px', padding: '12px 4px', borderBottom: '1px solid #E7DCCB', ...(isUnread ? { background: '#EFEAF7', borderRadius: 10 } : {}) }}>
+              <div className="dash-xcards dash-tbr-list">
+                {[...tbrEntries].sort((a, b) => Number(!!b.match) - Number(!!a.match)).map(entry => {
+                  const isUnread = unreadEntityIds.tbrMatch.includes(entry.id)
+                  const place = [entry.city, entry.state].filter(Boolean).join(', ')
+                  return (
+                    <div key={entry.id} className={`dash-xcard dash-tbr-card${isUnread ? ' is-attention' : ''}`}>
                       {entry.cover_url ? (
-                        <img src={entry.cover_url} alt="" style={{ width: 32, height: 46, objectFit: 'cover', borderRadius: 4 }} />
+                        <img src={entry.cover_url} alt="" className="dash-tbr-cover" />
                       ) : (
-                        <span style={{ width: 32, height: 46, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>📚</span>
+                        <span className="dash-tbr-cover is-fallback">📚</span>
                       )}
-                      <span className="font-black text-[14px] truncate">{entry.title || '—'}</span>
-                      <span className="font-semibold text-[13px] truncate" style={{ color: entry.author ? '#4A4038' : '#C7BFB2' }}>{entry.author || '—'}</span>
-                      <span className="font-semibold text-[13px] truncate" style={{ color: entry.city ? '#4A4038' : '#C7BFB2' }}>{entry.city || '—'}</span>
-                      <span className="font-semibold text-[13px]" style={{ color: entry.state ? '#4A4038' : '#C7BFB2' }}>{entry.state || '—'}</span>
-                      <div className="flex items-center justify-end gap-3">
+                      <div className="dash-tbr-info">
+                        {isUnread && <p className="dash-xstatus is-attention">NEW MATCH NEARBY</p>}
+                        <p className="dash-tbr-title">{entry.title || (entry.author ? `by ${entry.author}` : '—')}</p>
+                        {entry.title && entry.author && <p className="dash-tbr-author">{entry.author}</p>}
+                        {place && <p className="dash-tbr-place">{place}</p>}
                         {entry.match && (
-                          <Link href={`/listings/${entry.match.id}`}
-                            className="font-extrabold text-[11px] text-white whitespace-nowrap"
-                            style={{ background: '#5B4B8A', padding: '5px 10px', borderRadius: 999 }}>
-                            📖 Avail
-                          </Link>
+                          <div className="dash-tbr-avail">
+                            <span className="dash-tbr-avail-label">It&apos;s available!</span>
+                            <Link href={`/listings/${entry.match.id}`} className="btn btn-primary dash-tbr-see">
+                              See listing
+                            </Link>
+                          </div>
                         )}
-                        <form action={removeTbrEntry}>
-                          <input type="hidden" name="id" value={entry.id} />
-                          <button className="font-extrabold text-[15px] hover:opacity-70" aria-label="Delete"
-                            style={{ background: 'none', border: 'none', color: '#C88', cursor: 'pointer', padding: 0 }}>
-                            ✕
-                          </button>
-                        </form>
                       </div>
+                      <form action={removeTbrEntry}>
+                        <input type="hidden" name="id" value={entry.id} />
+                        <button className="dash-tbr-remove" aria-label="Delete">✕</button>
+                      </form>
                     </div>
-                    )
-                  })}
-                </div>
-
-                {/* Mobile: stacked cards */}
-                <div className="md:hidden">
-                  {tbrEntries.map(entry => {
-                    const isUnread = unreadEntityIds.tbrMatch.includes(entry.id)
-                    return (
-                    <div key={entry.id} style={{ padding: '12px 0', borderBottom: '1px solid #E7DCCB', display: 'flex', gap: 10, ...(isUnread ? { background: '#EFEAF7', borderRadius: 10 } : {}) }}>
-                      {entry.cover_url ? (
-                        <img src={entry.cover_url} alt="" style={{ width: 32, height: 46, objectFit: 'cover', borderRadius: 4, flexShrink: 0 }} />
-                      ) : (
-                        <span style={{ width: 32, height: 46, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>📚</span>
-                      )}
-                      <div style={{ flex: 1 }}>
-                      <p className="font-black text-[14px] truncate">
-                        {entry.title || `by ${entry.author}`}
-                      </p>
-                      <p className="font-semibold text-[12px] mb-2" style={{ color: '#8A8178' }}>
-                        {[entry.title && entry.author ? `by ${entry.author}` : null, entry.city, entry.state]
-                          .filter(Boolean).join(' · ')}
-                      </p>
-                      <div className="flex items-center gap-3 flex-wrap">
-                        {entry.match && (
-                          <Link href={`/listings/${entry.match.id}`}
-                            className="font-extrabold text-[12px] text-white whitespace-nowrap"
-                            style={{ background: '#5B4B8A', padding: '6px 14px', borderRadius: 999 }}>
-                            📖 Available!
-                          </Link>
-                        )}
-                        <form action={removeTbrEntry}>
-                          <input type="hidden" name="id" value={entry.id} />
-                          <button className="font-extrabold text-[11px] hover:opacity-80"
-                            style={{ background: 'none', border: 'none', color: '#8A8178', cursor: 'pointer', padding: 0 }}>
-                            ✕ Delete
-                          </button>
-                        </form>
-                      </div>
-                      </div>
-                    </div>
-                    )
-                  })}
-                </div>
-              </>
+                  )
+                })}
+              </div>
             )}
           </div>
         )}
@@ -1184,92 +1140,96 @@ export default function DashboardClient({ profile, listings, exchanges, savedLis
         {activeTab === 'wallet' && (
           <div className="flex flex-col" style={{ gap: 16 }}>
 
-            {!profile?.onboarding_bonus_claimed && (
-              <div className="dash-card dash-card--accent">
-                <h3 style={{ color: '#234A40' }} className="mb-3"><span aria-hidden="true">🎯</span> Earn Your First Credit</h3>
-                <div className="flex flex-col" style={{ gap: 10 }}>
-                  <div>
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-[13px]">{profile?.email_verified ? '✅' : '☐'} Verify email</span>
-                      {!profile?.email_verified && (
-                        <button
-                          type="button"
-                          onClick={async () => {
-                            const res = await resendEmailConfirmation()
-                            setEmailResendOk(res.ok)
-                            setEmailResendMessage(res.ok ? 'Confirmation email sent — check your inbox.' : (res.error ?? 'Failed to send confirmation email.'))
-                          }}
-                          className="font-extrabold text-[12px]"
-                          style={{ background: 'none', border: 'none', color: '#234A40', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
-                        >
-                          Resend confirmation email
-                        </button>
+            {!profile?.onboarding_bonus_claimed && (() => {
+              const emailDone = !!profile?.email_verified
+              const phoneDone = !!profile?.phone_verified
+              const booksDone = booksPosted >= 3
+              const doneCount = [emailDone, phoneDone, booksDone].filter(Boolean).length
+              const check = (done: boolean) => (
+                <span className={`dash-wallet-check${done ? ' is-done' : ''}`} aria-hidden="true">{done ? '✓' : ''}</span>
+              )
+              return (
+                <div className="dash-card dash-wallet-earn">
+                  <h3>Earn your first credit</h3>
+                  <p className="dash-wallet-progress">{doneCount} of 3 done</p>
+                  <ul className="dash-wallet-steps">
+                    <li className="dash-wallet-step">
+                      <div className="dash-wallet-row">
+                        {check(emailDone)}
+                        <span className="dash-wallet-label">Verify email</span>
+                        {!emailDone && (
+                          <button
+                            type="button"
+                            className="btn btn-primary dash-wallet-pill"
+                            onClick={async () => {
+                              const res = await resendEmailConfirmation()
+                              setEmailResendOk(res.ok)
+                              setEmailResendMessage(res.ok ? 'Confirmation email sent — check your inbox.' : (res.error ?? 'Failed to send confirmation email.'))
+                            }}
+                          >
+                            Resend email
+                          </button>
+                        )}
+                      </div>
+                      {!emailDone && emailResendMessage && (
+                        <p className={`dash-wallet-msg${emailResendOk ? '' : ' is-error'}`}>{emailResendMessage}</p>
                       )}
-                    </div>
-                    {emailResendMessage && (
-                      <p className="font-bold text-[11px] mt-1" style={{ color: emailResendOk ? '#234A40' : '#B5462F' }}>{emailResendMessage}</p>
-                    )}
-                  </div>
-                  <div>
-                    <span className="font-bold text-[13px]">{profile?.phone_verified ? '✅' : '☐'} Verify phone</span>
-                    <PhoneVerify
-                      phone={phoneNumber}
-                      onPhoneChange={setPhoneNumber}
-                      phoneVerified={!!profile?.phone_verified}
-                      sendPhoneOtp={sendPhoneOtp}
-                      verifyPhoneOtp={verifyPhoneOtp}
-                      onVerified={() => router.refresh()}
-                    />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-[13px]">{booksPosted >= 3 ? '✅' : '☐'} Books posted</span>
-                    <span className="font-extrabold text-[12px]" style={{ color: '#8A8178' }}>{Math.min(booksPosted, 3)}/3</span>
-                  </div>
+                    </li>
+                    <li className="dash-wallet-step">
+                      <div className="dash-wallet-row">
+                        {check(phoneDone)}
+                        <span className="dash-wallet-label">Verify phone</span>
+                      </div>
+                      <div className="dash-wallet-inline">
+                        <PhoneVerify
+                          phone={phoneNumber}
+                          onPhoneChange={setPhoneNumber}
+                          phoneVerified={phoneDone}
+                          sendPhoneOtp={sendPhoneOtp}
+                          verifyPhoneOtp={verifyPhoneOtp}
+                          onVerified={() => router.refresh()}
+                        />
+                      </div>
+                    </li>
+                    <li className="dash-wallet-step">
+                      <div className="dash-wallet-row">
+                        {check(booksDone)}
+                        <span className="dash-wallet-label">
+                          Post 3 books
+                          <span className="dash-wallet-sub">{Math.min(booksPosted, 3)} of 3 · a bundle counts each book</span>
+                        </span>
+                        {!booksDone && (
+                          <Link href="/post" className="btn btn-primary dash-wallet-pill">Post a book</Link>
+                        )}
+                      </div>
+                    </li>
+                  </ul>
                 </div>
-              </div>
-            )}
-            {profile?.onboarding_bonus_claimed && (
-              <div className="dash-card dash-card--accent" style={{ textAlign: 'center' }}>
-                <p className="font-black text-[14px]" style={{ color: '#234A40' }}>🎉 Bonus earned — you got 1 free credit!</p>
+              )
+            })()}
+            {profile?.onboarding_bonus_claimed && showBonusBanner(transactions) && (
+              <div className="dash-wallet-bonus">
+                <img src="/home/credit-coin-small.png" alt="Credit coin" width={22} height={22} />
+                <span>Bonus earned — you got 1 free credit!</span>
               </div>
             )}
 
             {/* Balance card */}
             <div className="dash-balance">
-              <p className="font-extrabold text-[11px] mb-1" style={{ color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
-                Available Balance
-              </p>
-              <div className="flex items-end gap-3 mb-2">
-                <span style={{ fontFamily: "'Newsreader', Georgia, serif", fontWeight: 600, fontSize: 48, color: '#fff', lineHeight: 1 }}>{profile?.credits ?? 0}</span>
-                <span className="font-extrabold text-[18px] mb-1" style={{ color: 'rgba(255,255,255,0.7)' }}>credits</span>
+              <p className="dash-wallet-kicker">Available Balance</p>
+              <div className="dash-wallet-amount">
+                <span className="dash-wallet-num">{profile?.credits ?? 0}</span>
+                <span className="dash-wallet-unit">credits</span>
               </div>
-              <p className="font-semibold text-[12px] mb-5" style={{ color: 'rgba(255,255,255,0.5)' }}>
-                1 credit = 1 book · $5 per credit
-              </p>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: 12, fontWeight: 700 }}>$5.00 per credit</p>
-                <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: 12, fontWeight: 700 }}>1 credit = 1 book</p>
-              </div>
-              <button
-                disabled
-                className="font-extrabold text-[14px] w-full"
-                style={{
-                  background: 'rgba(255,255,255,0.25)',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: 12,
-                  padding: '13px',
-                  cursor: 'not-allowed',
-                  fontFamily: 'inherit',
-                }}
-              >
+              <p className="dash-wallet-rate">1 credit = 1 book · $5 each</p>
+              <button disabled className="dash-wallet-buy">
                 💳 Buy Credits — Coming soon
               </button>
             </div>
 
             {/* Transaction history */}
             <div className="dash-card">
-              <h3 style={{ color: '#234A40' }} className="mb-4">Transaction History</h3>
+              <h3 className="mb-4">Transaction History</h3>
               {transactions.length === 0 ? (
                 <div className="text-center py-8 font-bold text-[14px]" style={{ color: '#8A8178' }}>
                   No transactions yet.

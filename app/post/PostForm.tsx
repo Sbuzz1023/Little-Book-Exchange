@@ -1,6 +1,10 @@
 'use client'
 
 import { useState } from 'react'
+// useFormStatus ships in the React canary build that Next's App Router bundles; the stable
+// @types/react-dom 18 only declares it in canary.d.ts, hence the reference below.
+/// <reference types="react-dom/canary" />
+import { useFormStatus } from 'react-dom'
 import BookSearchInput from '@/components/BookSearchInput'
 import type { BookSuggestion } from '@/lib/openLibrary'
 import { resizeImage } from '@/lib/resizeImage'
@@ -142,6 +146,17 @@ function PhotoUploadSlot({
       )}
       <input name={name} type="file" accept="image/*" onChange={onChange} />
     </div>
+  )
+}
+
+// Must be a child of <form> for useFormStatus to see the pending server action. Disabling the
+// button while pending stops a second click from creating a duplicate listing.
+function SubmitButton({ canSubmit, submitLabel }: { canSubmit: boolean; submitLabel?: string }) {
+  const { pending } = useFormStatus()
+  return (
+    <button type="submit" disabled={!canSubmit || pending} className="pf-submit-btn">
+      {pending ? (submitLabel ? 'Saving…' : 'Posting…') : (submitLabel ?? 'Post My Book →')}
+    </button>
   )
 }
 
@@ -509,9 +524,7 @@ export default function PostForm({ city, action, error, initialValues, submitLab
               : 'Every book in the bundle needs to be selected from search results too.'}
           </p>
         )}
-        <button type="submit" disabled={!canSubmit} className="pf-submit-btn">
-          {submitLabel ?? 'Post My Book →'}
-        </button>
+        <SubmitButton canSubmit={canSubmit} submitLabel={submitLabel} />
       </div>
     </form>
   )

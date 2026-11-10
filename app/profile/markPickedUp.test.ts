@@ -8,29 +8,19 @@ import { markPickedUp } from './actions'
 
 const calls: string[] = []
 const redirectMock = vi.fn((url: string) => { calls.push(`redirect:${url}`); throw new Error(`REDIRECT:${url}`) })
+vi.mock('@/lib/disputes/notifyAdmins', () => ({ notifyAdminsOfDispute: vi.fn(() => Promise.resolve(true)) }))
 vi.mock('next/navigation', () => ({ redirect: (url: string) => redirectMock(url) }))
 const revalidatePathMock = vi.fn((path: string, type?: string) => { calls.push(`revalidate:${path}:${type}`) })
 vi.mock('next/cache', () => ({ revalidatePath: (p: string, t?: string) => revalidatePathMock(p, t) }))
 
-let updated: { id: string } | null = { id: 'convo-1' }
 let rpcResult = 'completed_manual'
-
-const convoChain: Record<string, unknown> = {}
-for (const m of ['select', 'eq', 'is', 'update']) convoChain[m] = () => convoChain
-convoChain.single = () => Promise.resolve({ data: { buyer_id: 'user-1', seller_id: 'seller-1' } })
-convoChain.maybeSingle = () => Promise.resolve({ data: updated })
+const rpcCalls: { fn: string; args: Record<string, unknown> }[] = []
 
 const createClientMock = vi.fn()
 vi.mock('@/lib/supabase/server', () => ({
   createClient: () => (createClientMock(), {
     auth: { getUser: () => Promise.resolve({ data: { user: { id: 'user-1' } } }) },
-    from: (table: string) => {
-      if (table === 'conversations') return convoChain
-      if (table === 'profiles') return { select: () => ({ eq: () => ({ single: () => Promise.resolve({ data: { username: 'me' } }) }) }) }
-      if (table === 'messages') return { insert: () => Promise.resolve({ error: null }) }
-      throw new Error(`unexpected table ${table}`)
-    },
-    rpc: () => Promise.resolve({ data: rpcResult }),
+    rpc: (fn: string, args: Record<string, unknown>) => { rpcCalls.push({ fn, args }); return Promise.resolve({ data: rpcResult }) },
   }),
 }))
 
@@ -44,7 +34,6 @@ describe('markPickedUp — refreshing the nav for the coin show', () => {
   beforeEach(() => {
     calls.length = 0
     vi.clearAllMocks()
-    updated = { id: 'convo-1' }
     rpcResult = 'completed_manual'
     vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'https://example.supabase.co')
   })
@@ -53,6 +42,12 @@ describe('markPickedUp — refreshing the nav for the coin show', () => {
   it('revalidates the root layout before redirecting when the pickup completes the exchange', async () => {
     await expect(markPickedUp(form())).rejects.toThrow('REDIRECT:/profile?tab=exchanges')
     expect(calls).toEqual(['revalidate:/:layout', 'redirect:/profile?tab=exchanges'])
+  })
+
+  it('marks the pickup through mark_picked_up', async () => {
+    rpcResult = 'waiting'
+    await expect(markPickedUp(form())).rejects.toThrow('REDIRECT:/profile?tab=exchanges')
+    expect(rpcCalls.at(-1)).toEqual({ fn: 'mark_picked_up', args: { p_conversation_id: 'convo-1' } })
   })
 
   it('does not revalidate the layout while still waiting on the other party', async () => {

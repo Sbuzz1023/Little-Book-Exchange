@@ -1,11 +1,39 @@
 import { useState } from 'react'
-import { render, fireEvent, within } from '@testing-library/react'
-import { describe, it, expect, vi } from 'vitest'
-import { UsersTab, formatDisputeTally, formatDisputeCounts } from './AdminClient'
+import { render, fireEvent, within, waitFor, act } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import AdminClient, { UsersTab, formatDisputeTally, formatDisputeCounts } from './AdminClient'
+import { openAdminChat } from '@/lib/actions/emailAdmin'
 import type { EnrichedDispute } from '@/lib/disputeEnrichment'
 
 vi.mock('@/lib/actions/admin', () => ({
   adminUpdateUserCredits: vi.fn(() => Promise.resolve({ ok: true })),
+}))
+
+vi.mock('@/lib/actions/emailAdmin', () => ({ openAdminChat: vi.fn() }))
+
+// Every query resolves to empty data; enough for AdminClient's load effects.
+vi.mock('@/lib/supabase/client', () => {
+  const chain: any = new Proxy(function () {}, {
+    get: (_t, prop) => prop === 'then'
+      ? (resolve: (v: unknown) => void) => resolve({ data: [], error: null, count: 0 })
+      : chain,
+    apply: () => chain,
+  })
+  return { createClient: () => ({ from: () => chain, rpc: () => chain, auth: { getUser: () => Promise.resolve({ data: { user: null } }) } }) }
+})
+
+vi.mock('./DisputesAdminTab', () => ({
+  default: ({ onOpenChat }: { onOpenChat: (id: string) => void }) => (
+    <div>
+      <button onClick={() => onOpenChat('buyer-1')}>💬 Message buyer</button>
+    </div>
+  ),
+}))
+
+vi.mock('./EmailsAdminTab', () => ({
+  default: ({ openConversationId }: { openConversationId?: string | null }) => (
+    <div data-testid="emails-tab" data-open-convo={openConversationId ?? ''} />
+  ),
 }))
 
 vi.mock('./DisputeRow', () => ({
@@ -26,7 +54,7 @@ const users = [
 ]
 
 const disputes: EnrichedDispute[] = [
-  { id: 'd1', conversationId: 'c1', message: 'Never showed up', status: 'open', createdAt: '2026-08-01T00:00:00.000Z', resolvedAt: null, adminReadAt: null, reporterId: 'u1', reporterName: 'Alex', otherPartyId: 'u2', otherPartyName: 'Sam', bookTitle: 'Dune' },
+  { id: 'd1', conversationId: 'c1', message: 'Never showed up', status: 'open', createdAt: '2026-08-01T00:00:00.000Z', resolvedAt: null, adminReadAt: null, reporterId: 'u1', reporterName: 'Alex', otherPartyId: 'u2', buyerId: 'u1', sellerId: 'u2', otherPartyName: 'Sam', bookTitle: 'Dune' },
 ]
 
 const disputeTally = { u1: { filed: 1, against: 0 }, u2: { filed: 0, against: 1 } }
@@ -144,5 +172,46 @@ describe('UsersTab', () => {
     expect(queryByText('No disputes.')).toBeNull()
     expect(modalFor(container).textContent).not.toContain('filed')
     expect(modalFor(container).textContent).not.toContain('against')
+  })
+})
+
+describe('AdminClient - open chat', () => {
+  beforeEach(() => { vi.mocked(openAdminChat).mockReset() })
+
+  function openDisputesTab(r: ReturnType<typeof render>) {
+    fireEvent.click(r.getAllByText('Disputes')[0])
+  }
+
+  it('opens a chat with the buyer, switches to the Email/Message tab and passes the conversation id through', async () => {
+    vi.mocked(openAdminChat).mockResolvedValue({ ok: true, conversationId: 'convo-9' })
+    const r = render(<AdminClient />)
+    openDisputesTab(r)
+    fireEvent.click(r.getByText('💬 Message buyer'))
+    await waitFor(() => expect(r.getByTestId('emails-tab')).toHaveAttribute('data-open-convo', 'convo-9'))
+    expect(openAdminChat).toHaveBeenCalledWith('buyer-1')
+  })
+
+  it('shows an error banner and stays on Disputes when opening the chat fails, and clears it on tab switch', async () => {
+    vi.mocked(openAdminChat).mockResolvedValue({ ok: false, error: 'Not authorized.' })
+    const r = render(<AdminClient />)
+    openDisputesTab(r)
+    fireEvent.click(r.getByText('💬 Message buyer'))
+    expect(await r.findByText('Not authorized.')).toBeTruthy()
+    expect(r.queryByTestId('emails-tab')).toBeNull()
+    fireEvent.click(r.getAllByText('Reviews')[0])
+    expect(r.queryByText('Not authorized.')).toBeNull()
+  })
+
+  it('ignores a second open-chat request while one is in flight', async () => {
+    let resolveOpen: (v: { ok: boolean; conversationId: string }) => void = () => {}
+    vi.mocked(openAdminChat).mockReturnValue(new Promise(res => { resolveOpen = res }))
+    const r = render(<AdminClient />)
+    openDisputesTab(r)
+    const btn = r.getByText('💬 Message buyer')
+    fireEvent.click(btn)
+    fireEvent.click(btn)
+    expect(openAdminChat).toHaveBeenCalledTimes(1)
+    await act(async () => { resolveOpen({ ok: true, conversationId: 'convo-1' }) })
+    await waitFor(() => expect(r.getByTestId('emails-tab')).toBeTruthy())
   })
 })

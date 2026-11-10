@@ -4,17 +4,19 @@ import { useEffect, useRef, useState } from 'react'
 import EmailTemplatesEditor from './EmailTemplatesEditor'
 import EmailComposeTab from './EmailComposeTab'
 import EmailResendTool from './EmailResendTool'
+import EmailHistoryTab from './EmailHistoryTab'
 import AdminInboxTab from './AdminInboxTab'
 
 type EmailUser = { id: string; username: string; email: string; city: string; state: string }
-type SubTab = 'templates' | 'compose' | 'resend' | 'inbox'
+type SubTab = 'templates' | 'compose' | 'resend' | 'history' | 'inbox'
 
 export default function EmailsAdminTab({
-  users, messagePrefillUserId, onPrefillConsumed, onInboxUnreadCountChange, inboxUnreadCount: inboxUnreadCountProp = 0,
+  users, openConversationId, onOpenConsumed, onOpenChat, onInboxUnreadCountChange, inboxUnreadCount: inboxUnreadCountProp = 0,
 }: {
   users: EmailUser[]
-  messagePrefillUserId?: string | null
-  onPrefillConsumed?: () => void
+  openConversationId?: string | null
+  onOpenConsumed?: () => void
+  onOpenChat?: (userId: string) => void
   onInboxUnreadCountChange?: (count: number) => void
   // The parent's own standalone count — populated as soon as the admin panel
   // loads, well before Inbox is ever opened. Used for the pill badge until
@@ -36,13 +38,14 @@ export default function EmailsAdminTab({
   }
 
   useEffect(() => {
-    if (messagePrefillUserId) setSubTab('compose')
-  }, [messagePrefillUserId])
+    if (openConversationId) setSubTab('inbox')
+  }, [openConversationId])
 
   const SUB_TABS: { id: SubTab; label: string }[] = [
     { id: 'compose', label: 'Compose' },
     { id: 'templates', label: 'Templates' },
     { id: 'resend', label: 'Resend' },
+    { id: 'history', label: 'History' },
     { id: 'inbox', label: 'Inbox' },
   ]
 
@@ -60,10 +63,11 @@ export default function EmailsAdminTab({
         ))}
       </div>
 
-      {subTab === 'compose' && <EmailComposeTab users={users} prefillUserId={messagePrefillUserId} onPrefillConsumed={onPrefillConsumed} />}
+      {subTab === 'compose' && <EmailComposeTab users={users} onOpenChat={onOpenChat} />}
       {subTab === 'templates' && <EmailTemplatesEditor />}
       {subTab === 'resend' && <EmailResendTool users={users} />}
-      {subTab === 'inbox' && <AdminInboxTab onUnreadCountChange={handleInboxUnreadCountChange} />}
+      {subTab === 'history' && <EmailHistoryTab />}
+      {subTab === 'inbox' && <AdminInboxTab onUnreadCountChange={handleInboxUnreadCountChange} openConversationId={openConversationId} onOpenConsumed={onOpenConsumed} />}
     </div>
   )
 }

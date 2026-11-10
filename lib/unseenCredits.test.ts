@@ -16,11 +16,15 @@ function fakeSupabase(opts: {
     return c
   }
   const from = vi.fn((table: string) => {
-    if (table === 'profiles') return chain(table, opts.profile)
     if (table === 'credit_transactions') return chain(table, opts.ledger ?? { data: [], error: null })
     throw new Error(`unexpected table ${table}`)
   })
-  return { client: { from } as never, from, calls }
+  const rpc = (fn: string) => {
+    expect(fn).toBe('get_my_profile')
+    calls['rpc'] = [fn]
+    return { maybeSingle: () => Promise.resolve(opts.profile) }
+  }
+  return { client: { from, rpc } as never, from, calls }
 }
 
 describe('fetchUnseenCredits', () => {
@@ -37,7 +41,7 @@ describe('fetchUnseenCredits', () => {
     })
     const rows = await fetchUnseenCredits(sb.client, 'user-1')
     expect(rows).toEqual([{ id: 'a', amount: 1, reason: 'sale_earned', created_at: '2026-10-06T10:00:00+00:00', title: 'Dune' }])
-    expect(sb.calls['profiles.select']).toEqual(['credits_seen_at'])
+    expect(sb.calls['rpc']).toEqual(['get_my_profile'])
     expect(sb.calls['credit_transactions.eq']).toEqual(['user_id', 'user-1'])
     expect(sb.calls['credit_transactions.in']).toEqual(['reason', ['sale_earned', 'purchase_spent', 'onboarding_bonus']])
     expect(sb.calls['credit_transactions.gt']).toEqual(['created_at', '2026-10-06T09:00:00+00:00'])
