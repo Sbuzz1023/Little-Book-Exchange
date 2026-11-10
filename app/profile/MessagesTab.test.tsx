@@ -387,3 +387,84 @@ describe('MessagesTab — book card', () => {
     expect(queryByText(/Back to book/)).toBeNull()
   })
 })
+
+describe('MessagesTab — folk restyle: avatars and who-header', () => {
+  const asBuyer: MessagesTabExchange = {
+    id: 'c-buy', listing_id: 'l-1', buyer_id: 'me', seller_id: 'them-s',
+    created_at: '2026-07-01T09:00:00.000Z',
+    listings: { title: 'Dune', author: 'Frank Herbert' },
+    buyer: { username: 'buzz' }, seller: { username: 'SeanB', city: 'Portland', state: 'OR' },
+    messages: [
+      { id: 'b1', body: 'Hi there', sender_id: 'them-s', created_at: '2026-07-01T10:00:00.000Z' },
+      { id: 'b2', body: 'Still have it', sender_id: 'them-s', created_at: '2026-07-01T10:01:00.000Z' },
+      { id: 'b3', body: 'Great', sender_id: 'me', created_at: '2026-07-01T10:02:00.000Z' },
+      { id: 'b4', body: 'Saturday?', sender_id: 'them-s', created_at: '2026-07-01T10:03:00.000Z' },
+    ],
+  }
+  const asSeller: MessagesTabExchange = {
+    id: 'c-sell', listing_id: 'l-2', buyer_id: 'them-b', seller_id: 'me',
+    created_at: '2026-07-01T09:00:00.000Z',
+    listings: { title: 'Emma', author: 'Jane Austen' },
+    buyer: { username: 'buzz' }, seller: { username: 'SeanB' },
+    messages: [],
+  }
+  const support: MessagesTabExchange = {
+    id: 'c-sup', type: 'admin', user_id: 'me', repliable: true,
+    created_at: '2026-07-01T09:00:00.000Z',
+    messages: [{ id: 's1', body: 'Welcome!', sender_id: 'admin-1', created_at: '2026-07-01T10:00:00.000Z' }],
+  }
+
+  it('list rows show nav-style initials for the other person', () => {
+    const { getAllByTestId } = render(
+      <MessagesTab exchanges={[asBuyer, asSeller]} userId="me" isDemo={true} selectedId={null} onSelectId={vi.fn()} />
+    )
+    const initials = getAllByTestId('message-avatar').map(a => a.textContent)
+    expect(initials).toContain('SB')
+    expect(initials).toContain('B')
+  })
+
+  it('header shows the other person\'s initials avatar, name, "Seller" and their city when I am the buyer', () => {
+    const { getByTestId } = render(
+      <MessagesTab exchanges={[asBuyer]} userId="me" isDemo={true} selectedId="c-buy" onSelectId={vi.fn()} />
+    )
+    const header = getByTestId('thread-header')
+    expect(header.querySelector('[data-testid="message-avatar"]')?.textContent).toBe('SB')
+    expect(header.textContent).toContain('SeanB')
+    expect(getByTestId('thread-header-role').textContent).toBe('Seller · Portland, OR')
+  })
+
+  it('header says "Buyer" (no location when unknown) when I am the seller', () => {
+    const { getByTestId } = render(
+      <MessagesTab exchanges={[asSeller]} userId="me" isDemo={true} selectedId="c-sell" onSelectId={vi.fn()} />
+    )
+    expect(getByTestId('thread-header-role').textContent).toBe('Buyer')
+  })
+
+  it('header says "Support" and uses the sprout logo for a support thread', () => {
+    const { getByTestId } = render(
+      <MessagesTab exchanges={[support]} userId="me" isDemo={true} selectedId="c-sup" onSelectId={vi.fn()} />
+    )
+    expect(getByTestId('thread-header-role').textContent).toBe('Support')
+    const logo = getByTestId('thread-header').querySelector('img')
+    expect(logo?.getAttribute('alt')).toBe('Little Book Exchange')
+  })
+
+  it('support list row avatar is the logo', () => {
+    const { getByAltText } = render(
+      <MessagesTab exchanges={[support]} userId="me" isDemo={true} selectedId={null} onSelectId={vi.fn()} />
+    )
+    expect(getByAltText('Little Book Exchange')).toBeTruthy()
+  })
+
+  it('their message groups show their avatar once per group and no grey name; mine have none', () => {
+    const { getByTestId } = render(
+      <MessagesTab exchanges={[asBuyer]} userId="me" isDemo={true} selectedId="c-buy" onSelectId={vi.fn()} />
+    )
+    const thread = getByTestId('thread-messages')
+    expect(thread.textContent).not.toContain('SeanB')
+    const avatars = thread.querySelectorAll('[data-testid="message-avatar"]')
+    // two groups of theirs (b1+b2, b4); my b3 has no avatar
+    expect(avatars.length).toBe(2)
+    avatars.forEach(a => expect(a.textContent).toBe('SB'))
+  })
+})
