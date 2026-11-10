@@ -54,7 +54,6 @@ describe('openAdminChat', () => {
     insertResult = { data: null, error: { message: 'denied' } }
     vi.spyOn(console, 'error').mockImplementation(() => {})
     const res = await openAdminChat('user-1')
-    expect(res.ok).toBe(false)
-    expect(res.error).toBeTruthy()
+    expect(res).toEqual({ ok: false, error: 'Could not open the chat.' })
   })
 })

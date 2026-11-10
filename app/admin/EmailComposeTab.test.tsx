@@ -28,10 +28,12 @@ describe('EmailComposeTab — Open chat', () => {
 
   it('shows Open chat instead of Send for Message + One User, and calls onOpenChat with the selected user', () => {
     const onOpenChat = vi.fn()
-    const { getByText, getByPlaceholderText, queryByText } = render(<EmailComposeTab users={users} onOpenChat={onOpenChat} />)
+    const { getByText, getByPlaceholderText, queryByText, container } = render(<EmailComposeTab users={users} onOpenChat={onOpenChat} />)
     fireEvent.click(getByText('💬 Message'))
     fireEvent.click(getByText('One User'))
     expect(queryByText('Send…')).toBeNull()
+    expect(container.querySelector('textarea')).toBeNull()
+    expect(queryByText('Allow replies (start a conversation)')).toBeNull()
     expect(getByText('Open chat')).toBeDisabled()
     fireEvent.change(getByPlaceholderText('Search by username or email…'), { target: { value: 'alex' } })
     fireEvent.click(getByText('Alex'))

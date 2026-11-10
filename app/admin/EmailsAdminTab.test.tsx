@@ -2,12 +2,16 @@ import { render, fireEvent } from '@testing-library/react'
 import { describe, it, expect, vi } from 'vitest'
 import EmailsAdminTab from './EmailsAdminTab'
 
+const inboxProps: { openConversationId?: string | null; onOpenConsumed?: () => void } = {}
+
 vi.mock('./EmailComposeTab', () => ({ default: () => <div>Compose</div> }))
 vi.mock('./EmailTemplatesEditor', () => ({ default: () => <div>Templates</div> }))
 vi.mock('./EmailResendTool', () => ({ default: () => <div>Resend</div> }))
 vi.mock('./AdminInboxTab', () => ({
-  default: ({ onUnreadCountChange }: { onUnreadCountChange?: (n: number) => void }) => {
+  default: ({ onUnreadCountChange, openConversationId, onOpenConsumed }: { onUnreadCountChange?: (n: number) => void; openConversationId?: string | null; onOpenConsumed?: () => void }) => {
     onUnreadCountChange?.(3)
+    inboxProps.openConversationId = openConversationId
+    inboxProps.onOpenConsumed = onOpenConsumed
     return <div>Inbox contents</div>
   },
 }))
@@ -47,7 +51,10 @@ describe('EmailsAdminTab — Inbox unread badge', () => {
   })
 
   it('switches to the Inbox sub-tab when told to open a conversation', () => {
-    const { getByText } = render(<EmailsAdminTab users={[]} openConversationId="convo-1" />)
+    const onOpenConsumed = vi.fn()
+    const { getByText } = render(<EmailsAdminTab users={[]} openConversationId="convo-1" onOpenConsumed={onOpenConsumed} />)
     expect(getByText('Inbox contents')).toBeInTheDocument()
+    expect(inboxProps.openConversationId).toBe('convo-1')
+    expect(inboxProps.onOpenConsumed).toBe(onOpenConsumed)
   })
 })

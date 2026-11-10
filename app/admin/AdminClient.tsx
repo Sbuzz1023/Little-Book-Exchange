@@ -662,6 +662,7 @@ export default function AdminClient() {
   const [disputesVersion, setDisputesVersion] = useState(0)
   const [inboxUnreadCount, setInboxUnreadCount] = useState(0)
   const hasInboxTabCount = useRef(false)
+  const openChatInFlight = useRef(false)
 
   useEffect(() => {
     const supabase = createClient()
@@ -925,14 +926,27 @@ export default function AdminClient() {
   }
 
   async function handleOpenChat(userId: string) {
+    // Ignore clicks while one is running so a double click can't race two
+    // find-or-create calls into two threads.
+    if (openChatInFlight.current) return
+    openChatInFlight.current = true
     setChatError(null)
-    const res = await openAdminChat(userId)
-    if (!res.ok || !res.conversationId) {
-      setChatError(res.error ?? 'Could not open the chat.')
-      return
+    try {
+      const res = await openAdminChat(userId)
+      if (!res.ok || !res.conversationId) {
+        setChatError(res.error ?? 'Could not open the chat.')
+        return
+      }
+      setOpenChatConversationId(res.conversationId)
+      setTab('emails')
+    } finally {
+      openChatInFlight.current = false
     }
-    setOpenChatConversationId(res.conversationId)
-    setTab('emails')
+  }
+
+  function selectTab(id: Tab) {
+    setChatError(null)
+    setTab(id)
   }
 
   async function toggleAdmin(userId: string, current: boolean) {
@@ -978,7 +992,7 @@ export default function AdminClient() {
           {TABS.map(t => {
             const b = badge(t.id)
             return (
-              <button key={t.id} onClick={() => setTab(t.id)}
+              <button key={t.id} onClick={() => selectTab(t.id)}
                 className={`w-full flex items-center gap-3 px-5 py-3 text-left transition-colors ${tab === t.id ? 'bg-white/10 text-white' : 'text-white/50 hover:text-white/80 hover:bg-white/5'}`}>
                 <span className="text-[17px]">{t.icon}</span>
                 <span className="font-bold text-[14px] flex-1">{t.label}</span>
@@ -999,7 +1013,7 @@ export default function AdminClient() {
         {TABS.map(t => {
           const b = badge(t.id)
           return (
-            <button key={t.id} onClick={() => setTab(t.id)}
+            <button key={t.id} onClick={() => selectTab(t.id)}
               className={`flex-1 flex flex-col items-center py-2 gap-0.5 relative transition-colors ${tab === t.id ? 'text-white' : 'text-white/40'}`}>
               <span className="text-[18px]">{t.icon}</span>
               <span className="text-[9px] font-extrabold uppercase">{t.label}</span>
